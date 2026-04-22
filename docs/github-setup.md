@@ -74,6 +74,8 @@ Then refresh **Actions** until a green **Handbook layout** appears on a `main` r
 
 **Checkpoint:** [ ] Latest **CI** run on **`main`** shows **Handbook layout** = success.
 
+**About “Node.js 20 actions are deprecated” annotations:** that comes from older `actions/checkout@v4` (and similar) running on Node 20. This repo’s workflow uses **`actions/checkout@v5`** plus **`FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`** so hosted runners use the Node 24 path GitHub is moving everyone to. After you pull the latest `main` and push, new runs should stop flagging checkout for Node 20. If GitHub still shows a warning for another action later, bump that action’s major version in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
+
 **Write down the exact check label** (you will paste or match it in Step 4):
 
 1. Stay on that successful workflow run page.
