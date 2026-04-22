@@ -1,0 +1,52 @@
+# Continuous integration — start minimal, extend as the repo grows.
+# See docs/handoff/04-engineering-data-ops.md §17.4
+
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  handbook:
+    name: Handbook layout
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify canonical docs exist
+        run: |
+          set -euo pipefail
+          test -f docs/handoff/README.md
+          test -f docs/handoff/STATUS.md
+          test -f docs/wegoagane-handoff-v4.md
+          test -f docs/wegoagane-handoff-v4-archive.md
+          for f in \
+            docs/handoff/00-vision-scope-personas.md \
+            docs/handoff/01-flows-cards-rating.md \
+            docs/handoff/02-content-truth-ai.md \
+            docs/handoff/03-design-share-ritual.md \
+            docs/handoff/04-engineering-data-ops.md \
+            docs/handoff/05-trust-legal-monetization-roadmap.md \
+            docs/handoff/06-risks-open-decisions-checklist.md \
+            docs/handoff/07-reference-hc-mechanics.md \
+            docs/handoff/08-reference-widget-demos.md
+          do
+            test -f "$f" || { echo "missing: $f"; exit 1; }
+          done
+          echo "Handbook layout OK."
+
+      # When package.json exists at repo root or in apps/*, add steps here, e.g.:
+      # - uses: actions/setup-node@v4
+      #   with:
+      #     node-version: "22"
+      #     cache: npm
+      #     cache-dependency-path: apps/web/package-lock.json
+      # - run: npm ci && npm run lint && npm test
+      #   working-directory: apps/web
