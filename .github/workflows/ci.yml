@@ -1,6 +1,10 @@
 # Continuous integration — start minimal, extend as the repo grows.
 # See docs/handoff/04-engineering-data-ops.md §17.4
 #
+# If you add a NEW named job that must gate merges to main, add that job name
+# to the branch ruleset (e.g. wegoagane-main-ci). See docs/github-setup.md
+# "Profile B + new CI jobs".
+#
 # checkout@v4 used Node 20 (deprecated on hosted runners). v5+ uses Node 24.
 # https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
 
