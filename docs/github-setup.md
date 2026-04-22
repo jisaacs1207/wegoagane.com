@@ -256,7 +256,31 @@ This only appears if you turned **Require status checks to pass before merging**
 
 ---
 
+### 4.9a Push to `main` rejected (GH013 / “Handbook layout is expected”)
+
+If you see:
+
+```text
+remote: error: GH013: Repository rule violations found for refs/heads/main.
+remote: - Required status check "Handbook layout" is expected.
+! [remote rejected] main -> main
+```
+
+that means you ran **`git push origin main`**. With **required status checks** on `main`, GitHub often **refuses to move `main`** until **Handbook layout** is already green on the commits you are pushing — so a **failing or brand-new** commit cannot reach `main` by direct push. That is expected; it is **not** the Step 4.9 test (4.9 never pushes a broken commit to `main`).
+
+**Unblock your normal work (pick one):**
+
+1. **Temporary (simplest):** GitHub → **Settings** → **Rules** → **Rulesets** → **`wegoagane-main-ci`** → **Edit** → set **Enforcement status** to **Disabled** → **Save** → `git push origin main` → wait for **Actions** to go green on `main` → turn the ruleset back to **Active**.
+2. **Bypass (good for solo):** Edit the same ruleset → **Bypass list** → **Add bypass** → add **Repository admin** (or your user, if listed) → choose **Always allow** for pushes if GitHub offers it — so you can push `main` when needed; CI still runs and shows red/green.
+3. **No direct pushes to `main`:** treat **`main` as merge-only**: always `git push origin my-branch` then open a **PR → `main`**; merge only when **Handbook layout** is green (same idea as Profile B).
+
+After you can sync `main` again, do **4.9** below (push goes to **`chore/test-ruleset-ci`**, not `main`).
+
+---
+
 ### 4.9 Prove it works (2-minute test, safe)
+
+**Important:** the only `git push` in this test must be **`git push -u origin chore/test-ruleset-ci`**. Do **not** run `git push origin main` with the broken commit on it — that will hit GH013 (see **4.9a**).
 
 Do **not** delete handbook files on `main` to test. Use a **throwaway branch + PR**:
 
@@ -264,6 +288,9 @@ Do **not** delete handbook files on `main` to test. Use a **throwaway branch + P
 cd ~/Developer/wegoagane.com
 git checkout main
 git pull origin main
+# If pull fails because you have local commits you can't push, use 4.9a first or stash:
+#   git stash push -m "wip"   then pull, then stash pop on a branch
+
 git checkout -b chore/test-ruleset-ci
 # break CI in a commit that only exists on this branch:
 rm docs/handoff/README.md
@@ -271,6 +298,8 @@ git add -A
 git commit -m "test: break CI on purpose (will not merge)"
 git push -u origin chore/test-ruleset-ci
 ```
+
+**Expected:** this push should **succeed** (ruleset targets **`main`**, not `chore/test-ruleset-ci`). If it still fails, paste the full `remote:` message — something else may be targeting all branches.
 
 1. On GitHub → **Pull requests** → **New pull request**: base **`main`**, compare **`chore/test-ruleset-ci`**.
 2. Create the PR.
@@ -284,7 +313,7 @@ git push -u origin chore/test-ruleset-ci
    git push origin --delete chore/test-ruleset-ci
    ```
 
-**Profile A note:** you normally push straight to `main`; the ruleset still applies to **merges** and to **required checks** on the default branch. The PR test above is the safest way to see red/green behavior without breaking `main`.
+**Profile A note:** many GitHub accounts now **block direct `git push` to `main`** when required checks are on, until those checks pass (GH013). Practically, **solo + required checks** usually means either **PRs into `main`** or a **ruleset bypass** for admins — see **4.9a**. The PR test in 4.9 is still the safest way to see red/green behavior without touching `main`’s tip with a bad commit.
 
 **Checkpoint:** [ ] You saw a **red** required check block merge on a test PR, then cleaned up the branch.
 
@@ -335,6 +364,7 @@ Until then, **GitHub + Actions + rulesets** are your “live” pipeline for **s
 | No checks in the search list | Complete **Step 2** again — a **green** workflow on **`main`** is mandatory first. |
 | Check name unclear | Open **Actions** → green **CI** run on `main` → copy job title **Handbook layout** exactly. |
 | Cannot create / push a new branch | Temporarily set ruleset **Enforcement** to **Disabled**, finish your first green `main` run, then set **Active** again; see [community thread](https://github.com/orgs/community/discussions/167194). |
+| **`GH013` / `main -> main` / “Handbook layout is expected”** | You pushed **to `main`** before CI could pass. Use **§4.9a** (disable briefly, bypass, or PR-only). Step **4.9** only pushes **`chore/test-ruleset-ci`**, not `main`. |
 | UI labels differ slightly | GitHub renames sidebars sometimes; you want **Settings → Rules → Rulesets → New branch ruleset**. |
 
 ---
