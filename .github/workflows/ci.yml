@@ -36,7 +36,10 @@ jobs:
           test -f docs/handoff/README.md
           test -f docs/handoff/STATUS.md
           test -f docs/github-setup.md
+          test -f docs/deploy-wegoagane-com.md
           test -f docs/wegoagane-handoff-v4.md
+          test -f apps/web/package.json
+          test -f apps/web/public/_redirects
           test -f docs/wegoagane-handoff-v4-archive.md
           for f in \
             docs/handoff/00-vision-scope-personas.md \
@@ -53,11 +56,23 @@ jobs:
           done
           echo "Handbook layout OK."
 
-      # When package.json exists at repo root or in apps/*, add steps here, e.g.:
-      # - uses: actions/setup-node@v4
-      #   with:
-      #     node-version: "22"
-      #     cache: npm
-      #     cache-dependency-path: apps/web/package-lock.json
-      # - run: npm ci && npm run lint && npm test
-      #   working-directory: apps/web
+  web:
+    name: Web
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install, lint, build
+        run: |
+          npm ci
+          npm run lint
+          npm run build

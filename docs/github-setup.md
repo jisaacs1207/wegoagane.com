@@ -376,14 +376,9 @@ When you add **lint** or **test** jobs later, come back to **Settings → Rules 
 
 ## Step 6: Live wegoagane.com (later, when there is a real build)
 
-When the Vite (or other) app exists and produces a folder like **`dist/`**:
+The app lives in **`apps/web`** and builds to **`apps/web/dist`**. Follow **[`docs/deploy-wegoagane-com.md`](../deploy-wegoagane-com.md)** for Cloudflare Pages (root `apps/web`, build `npm ci && npm run build`, output `dist`, custom domain **wegoagane.com**).
 
-1. Cloudflare → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**.
-2. Repo: this one. Production branch: **`main`**.
-3. Build command / output dir: per [handbook §17](handoff/04-engineering-data-ops.md) when you scaffold the app.
-4. **Custom domains** → add **wegoagane.com**.
-
-Until then, **GitHub + Actions + rulesets** are your “live” pipeline for **source integrity**; the **public site** goes live when Pages is connected.
+Until DNS + Pages are connected, **`npm run dev`** inside `apps/web` is the fastest way to click through flows locally.
 
 ---
 
