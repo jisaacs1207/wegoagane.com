@@ -323,12 +323,52 @@ git push -u origin chore/test-ruleset-ci
 
 ## Step 5: Day-to-day (after the ruleset exists)
 
-- **Profile A:** `git push origin main` only works when **required checks pass** on the new commits (and you are not blocked by other toggles).
-- **Profile B:** you always open a **PR → `main`**; the **Merge** button stays inactive until checks pass (and until approvals if you enabled them).
+> **Your choice:** you are on **Profile B** — every change to `main` goes through a **pull request**; you merge only when required checks (e.g. **Handbook layout**) are green.
+
+### Profile B + new CI jobs (required checks list)
+
+Whenever **`.github/workflows/ci.yml`** gains a **new job** with a new `name:` (for example **Lint** or **Typecheck**) and you want that job to **block merging to `main`** like **Handbook layout** does:
+
+1. **Merge a PR first** that only adds the workflow (or run the job on a PR once) so GitHub has seen that check name at least once.
+2. **Add the check to the ruleset** — same place as Step 4.7: **Settings → Rules → Rulesets → `wegoagane-main-ci` → Edit** → required status checks → add the **exact** job name from the PR checks UI.
+
+**From Cursor / this assistant:** whenever we add such a job in this repo, we will end the change with an explicit line you can search for:
+
+```text
+RULESET: add required check `Exact Job Name`
+```
+
+That is your reminder to add that name in the GitHub UI **or** run the CLI helper below (we cannot edit your GitHub rules from here without your `gh` auth).
+
+### Add a required check from the CLI (`gh`)
+
+Requires [GitHub CLI](https://cli.github.com/) (`gh auth login` already done).
+
+```bash
+cd /path/to/wegoagane.com
+python3 scripts/ruleset_add_required_check.py "Exact Job Name"
+```
+
+Optional: `RULESET_NAME=wegoagane-main-ci` (default) if you named the ruleset differently.
+
+If the script errors, use the **UI** path in step 2 above — the API payload must match what GitHub already stored for your ruleset.
+
+### Profile A vs Profile B — what that actually is
+
+**It is a choice you already made in Step 4.6** when you flipped toggles on the ruleset. There is no separate “Profile mode” in GitHub — only those toggles (especially **Require a pull request before merging** and **Require status checks before merging**).
+
+| Your Step 4.6 choice | Name in this guide | What it means day-to-day |
+|------------------------|--------------------|---------------------------|
+| **Require PR before merging = Off** + **Require status checks = On** | **Profile A** | You *intend* to push straight to `main` from your laptop. CI must pass for the branch to accept updates — **but** GitHub may **reject `git push origin main`** until **Handbook layout** is already green on the commits you are pushing (see **§4.9a** above — GH013). So “Profile A” in practice often means: **add a bypass for yourself as admin**, or **use a short-lived branch + PR to merge into `main`** whenever you hit that block — unless you temporarily **Disable** the ruleset for one push. |
+| **Require PR before merging = On** + **Require status checks = On** | **Profile B** | Every change reaches `main` only through a **merged PR**. Checks run on the PR; **Merge** stays off until green (and until approvals if you set them). No surprise: GitHub and your mental model match. |
+
+**If you want to “be Profile A”:** keep **Require PR = Off** (that is the Profile A ruleset shape). Accept that **direct pushes to `main` can be refused (GH013)** until checks exist for those commits — then use one of the **unblock** paths in **§4.9a** (bypass for admin, or PR that one change, or briefly Disable). Many solos end up **mostly** using small PRs into `main` even with “Profile A” toggles, because it avoids fighting the server.
+
+**If you want the least friction with required checks:** switch the ruleset to **Profile B** (turn **Require a pull request before merging** **On**, approvals **0** if you like). Then you always: branch → push branch → PR → merge when green. No mystery pushes to `main`.
 
 When you add **lint** or **test** jobs later, come back to **Settings → Rules → Rulesets → `wegoagane-main-ci` → Edit** and **add** those check names the same way you added **Handbook layout**.
 
-**Checkpoint:** [ ] You know whether you use **Profile A** (push `main`) or **Profile B** (PR only) and how merges interact with CI.
+**Checkpoint:** [ ] You know which Step **4.6** profile you configured, and you know what to do when **`main` push is rejected** (scroll up to **§4.9a**): bypass, PR, or temporary Disable.
 
 **Next:** → **Step 6** when the front-end exists; until then you are **done** with GitHub setup for this milestone.
 
