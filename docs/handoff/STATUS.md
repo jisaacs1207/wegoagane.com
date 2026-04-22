@@ -8,10 +8,10 @@
 
 | Field | Value |
 |--------|--------|
-| **Current milestone** | M0 — Documentation handbook split (this repo state) |
+| **Current milestone** | **Pre-M1** — handbook, CI, GitHub rules (Profile B), PR template ✅ |
 | **Blocked by** | — |
-| **Last build iteration** | Multi-file handoff + STATUS scaffold |
-| **Next “request to move forward” criteria** | You confirm: MVP archetype slice size, resolution path for §29 open decisions, and Section 30 widget reference (see [Review gates](#review-gates-before-first-code-milestone) below). Then M1 may start. |
+| **Last build iteration** | `.github/PULL_REQUEST_TEMPLATE.md` merged to `main`; ruleset helper + `docs/github-setup.md` complete for solo PR flow |
+| **Next “request to move forward” criteria** | **M1 — app shell:** start Vite + React Router (see [04-engineering-data-ops.md](04-engineering-data-ops.md) §26). Before **UI-locking** work: fill [Review gates](#review-gates-before-first-code-milestone) (§29, MVP slice, §30) as far as you can. |
 
 ---
 
@@ -87,3 +87,4 @@ When done, set **Current milestone** to M1 and clear **Blocked by**.
 | 2026-04-22 | [docs/github-setup.md](../github-setup.md): GitHub **rulesets** (Settings → Rules → Rulesets); Steps 4–6; CI troubleshooting |
 | 2026-04-22 | [docs/github-setup.md](../github-setup.md): step roadmap + “after Step 2 continue Steps 3–6”; Step 3 made actionable |
 | 2026-04-22 | Profile B notes: `RULESET:` reminder + [`scripts/ruleset_add_required_check.py`](../scripts/ruleset_add_required_check.py) for new required checks |
+| 2026-04-22 | [`.github/PULL_REQUEST_TEMPLATE.md`](../.github/PULL_REQUEST_TEMPLATE.md) on `main`; STATUS workflow row set to **Pre-M1** |
