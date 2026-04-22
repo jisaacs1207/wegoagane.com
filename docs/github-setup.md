@@ -1,8 +1,24 @@
 # GitHub setup — follow along (granular)
 
-Use this page **in order**. Do **not** skip **Step 2** before **Step 4**, or the “required status check” list will be empty and you will feel stuck.
+Use this page **in order**. **Step 2 is not the finish line** — after green CI on `main`, you still do **Steps 3 → 6** (ruleset, day-to-day habits, then Cloudflare when the app exists).
+
+Do **not** skip **Step 2** before **Step 4**, or the “required status check” list will be empty when you create the ruleset.
 
 Official GitHub docs (same UI we describe): [Creating rulesets for a repository](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/creating-rulesets-for-a-repository).
+
+---
+
+## All steps at a glance (check off as you go)
+
+| Step | What it’s for | You are done when… |
+|------|----------------|---------------------|
+| **Before** | Access | You’re logged in and Admin on the repo. |
+| **1** | Local Git ↔ GitHub | `origin` exists and `main` is on GitHub. |
+| **2** | Unlock status checks | Latest **CI** on **`main`** is green (**Handbook layout**). |
+| **3** | Avoid double rules | You checked **Settings → Branches** (or branch rules) and removed duplicate protection on `main` if needed. |
+| **4** | Protect `main` | Ruleset **`wegoagane-main-ci`** exists, **Active**, required check added, **4.9** test done. |
+| **5** | How you work daily | You know Profile A vs B behavior for pushes/PRs. |
+| **6** | Public `.com` site | (Later) Cloudflare Pages connected when `dist/` (or similar) exists. |
 
 ---
 
@@ -82,15 +98,22 @@ Then refresh **Actions** until a green **Handbook layout** appears on a `main` r
 2. Look at the **job** title in the left column or the graph — it should read **`Handbook layout`** (that comes from `jobs.handbook.name` in the YAML).
 3. On a **pull request**, the same thing often appears in the checks area as **`Handbook layout`** or prefixed with the workflow name (e.g. **`CI / Handbook layout`**). **Use the exact string GitHub shows** when you add the required check in Step 4.
 
+> **Step 2 is complete — keep going.** Scroll down to **Step 3**, then **Step 4** (the big one), **Step 5**, and **Step 6** (Step 6 only after you have a built SPA).
+
 ---
 
-## Step 3: Ignore legacy “Branch protection” for now (optional read)
+## Step 3: Avoid duplicate branch rules (1 minute)
 
-GitHub still has **Settings → Branches** (classic rules). You **do not** need it if you complete **Step 4** below.
+**Goal:** You do **not** stack **classic branch protection** and **rulesets** on `main` unless you intend to (GitHub applies the **stricter** of both, which is confusing).
 
-Using **both** classic rules and **rulesets** on the same branch can confuse you (GitHub applies the **stricter** of the two). For this repo, prefer **only a branch ruleset** unless you already use classic rules for something else.
+1. Repo → **Settings** → **Code and automation** → **Branches** (or **Rules** → **Branch rules** — GitHub sometimes moves this).
+2. Look for a **branch protection rule** that targets **`main`** (or “default branch”).
+3. **If you see none** → nothing to remove. Prefer completing **Step 4** (rulesets only).
+4. **If you see one and you are about to add `wegoagane-main-ci` in Step 4** → either **delete** the classic rule so only the ruleset remains, or **skip Step 4** and keep only classic (not recommended for this guide).
 
-**Checkpoint:** [ ] I have not added duplicate rules on `main` unless I mean to.
+**Checkpoint:** [ ] `main` is not protected twice (classic + ruleset) unless you did that on purpose.
+
+**Next:** → **Step 4** below.
 
 ---
 
@@ -265,6 +288,8 @@ git push -u origin chore/test-ruleset-ci
 
 **Checkpoint:** [ ] You saw a **red** required check block merge on a test PR, then cleaned up the branch.
 
+**Next:** → **Step 5** below.
+
 ---
 
 ## Step 5: Day-to-day (after the ruleset exists)
@@ -273,6 +298,10 @@ git push -u origin chore/test-ruleset-ci
 - **Profile B:** you always open a **PR → `main`**; the **Merge** button stays inactive until checks pass (and until approvals if you enabled them).
 
 When you add **lint** or **test** jobs later, come back to **Settings → Rules → Rulesets → `wegoagane-main-ci` → Edit** and **add** those check names the same way you added **Handbook layout**.
+
+**Checkpoint:** [ ] You know whether you use **Profile A** (push `main`) or **Profile B** (PR only) and how merges interact with CI.
+
+**Next:** → **Step 6** when the front-end exists; until then you are **done** with GitHub setup for this milestone.
 
 ---
 

@@ -1,6 +1,6 @@
 # Build status & iteration contract
 
-**Last updated:** 2026-04-22 (documentation split; no app implementation yet)
+**Last updated:** 2026-04-22 (docs; see changelog at bottom of this file)
 
 ---
 
@@ -85,3 +85,4 @@ When done, set **Current milestone** to M1 and clear **Blocked by**.
 | 2026-04-22 | Split v4 into `docs/handoff/*`; added STATUS + MVP slice framework |
 | 2026-04-22 | GitHub Actions CI (handbook layout gate); §17.4 CI guidance in engineering handbook |
 | 2026-04-22 | [docs/github-setup.md](../github-setup.md): GitHub **rulesets** (Settings → Rules → Rulesets); Steps 4–6; CI troubleshooting |
+| 2026-04-22 | [docs/github-setup.md](../github-setup.md): step roadmap + “after Step 2 continue Steps 3–6”; Step 3 made actionable |
