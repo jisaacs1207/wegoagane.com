@@ -25,6 +25,7 @@ jobs:
           set -euo pipefail
           test -f docs/handoff/README.md
           test -f docs/handoff/STATUS.md
+          test -f docs/github-setup.md
           test -f docs/wegoagane-handoff-v4.md
           test -f docs/wegoagane-handoff-v4-archive.md
           for f in \

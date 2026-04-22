@@ -34,6 +34,8 @@ Each milestone should leave something **usable and tangible** (not a pile of blo
 
 **CI:** GitHub Actions runs on every push/PR — currently a **handbook structure** check; extend with lint/typecheck/tests when app code lands ([04-engineering-data-ops.md](04-engineering-data-ops.md) §17.4).
 
+**GitHub (remote, rulesets, deploy prep):** [../github-setup.md](../github-setup.md) — includes **Step 4** using current **Rules → Rulesets** UI.
+
 ---
 
 *Handbook derived from handoff v4 (April 22, 2026). Section numbers preserved for traceability.*

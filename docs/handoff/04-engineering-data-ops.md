@@ -59,7 +59,7 @@ This stack is genuinely operable by one person. Cloudflare's billing consolidate
 
 ### 17.4 Continuous integration (from day one)
 
-**Yes — add CI immediately**, even before the app shell: it gives a **live green/red signal on every push** (and on PRs), establishes branch protection when you want it, and avoids “we’ll add tests later” drift.
+**Yes — add CI immediately**, even before the app shell: it gives a **live green/red signal on every push** (and on PRs). To gate **`main`**, use GitHub **repository rulesets** (**Settings → Rules → Rulesets**), not only the legacy branch protection screen — see [GitHub setup — Step 4](../github-setup.md#step-4-protect-main-with-a-branch-ruleset).
 
 **Principles for a solo repo**
 
@@ -76,7 +76,7 @@ This stack is genuinely operable by one person. Cloudflare's billing consolidate
 | **M7+** | Workers package | `wrangler` dry-run or `tsc` for worker; optional integration tests behind a label or nightly if they’re slow. |
 | **Deploy** | Pages + Workers | Keep deploy as its own workflow or Cloudflare Git integration; **CI** answers “does it build and test?” — deploy answers “ship it.” |
 
-Branch protection (optional): require the CI check to pass before merge to `main` once you have collaborators or multiple machines.
+**Rulesets (optional):** on **Settings → Rules → Rulesets**, add a **branch ruleset** targeting `main` and require the **CI** job(s) once they appear in the picker (they must have run on `main` at least once). Solo: you can allow direct pushes to `main` and still require checks, or require PRs — your choice. Step-by-step: [../github-setup.md](../github-setup.md).
 
 ### 17.5 Continuous deployment (solo default)
 
