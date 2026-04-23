@@ -1,7 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import {
-  destinyFixture,
   memorialFixture,
   type DestinyFixture,
   type MemorialFixture,
@@ -30,7 +29,7 @@ const rerollReasons: Array<{ value: RerollReason; label: string }> = [
 
 export function DeathResultStep() {
   const navigate = useNavigate();
-  const [destiny, setDestiny] = useState<DestinyFixture>(destinyFixture);
+  const [destiny, setDestiny] = useState<DestinyFixture | null>(null);
   const [memorial, setMemorial] = useState<MemorialFixture>(memorialFixture);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [destinyId, setDestinyId] = useState<string | null>(null);
@@ -38,6 +37,8 @@ export function DeathResultStep() {
   const [note, setNote] = useState("");
   const [showRerollGate, setShowRerollGate] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingDestiny, setIsLoadingDestiny] = useState(true);
+  const [loadError, setLoadError] = useState<string>("");
   const [recommendVariantId, setRecommendVariantId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -49,42 +50,47 @@ export function DeathResultStep() {
       sessionStorage.setItem("death.sessionId", seededSessionId);
     }
 
-    void (async () => {
-      let assignmentId: string | null = null;
-      let variantId: string | null = null;
-      try {
-        const assignment = await fetchGrowthAssignment({
-          sessionId: seededSessionId,
-          surface: "recommendation",
-          entryPath: "release_spirit",
-        });
-        assignmentId = assignment.assignmentId;
-        variantId = assignment.variantId;
+    const assignmentPromise = fetchGrowthAssignment({
+      sessionId: seededSessionId,
+      surface: "recommendation",
+      entryPath: "release_spirit",
+    })
+      .then((assignment) => {
         setRecommendVariantId(assignment.variantId);
-      } catch {
-        // Non-blocking: default recommendation path still works.
-      }
+        return assignment;
+      })
+      .catch(() => null);
 
+    void (async () => {
+      setIsLoadingDestiny(true);
+      setLoadError("");
       try {
         const result = await fetchDestiny({
           entryPath: "release_spirit",
           sessionId: seededSessionId,
-          signals: { mood, nextSignal, memoryHints: buildMemoryHints(), recommendVariantId: variantId ?? undefined },
+          // Never block initial card render on experiment assignment latency.
+          signals: { mood, nextSignal, memoryHints: buildMemoryHints() },
         });
         setDestiny(result.output);
         setSessionId(result.sessionId);
         setDestinyId(result.destinyId);
         sessionStorage.setItem("death.sessionId", result.sessionId);
         sessionStorage.setItem("death.destinyId", result.destinyId);
-        if (assignmentId) {
-          void submitGrowthOutcome({
-            assignmentId,
-            converted: true,
-            outcome: { event: "recommend_rendered", destinyId: result.destinyId },
-          }).catch(() => {});
-        }
+        assignmentPromise
+          .then((assignment) => {
+            if (!assignment) return;
+            void submitGrowthOutcome({
+              assignmentId: assignment.assignmentId,
+              converted: true,
+              outcome: { event: "recommend_rendered", destinyId: result.destinyId },
+            }).catch(() => {});
+          })
+          .catch(() => {});
       } catch {
-        setDestiny(destinyFixture);
+        setDestiny(null);
+        setLoadError("Could not generate a destiny yet. Try again in a moment.");
+      } finally {
+        setIsLoadingDestiny(false);
       }
     })();
 
@@ -104,7 +110,7 @@ export function DeathResultStep() {
   }, []);
 
   async function runRerollWithReason(reason: RerollReason) {
-    if (!sessionId || !destinyId || isSubmitting) return;
+    if (!sessionId || !destinyId || !destiny || isSubmitting) return;
     setIsSubmitting(true);
     setActionMessage("");
     trackEvent(AnalyticsEvent.RerollReasonSelected, {
@@ -187,7 +193,7 @@ export function DeathResultStep() {
   }
 
   async function acceptAndOpenPostRating() {
-    if (!sessionId || !destinyId || isSubmitting) return;
+    if (!sessionId || !destinyId || !destiny || isSubmitting) return;
     setIsSubmitting(true);
     setActionMessage("");
     trackEvent(AnalyticsEvent.AcceptClicked, { flow: "release_spirit", destinyId, sessionId });
@@ -222,7 +228,17 @@ export function DeathResultStep() {
     <div>
       <MemorialCard data={memorial} />
       <div style={{ marginTop: 14 }}>
-        <DestinyCard data={destiny} />
+        {destiny ? (
+          <DestinyCard data={destiny} />
+        ) : (
+          <div className="card">
+            <p className="step-label">Release spirit</p>
+            <h1 className="hero-question">Forging your next destiny...</h1>
+            <p className="hero-sub">
+              {isLoadingDestiny ? "Reading your last run and preparing your next card." : loadError}
+            </p>
+          </div>
+        )}
       </div>
       <div className="card" style={{ marginTop: 14 }}>
         <p style={{ margin: 0, fontSize: 13, color: "var(--ts)", lineHeight: 1.45 }}>
