@@ -1,1 +1,10 @@
-/*    /index.html   200
+# Cloudflare Pages — do not add `/* /index.html 200` here.
+# The Pages deploy treats that pattern as an infinite loop (index.html matches `/*`
+# again after normalization) and ignores the rule; build logs show a warning.
+#
+# Client-side routing + deep links are handled by built-in SPA behavior when there
+# is no root-level 404.html (this Vite app does not ship one).
+# https://developers.cloudflare.com/pages/configuration/serving-pages/#single-page-application-spa-rendering
+#
+# _redirects format for Pages (when you need real redirects):
+# https://developers.cloudflare.com/pages/configuration/redirects/

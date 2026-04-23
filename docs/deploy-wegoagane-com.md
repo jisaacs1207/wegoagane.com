@@ -93,7 +93,7 @@ Before deleting a project that used a custom domain, clean up DNS and remove the
 
 Cloudflare Pages **single-page application** behavior: if there is **no** top-level **`404.html`**, Pages treats the site as an SPA and **matches incoming paths to the root** so client routes work ([SPA rendering](https://developers.cloudflare.com/pages/configuration/serving-pages/#single-page-application-spa-rendering)).
 
-This repo also ships [`apps/web/public/_redirects`](../apps/web/public/_redirects) (Vite copies `public/` into `dist/`) for an explicit **`/*` → `/index.html` `200`** pattern, which is a common, explicit choice alongside Pages defaults.
+[`apps/web/public/_redirects`](../apps/web/public/_redirects) is intentionally **comment-only**. A Netlify-style line **`/* /index.html 200`** is **rejected** on Pages deploy (“infinite loop” — `index.html` re-matches after normalization), so it is not used here. Rely on **built-in SPA behavior** above; add real redirect lines only when you have concrete paths ([Redirects](https://developers.cloudflare.com/pages/configuration/redirects/)).
 
 **Caching:** Cloudflare warns that heavy custom caching on the **custom domain** can interfere with **redirects** or **Pages Functions** and cause stale responses ([Caching and performance](https://developers.cloudflare.com/pages/configuration/serving-pages/#caching-and-performance)).
 
