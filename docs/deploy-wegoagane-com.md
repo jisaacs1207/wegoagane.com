@@ -87,6 +87,23 @@ Restrictive **CAA** records can block certificate issuance. If TLS fails when ad
 
 Before deleting a project that used a custom domain, clean up DNS and remove the domain in **Custom domains** as documented ([delete custom domain](https://developers.cloudflare.com/pages/configuration/custom-domains/#delete-a-custom-domain), [delete project](https://developers.cloudflare.com/pages/get-started/git-integration/#delete-a-project)).
 
+### DNS pitfalls (this repo — April 2026)
+
+If **`*.pages.dev` works** but **`wegoagane.com` / `www` return 522 or 525**, the Pages build is usually fine — **DNS is still pointing the hostname at the wrong origin**.
+
+Common cause after moving a domain to Cloudflare: **registrar parking** records copied into the zone, still **Proxied** (orange cloud):
+
+- Apex **`A`** to a parking IP (e.g. Namecheap `162.255.x.x`)
+- **`www`** **`CNAME`** to `parkingpage.namecheap.com` (or similar)
+
+With proxy on, Cloudflare’s edge connects to that parking host → **522** (timeout) / **525** (SSL mismatch). **Remove** those records.
+
+**Working pattern for this project:** apex **`CNAME`** for **`wegoagane.com`** → **`wegoagane-com.pages.dev`**, **Proxied** (Cloudflare flattens apex CNAME to Pages). Add **`www`** only if you want it: **Pages → Custom domains** includes **`www.wegoagane.com`**, then DNS **`CNAME` `www` → `wegoagane-com.pages.dev`**, **Proxied**.
+
+Keep **MX** / **TXT** for mail if you use registrar forwarding; they do not affect the site record above.
+
+**Optional:** [Build watch paths](https://developers.cloudflare.com/pages/configuration/build-watch-paths/) set to something like **`apps/web/*`** so doc-only commits do not rebuild the Pages project.
+
 ---
 
 ## SPA routing and refresh
@@ -145,4 +162,4 @@ Open `http://localhost:5173` (Vite default).
 
 ---
 
-*Milestone: M1 usable shell — see [`docs/handoff/STATUS.md`](handoff/STATUS.md). Doc refreshed against Cloudflare Pages developer docs, April 22, 2026.*
+*Production **https://wegoagane.com** on Cloudflare Pages from `main` — see [`docs/handoff/STATUS.md`](handoff/STATUS.md). Cloudflare Pages references as of April 22, 2026; DNS lessons appended April 23, 2026.*
