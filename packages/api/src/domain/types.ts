@@ -19,6 +19,7 @@ export type RecommendSignals = {
   freeform?: string;
   factionPreference?: Faction;
   excludedClasses?: ClassId[];
+  preferredClass?: ClassId;
 };
 
 export type RecommendInput = {
@@ -80,10 +81,22 @@ export type AiErrorType = "ai_timeout" | "ai_invalid_json" | "ai_provider_error"
 
 export type FeedbackChoice = "accept" | "almost_right" | "miss";
 
+export type FeedbackStage = "reroll_gate" | "post_accept";
+export type RerollReason =
+  | "wrong_class"
+  | "wrong_energy"
+  | "wrong_goals"
+  | "almost_right"
+  | "just_curious";
+export type PostAcceptRating = "not_this" | "itll_do" | "good_pick" | "this_is_it" | "perfect";
+
 export type DestinyFeedbackInput = {
   sessionId: string;
   destinyId: string;
   choice: FeedbackChoice;
+  stage?: FeedbackStage;
+  rerollReason?: RerollReason;
+  postAcceptRating?: PostAcceptRating;
   note?: string;
   rerollFromClassId?: ClassId;
   rerollToClassId?: ClassId;
