@@ -1,6 +1,6 @@
 # Build status & iteration contract
 
-**Last updated:** 2026-04-23 (M13 hybrid memory + polish shipped)
+**Last updated:** 2026-04-23 (M14+ roadmap reassessed for trust/ceremony/UAT)
 
 ---
 
@@ -8,10 +8,10 @@
 
 | Field | Value |
 |--------|--------|
-| **Current milestone** | **M14 (next)** — content iteration + polish follow-through |
-| **Blocked by** | — |
+| **Current milestone** | **M14 (next)** — trust content expansion (wave 1) |
+| **Blocked by** | Confirm M14 archetype quality gate rubric + review owner per class cluster |
 | **Last build iteration** | **M13 shipped:** hybrid memory path (browser `localStorage` + API-derived session history) now biases deterministic ranking with configurable weights/clamps, balanced rollout defaults, degrade-mode controls, memory observability (`/api/v1/analytics/memory-health`), and deploy guard wiring for memory vars. |
-| **Next “request to move forward” criteria** | Start **M14** content iteration: use M12/M13 analytics to tune archetype copy/weighting quality and reduce reroll pressure without increasing failure rates. Keep Web/API CI green and memory health action at `keep` under normal traffic. |
+| **Next “request to move forward” criteria** | Start **M14** with trust-first expansion: ship additional archetypes only if each passes quality gate (mechanical correctness, First-10 quality, source-tag completeness, non-generic language) and validation/acceptance metrics remain healthy; run AI-first sprint mode (1-2 day build + 3-7 day validation soak). |
 
 ---
 
@@ -63,6 +63,25 @@ Aligned with [04-engineering-data-ops.md](04-engineering-data-ops.md) §26, grou
 | **M11** | Share images + OG | **Shipped:** async share generation lifecycle, R2 image storage + fallback image, `/share/:runId` polling UX, and OG metadata endpoint for social previews | M2, M7 | — |
 | **M12** | Analytics + observability | **Shipped:** PostHog event instrumentation (API + web), runtime analytics config, and share health summary with failed-rate + p95 thresholds | M7+ | Acceptance stats on cards? (29.8) |
 | **M13** | Local memory + polish | **Shipped:** hybrid memory hints + server memory read-path + weighted/clamped ranker integration + degrade controls and memory health endpoint | M10–M12 | Planning “first HC” signal (29.4) |
+| **M14** | Trust content expansion (wave 1) | Scale archetype content using a hard quality gate per archetype (mechanics correctness, First-10 quality, source-tag completeness, no generic memorial/destiny language) with stable validation and no reroll spike | M10–M13 | Tone sharpness (29.3), tier/copy treatment (29.7) |
+| **M15** | Ceremony flow + language hardening | Finalize copy corridor across death/planning/reroll/post-accept/share; remove visible placeholder/dev language and preserve subtle memory explanation | M14 | Tone calibration (29.3), first-HC signal decision (29.4), naming default (29.5) |
+| **M16** | Share artifact polish + viral utility | Deliver send-worthy share card quality (layout/typography/mobile readability/OG consistency) and a finished `/share/:runId` experience with clear user actions | M14–M15 | Share CTA strategy (29.6), result composition choice (29.2) |
+| **M17** | Modern web hardening (trust-by-design) | Accessibility/performance/reliability pass (ARIA semantics, contrast, keyboard path, load/polling resilience, clearer failure states) with KPI-safe behavior under variance | M14–M16 | Brand typography direction (29.1), acceptance-stats display policy (29.8) |
+| **M18** | UAT + release readiness | Formal UAT matrix (flows/devices/failure modes), bug burn-down, and outcome-based go/no-go signoff (accept floor, reroll ceiling, share floor, validation-failure ceiling) | M14–M17 | Remaining §29 decisions resolved or explicitly deferred with rationale |
+
+**AI-first execution cadence (product-only):**
+
+- **Build sprint:** 1-2 days using Cursor/agents + automation hooks
+- **Stabilization soak:** 3-7 days of real traffic, QA, and KPI monitoring
+- **UAT signoff:** outcome-based (not feature-count-based)
+
+**Milestone parallelization rule:** maintain trust-first order for release decisions, but execute implementation tracks in parallel when dependencies permit (content, copy, share polish, hardening).
+
+**Lean UAT evidence format (M18):**
+- test sample count + pass/fail counts
+- blocking defect IDs
+- KPI snapshot for go/no-go thresholds
+- decision owner + timestamp
 
 **Test notes (recurring):** phone-first flows; “just generate” death path; validator abuse cases ([06-risks-open-decisions-checklist.md](06-risks-open-decisions-checklist.md) §33); 320px share width; Lucky Roll distribution.
 
@@ -91,6 +110,20 @@ Aligned with [04-engineering-data-ops.md](04-engineering-data-ops.md) §26, grou
 
 When the checklist is complete enough for the next milestone, update **Current milestone** / **Blocked by** here.
 
+### M14–M18 blocker map (explicit)
+
+- **M14 blockers:** `29.3` tone sharpness, `29.7` tier/copy treatment
+- **M15 blockers:** `29.4` first-HC signal, `29.5` naming default
+- **M16 blockers:** `29.2` result composition, `29.6` first share CTA strategy
+- **M17 blockers:** `29.1` typography direction, `29.8` acceptance-stats visibility
+- **M18 blockers:** any unresolved §29 decision must be explicitly resolved or deferred with rationale before go/no-go
+
+### AI-first tooling doctrine (solo dev)
+
+- **Default stack (free/native first):** Cursor + GitHub Actions + Cloudflare + PostHog free tier + local scripts.
+- **Automation escalation:** add Make.com/Pipedream/Activepieces only when direct code automation would take longer to maintain than to integrate.
+- **Decision rule:** if a workflow can be built in <60 minutes of code and is stable, code it directly; otherwise evaluate cheap automation glue.
+
 ---
 
 ## Changelog (high level)
@@ -117,3 +150,4 @@ When the checklist is complete enough for the next milestone, update **Current m
 | 2026-04-23 | **M11 complete:** share lifecycle + persistence (`share_runs`), async API routes (`/api/v1/share*`), R2 image storage + fallback SVG, web polling UX at `/share/:runId`, and OG metadata endpoint (`/api/v1/share/:runId/og`) |
 | 2026-04-23 | **M12 complete:** PostHog US instrumentation in API + web, analytics config endpoint, deploy prechecks for PostHog vars/secrets, share health summary endpoint + operational thresholds, and production smoke verification of event flow |
 | 2026-04-23 | **M13 complete:** browser memory profile (`localStorage`) + memory hints in recommend requests, API history-derived memory features from `destiny_feedback` + `recommendation_logs`, weighted/clamped hybrid memory ranker, and memory degradation runbook (`reduce weights` then `disable`) with `/api/v1/analytics/memory-health` |
+| 2026-04-23 | Reassessed **M14–M18** to trust-first sequencing (content trust → ceremony language → share polish → modern web hardening → UAT) with explicit blockers and AI-first sprint cadence (1-2 day build + validation soak) |

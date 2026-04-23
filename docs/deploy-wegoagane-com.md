@@ -343,6 +343,95 @@ Degradation runbook:
 
 ---
 
+## M14–M18 release gates (trust → ceremony → UAT)
+
+These are release discipline checks layered on top of existing M11–M13 runbooks.
+
+### M14 content trust gate
+
+- Promote new archetypes only when each has:
+  - mechanics/correctness review
+  - First-10 checklist review
+  - source-tag completeness
+  - non-generic memorial/destiny copy
+- Compare post-deploy vs baseline:
+  - validation-failure trend
+  - reroll-rate trend for top intents
+
+### M15 ceremony language gate
+
+- Verify no placeholder/dev language appears in user-facing core flow screens.
+- Confirm “subtle memory” policy remains intact.
+- Run a quick human QA pass for tone consistency across death/planning/share.
+
+### M16 share quality gate
+
+- Verify share readability at 320px and in Discord/X previews.
+- Validate ready/error/retry states on `/share/:runId`.
+- Ensure OG metadata and image URLs resolve for crawlers.
+
+### M17 modern web hardening gate
+
+- Accessibility sanity:
+  - keyboard path for core flow
+  - control semantics/states
+  - readable contrast in primary screens
+- Reliability sanity:
+  - bounded polling behavior
+  - explicit loading/error state copy
+
+### M18 UAT + go/no-go gate
+
+- Execute full UAT matrix:
+  - flows: death, planning, lucky roll, reroll, post-accept, share
+  - devices: phone-first + desktop sanity
+  - failure paths: recommend/memorial/share/analytics degradation
+- Record go/no-go decision with measured outcomes:
+  - accept-rate floor
+  - rerolls/session ceiling
+  - share-completion floor
+  - validation-failure ceiling
+
+---
+
+## Automation stack for solo speed (AI-first)
+
+### Preferred order
+
+1. Native code automation (scripts, GitHub Actions, Cloudflare cron/Workers)
+2. Cheap workflow glue (Make.com/Pipedream/Activepieces) only if native effort/maintenance is higher
+3. Advanced orchestration only if scale/reliability needs demand it
+
+### Low-cost tool inclusion matrix
+
+| Need | Default | Cheap optional | Notes |
+|---|---|---|---|
+| CI checks, nightly QA, lint/tests | GitHub Actions | — | Keep product logic in repo; fastest to audit/debug |
+| Periodic health scans / KPI snapshots | Cloudflare Cron + API endpoints | Make.com/Pipedream for notifications | Use webhooks for Slack/Discord summaries if needed |
+| Product analytics, flags, replay | PostHog free tier first | Paid usage only after thresholds | Set per-product billing limits |
+| Cross-tool webhooks | Code/webhooks in Worker | Make.com/Activepieces | Prefer explicit payload contracts |
+
+### “Code vs tool” rule
+
+- If a workflow can be built and kept stable in under ~60 minutes of code, code it directly.
+- If integration churn is high (many SaaS connectors, auth tokens, schema drift), use cheap automation glue.
+
+---
+
+## Asset and data ingestion risk matrix
+
+| Class | Allowed | Caution | Avoid |
+|---|---|---|---|
+| Visual assets | Original/licensed assets; generated assets with clear commercial terms | Style-reference generation that might resemble protected IP too closely | Direct copying/redistribution of protected game assets |
+| Screenshots | Official/fan-policy compatible usage with required notices | Ambiguous commercial usage contexts | Removing notices or using restricted materials outside policy |
+| Scraped data | Public factual data for internal ranking/analysis with compliance checks | ToS-sensitive crawling where contractual risk is unclear | Auth/paywall bypass, protected creative republishing, aggressive crawling |
+
+Compliance checklist for ingestion:
+- Review robots.txt and ToS before collection
+- Use conservative rate limits and retry/backoff
+- Keep usage factual/transformative; avoid republishing protected creative content
+- Document source policy checks and last-reviewed timestamps
+
 ## After you add new required CI jobs
 
 If GitHub gains a new **required** job for merges, add it to ruleset **`wegoagane-main-ci`** or run:
