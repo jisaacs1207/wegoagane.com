@@ -355,6 +355,34 @@ Set two alerts at launch: (1) validation_failed spikes above 10% of generations,
   - Cloudflare cron invokes `POST /api/v1/growth/tick`.
   - GitHub scheduled workflow checks growth health endpoint hourly.
 
+### 21.8 Production rollout playbook (growth engine)
+
+Command discipline:
+- Run API package scripts from `packages/api`.
+- If running from repo root, use `--prefix packages/api`.
+- Never combine both (prevents `packages/api/packages/api/package.json` ENOENT failures).
+
+Secret/variable parity:
+- `GROWTH_CONTROL_TOKEN` (Cloudflare Worker secret) must equal `API_GROWTH_CONTROL_TOKEN` (GitHub Actions secret).
+- Growth precheck vars in GitHub Actions must be set when autopilot is enabled:
+  - `API_GROWTH_AUTOPILOT_ENABLED`
+  - `API_GROWTH_HARD_STOP_ENABLED`
+  - `API_GROWTH_DEFAULT_TRAFFIC_PERCENT`
+  - `API_GROWTH_DEFAULT_HOLDOUT_PERCENT`
+  - `API_GROWTH_MIN_SAMPLE_SIZE`
+
+Release verification flow:
+1. `npm run db:migrate:production`
+2. `npm run deploy:production`
+3. `GROWTH_CONTROL_TOKEN=... npm run smoke:growth:production`
+4. `GET /api/v1/growth/health` and confirm JSON shape
+5. If still empty after cron window, run manual tick with token header and re-check health
+
+Known operational caveats:
+- Current `wrangler.toml` has top-level `routes`; preview Worker deploy can conflict with production route assignments.
+- Growth engine may initialize with `experimentsRunning=0` and `variantsTotal=0` until first successful tick.
+- Decision state `hold` + `under_sampled` is expected early and indicates guardrails are functioning.
+
 - Treat generated content/assets as draft outputs requiring gated promotion.
 - Maintain prompt packs per lane:
   - archetype expansion prompts

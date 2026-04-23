@@ -439,6 +439,55 @@ Hardening in this baseline:
 - Guardrail checks block unknown/scraped asset provenance and missing license tags for community-licensed sources.
 - UI copy experiments are applied through a local accessibility-safe sanitizer and default fallback path.
 
+### Autonomous growth rollout record (2026-04-23)
+
+This is the exact implementation + rollout sequence used in production.
+
+1. Ship code + migration artifacts:
+   - Growth runtime routes (`/api/v1/growth/*`)
+   - Data model migration (`0005_elite_growth_engine.sql`)
+   - Drizzle metadata reconciliation migration (`0006_*` no-op SQL + snapshot/journal update)
+2. Set production control secret in Cloudflare Worker:
+   - `GROWTH_CONTROL_TOKEN`
+3. Set matching GitHub Actions secret:
+   - `API_GROWTH_CONTROL_TOKEN` (must equal Cloudflare token value)
+4. Set GitHub Actions vars for growth deploy prechecks:
+   - `API_GROWTH_AUTOPILOT_ENABLED`
+   - `API_GROWTH_HARD_STOP_ENABLED`
+   - `API_GROWTH_DEFAULT_TRAFFIC_PERCENT`
+   - `API_GROWTH_DEFAULT_HOLDOUT_PERCENT`
+   - `API_GROWTH_MIN_SAMPLE_SIZE`
+5. Run API production migration + deploy from `packages/api`:
+   - `npm run db:migrate:production`
+   - `npm run deploy:production`
+6. Run smoke with token:
+   - `GROWTH_CONTROL_TOKEN=... npm run smoke:growth:production`
+7. Verify growth health:
+   - `curl -sS https://wegoagane.com/api/v1/growth/health | jq`
+8. Optional manual seed tick:
+   - `curl -sS -X POST "https://wegoagane.com/api/v1/growth/tick" -H "x-growth-control-token: ..."`
+
+Rollout result:
+- Growth health moved from `experimentsRunning=0, variantsTotal=0` to active state after manual tick:
+  - `experimentsRunning=1`
+  - `variantsTotal=2`
+  - decisions: `hold` / `under_sampled` (expected at low sample size)
+
+### Rollout gotchas encountered (and fixes)
+
+- **Wrong directory for npm commands** (`ENOENT` root `package.json`):
+  - This repo has no root package manifest. Run API scripts from `packages/api`, or use root with `--prefix packages/api` (never both together).
+- **Double-prefix path error** (`packages/api/packages/api/package.json`):
+  - Caused by running `--prefix packages/api` while already inside `packages/api`.
+- **Preview deploy route collision**:
+  - `wrangler deploy --env preview` attempted to claim production routes because `routes` are top-level in `wrangler.toml`.
+  - For the current release we skipped preview Worker and shipped production-only.
+- **Smoke 404 on growth health before deploy**:
+  - `GET /api/v1/growth/health` returned 404 until latest Worker deploy was applied.
+- **CI migration drift after manual migration**:
+  - `db:generate` produced `0006` because manual `0005` lacked matching Drizzle metadata snapshot.
+  - Resolved by committing `0006` metadata files and making `0006` SQL intentionally no-op.
+
 ### Growth control token rotation (quick runbook)
 
 1. Generate a new strong token locally (for example: `openssl rand -hex 32`).

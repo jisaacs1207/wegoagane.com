@@ -43,6 +43,13 @@
       "when": 1776959900000,
       "tag": "0005_elite_growth_engine",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1776968097062,
+      "tag": "0006_aromatic_whistler",
+      "breakpoints": true
     }
   ]
 }
