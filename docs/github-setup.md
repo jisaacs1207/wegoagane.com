@@ -386,8 +386,9 @@ API foundation now lives in **`packages/api`** (Worker + D1). To tie it to the r
 
 - OpenRouter: **`API_AI_ENABLED`**, **`API_AI_GATEWAY_URL`**, **`API_AI_MODEL_DESTINY`**, **`API_AI_MODEL_MEMORIAL`**, **`API_AI_GATEWAY_TOKEN`**
 - PostHog: **`API_POSTHOG_ENABLED`**, **`API_POSTHOG_HOST`**, **`API_POSTHOG_PROJECT_API_KEY`**
+- Memory bias (M13): **`API_MEMORY_BIAS_ENABLED`**, **`API_MEMORY_BROWSER_WEIGHT`**, **`API_MEMORY_SERVER_WEIGHT`**, **`API_MEMORY_MAX_BIAS`**, **`API_MEMORY_DEGRADE_MODE`**, **`API_MEMORY_DEGRADE_SCALE`**, **`API_MEMORY_LOOKBACK_LIMIT`**
 
-When enabled, these ensure deploys fail early if required runtime values are missing (see [`.github/workflows/api-deploy.yml`](../.github/workflows/api-deploy.yml)). **M8–M12:** recommend + memorial + feedback + share are live same-origin; with AI and PostHog gates enabled, production smoke should show AI metadata (`sourceType`, `aiMeta.resolvedModelId`) while PostHog captures generation/feedback/share lifecycle events.
+When enabled, these ensure deploys fail early if required runtime values are missing (see [`.github/workflows/api-deploy.yml`](../.github/workflows/api-deploy.yml)). **M8–M13:** recommend + memorial + feedback + share + hybrid-memory ranking are live same-origin; with AI, PostHog, and memory-bias gates enabled, production smoke should show AI metadata (`sourceType`, `aiMeta.resolvedModelId`) and memory metadata while PostHog captures generation/feedback/share/memory lifecycle events.
 
 See full runbook (including 405/route troubleshooting and **`aiMeta`** debugging): **[`docs/deploy-wegoagane-com.md`](../deploy-wegoagane-com.md)**.
 

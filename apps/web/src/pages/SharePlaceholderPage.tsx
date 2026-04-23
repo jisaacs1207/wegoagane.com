@@ -9,6 +9,7 @@ import {
   type ShareRunResponse,
 } from "../lib/recommendClient";
 import { AnalyticsEvent, trackEvent } from "../lib/analytics";
+import { rememberPostAcceptRating } from "../lib/memoryProfile";
 
 const postAcceptChoices: Array<{ value: PostAcceptRating; label: string }> = [
   { value: "not_this", label: "Not this" },
@@ -84,6 +85,25 @@ export function SharePlaceholderPage() {
         destinyId: share.destinyId,
         rating,
       });
+      const classId = sessionStorage.getItem("last.acceptedClassId");
+      if (
+        classId === "mage" ||
+        classId === "hunter" ||
+        classId === "warrior" ||
+        classId === "warlock" ||
+        classId === "priest" ||
+        classId === "rogue" ||
+        classId === "druid" ||
+        classId === "paladin" ||
+        classId === "shaman"
+      ) {
+        rememberPostAcceptRating(classId, rating);
+        trackEvent(AnalyticsEvent.MemoryProfileUpdated, {
+          action: "post_accept_rating",
+          classId,
+          rating,
+        });
+      }
       setRatingMessage("Final rating saved.");
     } catch {
       setRatingMessage("Could not save final rating.");

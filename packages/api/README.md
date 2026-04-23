@@ -80,6 +80,14 @@ Set these Worker env values for M12 analytics:
 - `POSTHOG_ENABLED` (`"true"` to emit analytics; default `"false"`)
 - `POSTHOG_HOST` (`https://us.i.posthog.com`)
 - Wrangler secret: `POSTHOG_PROJECT_API_KEY` (`phc_...`)
+- M13 memory rollout vars:
+  - `MEMORY_BIAS_ENABLED`
+  - `MEMORY_BROWSER_WEIGHT`
+  - `MEMORY_SERVER_WEIGHT`
+  - `MEMORY_MAX_BIAS`
+  - `MEMORY_DEGRADE_MODE`
+  - `MEMORY_DEGRADE_SCALE`
+  - `MEMORY_LOOKBACK_LIMIT`
 
 Set secret:
 
@@ -90,6 +98,7 @@ npx wrangler secret put POSTHOG_PROJECT_API_KEY --env production
 Operational endpoints:
 
 - `GET /api/v1/analytics/config`
+- `GET /api/v1/analytics/memory-health`
 - `GET /api/v1/share/summary/health`
 
 ### Debugging production (quick)

@@ -9,6 +9,7 @@ import {
   submitDestinyFeedback,
 } from "../../lib/recommendClient";
 import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
+import { buildMemoryHints, rememberAccept, rememberReroll } from "../../lib/memoryProfile";
 
 const rerollReasons: Array<{ value: RerollReason; label: string }> = [
   { value: "wrong_class", label: "Wrong class" },
@@ -36,7 +37,7 @@ export function PlanResultStep() {
     void fetchDestiny({
       entryPath: "draft_a_run",
       sessionId: existingSession,
-      signals: { intent, freeform },
+      signals: { intent, freeform, memoryHints: buildMemoryHints() },
     })
       .then((result) => {
         setDestiny(result.output);
@@ -66,6 +67,13 @@ export function PlanResultStep() {
       const freeform = sessionStorage.getItem("plan.freeform") ?? undefined;
 
       if (reason === "wrong_goals") {
+        rememberReroll(reason, destiny.classId);
+        trackEvent(AnalyticsEvent.MemoryProfileUpdated, {
+          reason,
+          action: "reroll",
+          classId: destiny.classId,
+          memoryConfidence: buildMemoryHints().confidence ?? 0,
+        });
         await submitDestinyFeedback({
           sessionId,
           destinyId,
@@ -84,10 +92,18 @@ export function PlanResultStep() {
         signals: {
           intent,
           freeform,
+          memoryHints: buildMemoryHints(),
           excludedClasses:
             reason === "wrong_class" || reason === "just_curious" ? [destiny.classId] : undefined,
           preferredClass: reason === "wrong_energy" || reason === "almost_right" ? destiny.classId : undefined,
         },
+      });
+      rememberReroll(reason, destiny.classId);
+      trackEvent(AnalyticsEvent.MemoryProfileUpdated, {
+        reason,
+        action: "reroll",
+        classId: destiny.classId,
+        memoryConfidence: buildMemoryHints().confidence ?? 0,
       });
 
       const choice = reason === "almost_right" ? "almost_right" : "miss";
@@ -133,6 +149,13 @@ export function PlanResultStep() {
         note: note.trim() || undefined,
       });
       const share = await createShareRun({ sessionId, destinyId });
+      rememberAccept(destiny.classId);
+      trackEvent(AnalyticsEvent.MemoryProfileUpdated, {
+        action: "accept",
+        classId: destiny.classId,
+        memoryConfidence: buildMemoryHints().confidence ?? 0,
+      });
+      sessionStorage.setItem("last.acceptedClassId", destiny.classId);
       setShowRerollGate(false);
       setActionMessage("Accepted. Opening share preview...");
       setNote("");

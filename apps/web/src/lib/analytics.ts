@@ -10,6 +10,7 @@ export const AnalyticsEvent = {
   PostAcceptRatingSubmitted: "post_accept_rating_submitted",
   ShareViewed: "share_viewed",
   ShareStatusChanged: "share_status_changed",
+  MemoryProfileUpdated: "memory_profile_updated",
 } as const;
 
 export async function initAnalytics() {

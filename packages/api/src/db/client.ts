@@ -11,6 +11,13 @@ export type ApiEnv = {
     POSTHOG_ENABLED?: string | boolean;
     POSTHOG_HOST?: string;
     POSTHOG_PROJECT_API_KEY?: string;
+    MEMORY_BIAS_ENABLED?: string | boolean;
+    MEMORY_BROWSER_WEIGHT?: string;
+    MEMORY_SERVER_WEIGHT?: string;
+    MEMORY_MAX_BIAS?: string;
+    MEMORY_DEGRADE_MODE?: string | boolean;
+    MEMORY_DEGRADE_SCALE?: string;
+    MEMORY_LOOKBACK_LIMIT?: string;
     /** Plain var or JSON binding; compare with `isTruthyEnv` in adapter, not `=== "true"` only */
     AI_ENABLED?: string | boolean;
     AI_GATEWAY_URL?: string;
