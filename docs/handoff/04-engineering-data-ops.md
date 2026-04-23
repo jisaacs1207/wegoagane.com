@@ -4,7 +4,7 @@ Handbook sections **17**, **19–21**, **26** (from handoff v4).
 
 ## Viability & dependencies
 
-- Stack (Workers + Hono + D1 + KV + R2 + AI Gateway + PostHog) is **solo-operable**; risks are **AI spend caps**, **validation_failed rate**, and **schema creep** — keep tables minimal per §19 senior note.
+- Stack (Workers + Hono + D1 + KV + R2 + **OpenRouter** for LLM + PostHog) is **solo-operable**; risks are **AI spend caps**, **validation_failed rate**, and **schema creep** — keep tables minimal per §19 senior note.
 - Implementation order §26 is the reliability backbone: deterministic path and validator **before** relying on models.
 - **CI from day one** (§17.4): low-cost structure checks now; extend the same workflow with lint/typecheck/tests when packages land — keeps “testing live” on every push without fighting markdown rules on imported prose.
 - **CD for solo** (§17.5): default to **auto-deploy on `main`** (Pages Git connection or workflow); use branch previews so `.com` stays trusted.
@@ -29,10 +29,10 @@ Handbook sections **17**, **19–21**, **26** (from handoff v4).
 - **KV** — hot lookup (archetype JSON, class/faction rules, feature flags)
 - **R2** — generated share-card images + static assets
 
-**AI routing: Cloudflare AI Gateway** in front of Anthropic (primary provider)
-- Abstraction, caching, rate limiting, retries, analytics
-- Single-provider at launch via gateway = trivially swappable later
-- Token + latency telemetry per model built in
+**AI routing (implemented): OpenRouter** — `POST https://openrouter.ai/api/v1/chat/completions` with env-pinned models; defaults **`openrouter/auto`** ([Auto Router](https://openrouter.ai/docs/features/model-routing)) until cost/quality policy pins per-lane `provider/model` ids.
+- **Validator-first:** deterministic ranker + templates stay authoritative; AI only enriches presentation copy with retry + JSON validation + template fallback.
+- **Response surface:** **`aiMeta`** on recommend/memorial includes gate status, request `modelId`, OpenRouter **`resolvedModelId`** when Auto (or router) chooses a concrete model, and parse/provider errors for ops.
+- **Original plan** (handbook): Cloudflare AI Gateway in front of a primary provider remains a valid later consolidation layer; current code paths go straight to OpenRouter with Bearer token.
 
 **Analytics: PostHog**
 - Product analytics + session replay
@@ -55,7 +55,7 @@ Valid alternatives exist (Supabase, Neon). For Phase 1:
 - Revisit if analytics or user systems outgrow D1
 
 ### Senior-dev note on stack
-This stack is genuinely operable by one person. Cloudflare's billing consolidates — one dashboard shows infra cost. PostHog free tier covers early traffic. AI Gateway gives you a single chokepoint for cost/provider/caching changes without touching code. Don't let anyone convince you to add Kubernetes, microservices, or a message queue.
+This stack is genuinely operable by one person. Cloudflare's billing consolidates — one dashboard shows infra cost. PostHog free tier covers early traffic. **OpenRouter** is the current LLM chokepoint (swap models in env); optional Cloudflare AI Gateway later if you want provider-agnostic caching/rate limits in front of the same adapter. Don't let anyone convince you to add Kubernetes, microservices, or a message queue.
 
 ### 17.4 Continuous integration (from day one)
 
@@ -292,7 +292,7 @@ Per AI call:
 - Output passed validation
 - Downstream acceptance
 
-Surface in PostHog dashboards + AI Gateway dashboards.
+Surface in PostHog dashboards + Workers Logs + OpenRouter usage/cost (dashboard or export).
 
 ### Senior-dev note on monitoring
 Set two alerts at launch: (1) validation_failed spikes above 10% of generations, (2) daily AI spend exceeds cap. Everything else can wait until you have real traffic. Don't build a dashboard until you have questions to ask it.
@@ -305,7 +305,7 @@ Set two alerts at launch: (1) validation_failed spikes above 10% of generations,
 4. Structured archetype schema + JSON content (Section 27)
 5. **Output validator (build before generator)**
 6. Deterministic ranking engine (Section 20)
-7. AI Gateway integration
+7. OpenRouter-backed AI enrichment (env-gated; validator-first)
 8. Destiny generation pipeline (rank → cache → AI → validate → render)
 9. Memorial generation pipeline
 10. Refinement loop with rating capture

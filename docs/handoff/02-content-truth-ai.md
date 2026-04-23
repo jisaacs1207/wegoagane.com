@@ -6,7 +6,7 @@ Handbook sections **11–13**, **18**, **27** (from handoff v4).
 
 - **Highest trust / embarrassment risk:** wrong skills, items, or faction-class pairs. Mitigation: build the **validator before the generator** ([04-engineering-data-ops.md](04-engineering-data-ops.md) §26 items 4–5).
 - Schedule risk is **content volume** (§27). Use an MVP archetype slice ([STATUS.md](STATUS.md)) while growing toward 36 archetypes.
-- §18 model names are **tier intent**; pin exact provider model IDs in implementation config.
+- §18 model names are **tier intent**; pin exact provider model IDs in implementation config when cost/quality policy is fixed. **Current shipped default:** **`openrouter/auto`** for both recommend and memorial lanes (`packages/api/wrangler.toml`); telemetry stores **`resolvedModelId`** when OpenRouter returns the concrete model.
 
 ---
 

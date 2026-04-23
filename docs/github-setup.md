@@ -71,7 +71,7 @@ Official GitHub docs (same UI we describe): [Creating rulesets for a repository]
 2. Click the **Actions** tab (top nav).
 3. Click **CI** in the left list (workflow name from [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — the file says `name: CI`).
 4. Open the **most recent** run that ran for **`main`** (not only a PR). The commit message line should be on `main`.
-5. Confirm the job named **Handbook layout** is **green**.
+5. Confirm the job named **Handbook layout** is **green** (and, once those jobs exist on `main`, **Web** and **API** as well — see [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) for current job `name:` values).
 
 **If there is no run on `main` yet:**
 
@@ -88,7 +88,7 @@ git push origin main
 
 Then refresh **Actions** until a green **Handbook layout** appears on a `main` run.
 
-**Checkpoint:** [ ] Latest **CI** run on **`main`** shows **Handbook layout** = success.
+**Checkpoint:** [ ] Latest **CI** run on **`main`** shows **Handbook layout** = success (and **Web** / **API** if your ruleset requires them).
 
 **About “Node.js 20 actions are deprecated” annotations:** that comes from older `actions/checkout@v4` (and similar) running on Node 20. This repo’s workflow uses **`actions/checkout@v5`** plus **`FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`** so hosted runners use the Node 24 path GitHub is moving everyone to. After you pull the latest `main` and push, new runs should stop flagging checkout for Node 20. If GitHub still shows a warning for another action later, bump that action’s major version in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
 
@@ -325,6 +325,8 @@ git push -u origin chore/test-ruleset-ci
 
 > **Your choice:** you are on **Profile B** — every change to `main` goes through a **pull request**; you merge only when required checks (e.g. **Handbook layout**) are green.
 
+**Habit for feature work:** branch from an updated **`git pull origin main`**, push the branch, open a PR, merge when green — do **not** disable the ruleset or push around protections for routine changes (see **§4.9a** only when genuinely stuck).
+
 ### Profile B + new CI jobs (required checks list)
 
 Whenever **`.github/workflows/ci.yml`** gains a **new job** with a new `name:` (for example **Lint** or **Typecheck**) and you want that job to **block merging to `main`** like **Handbook layout** does:
@@ -380,7 +382,9 @@ When you add **lint** or **test** jobs later, come back to **Settings → Rules 
 
 API foundation now lives in **`packages/api`** (Worker + D1). To tie it to the real site, route **`/api/*`** to Worker (configured in `packages/api/wrangler.toml`) and deploy with a `CLOUDFLARE_API_TOKEN`.
 
-`api-deploy.yml` uses repository secret **`CLOUDFLARE_API_TOKEN`** for production migrations + deploy. See full runbook (including 405/route troubleshooting): **[`docs/deploy-wegoagane-com.md`](../deploy-wegoagane-com.md)**.
+`api-deploy.yml` uses repository secret **`CLOUDFLARE_API_TOKEN`** for production migrations + deploy. Optional repo **`vars` / `secrets`** **`API_AI_ENABLED`**, **`API_AI_GATEWAY_URL`**, **`API_AI_MODEL_DESTINY`**, **`API_AI_MODEL_MEMORIAL`**, **`API_AI_GATEWAY_TOKEN`** let the deploy workflow’s OpenRouter precheck run when `API_AI_ENABLED=true` (see [`.github/workflows/api-deploy.yml`](../.github/workflows/api-deploy.yml)). **M8–M9:** recommend + memorial are live same-origin; with **`AI_ENABLED`** truthy and **`AI_GATEWAY_TOKEN`** set, production smoke can show **`output.sourceType: "ai"`** and **`aiMeta.resolvedModelId`** populated.
+
+See full runbook (including 405/route troubleshooting and **`aiMeta`** debugging): **[`docs/deploy-wegoagane-com.md`](../deploy-wegoagane-com.md)**.
 
 Local iteration: **`cd apps/web && npm run dev`**.
 

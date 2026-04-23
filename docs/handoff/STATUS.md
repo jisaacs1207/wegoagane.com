@@ -1,6 +1,6 @@
 # Build status & iteration contract
 
-**Last updated:** 2026-04-23 (M8+M9 safe rollout slice implemented with AI-gated fallback + memorial endpoint)
+**Last updated:** 2026-04-23 (production AI verified; OpenRouter Auto + ops docs refresh)
 
 ---
 
@@ -8,10 +8,25 @@
 
 | Field | Value |
 |--------|--------|
-| **Current milestone** | **M10 (next)** — refinement + rating gate after M8+M9 backend/frontend wire-up |
+| **Current milestone** | **M10 (next)** — refinement + rating gate (reroll, “almost right,” post-accept rating) |
 | **Blocked by** | — |
-| **Last build iteration** | Implemented AI adapter boundary (`packages/api/src/ai/*`) with env-gated retries + deterministic fallback; extended Drizzle schema (`memorials` + AI telemetry on `recommendation_logs`) and generated migration; added `POST /v1/memorial` + `/api/v1/memorial`; integrated recommend AI enrichment with validation + fallback metadata; wired death flow frontend to memorial API with fixture fallback; added API unit tests + CI test gate + deploy precheck for AI inputs; updated smoke script + deployment docs. |
-| **Next “request to move forward” criteria** | Run production migration + deploy for migration `0001_*`, set Worker secret `AI_GATEWAY_TOKEN` and optional AI vars, and confirm live smoke checks (recommend + memorial + D1 write counts). |
+| **Last build iteration** | **M3–M9 + AI hardened on `main`:** Worker `POST /api/v1/recommend` + `POST /api/v1/memorial`, D1 + Drizzle (`memorials`, AI columns on `recommendation_logs`), web death flow + fixture fallbacks. **AI ops:** OpenRouter **`openrouter/auto`** defaults in `wrangler.toml`; truthy `AI_ENABLED`; **`aiMeta`** (`gate`, `modelId`, **`resolvedModelId`**, errors, latency); **`extractJsonPayload`** before `JSON.parse` for fenced/prose LLM output; `provider.sort` omitted when model is auto. **CI:** API typecheck + migration drift + **`npm test`**. **Git:** feature branches → PR → merge (e.g. **#12–#14** on this repo); do not turn off `main` ruleset for routine work. **Prod smoke:** memorial + recommend return **`output.sourceType: "ai"`** when gate + key healthy. |
+| **Next “request to move forward” criteria** | Keep **Web** + **API** CI green on `main`; add ruleset required check **API** if not already; watch OpenRouter **cost/latency** (auto picks premium models sometimes); implement **M10** rating/refinement slice when ready. |
+
+---
+
+## Recent engineering decisions (record)
+
+| Topic | Decision | Where it lives |
+|--------|-----------|----------------|
+| **AI gateway** | Single integration: **OpenRouter** `POST …/chat/completions`, Bearer + optional `HTTP-Referer` / `X-OpenRouter-Title`. | `packages/api/src/ai/adapter.ts`, [OpenRouter quickstart](https://openrouter.ai/docs/quickstart) |
+| **Default models** | **`openrouter/auto`** ([Auto Router](https://openrouter.ai/docs/features/model-routing)) for both destiny and memorial env vars until we pin per-lane for cost/quality. | `packages/api/wrangler.toml` |
+| **Provider sort** | Not sent when `model === openrouter/auto` (avoid fighting router). | `adapter.ts` |
+| **Config source of truth** | Plain Worker vars from **`wrangler.toml` on deploy**; secrets (`AI_GATEWAY_TOKEN`) only via Wrangler/dashboard. Dashboard-only vars can be overwritten on next deploy. | `docs/deploy-wegoagane-com.md` |
+| **`AI_ENABLED`** | Treat **boolean or string** truthy values as on (not only `=== "true"`). | `adapter.ts` `isTruthyEnv` |
+| **Observability** | Workers Logs enabled in Wrangler `[observability]` for deploy consistency. | `wrangler.toml` |
+| **Git workflow** | **`main` protected** — ship via **PR branches**; sync local `main` after merges. | `docs/github-setup.md` |
+| **Validator-first** | Unchanged: deterministic ranker wins selection; AI may only enrich copy; invalid AI → template fallback. | `02-content-truth-ai.md`, `adapter.ts` |
 
 ---
 
@@ -42,7 +57,7 @@ Aligned with [04-engineering-data-ops.md](04-engineering-data-ops.md) §26, grou
 | **M5** | Deterministic ranker | **Shipped:** weighted tag-overlap ranker in `packages/api/src/domain/ranker.ts` with explainable reasons | M3–M4 | — |
 | **M6** | Template-only Destiny pipeline | **Shipped:** rank → template render → validate in `packages/api/src/domain/template.ts` and `POST /api/v1/recommend` | M4–M5 | Combined vs tabbed result (29.2); share CTA (29.6) |
 | **M7** | Workers + D1 + session persistence | **Shipped:** `packages/api` Worker + Drizzle schema + migration + inserts into sessions/question_answers/destinies/recommendation_logs; live on `wegoagane.com/api/*` | M6 | — |
-| **M8** | AI Gateway + presentation layer | **Shipped:** AI adapter layer behind env flag; deterministic winner remains source of truth; AI enrichment validated with retry + fallback; response metadata includes `sourceType` + fallback status | M6–M7 | Model IDs pinned in code/config (tiers in §18) |
+| **M8** | AI Gateway + presentation layer | **Shipped:** OpenRouter-backed adapter; defaults **`openrouter/auto`**; deterministic winner unchanged; retry + validate + fallback; **`aiMeta`** + **`resolvedModelId`**; JSON extraction for markdown-wrapped responses | M6–M7 | Revisit pinned vs auto when cost/tier policy is set (§18) |
 | **M9** | Memorial pipeline | **Shipped:** template-first memorial pipeline + validator + persistence + `POST /api/v1/memorial` with AI optional enrichment and fallback | M8 | Name suggest vs optional (29.5); tone “bullshit death” (29.3) |
 | **M10** | Refinement + rating gate | Reroll reasons, “almost right,” post-accept rating | M6–M9 | — |
 | **M11** | Share images + OG | Browser Rendering → R2; async UX; Discord/Twitter preview | M2, M7 | — |
@@ -95,3 +110,6 @@ When the checklist is complete enough for the next milestone, update **Current m
 | 2026-04-23 | **M3–M7 foundation (branch):** `packages/api` Hono+Drizzle+D1 migrations, validator/ranker/template pipeline, `/v1/recommend`, web pages calling API with fixture fallback |
 | 2026-04-23 | Remote tie-in **live**: Worker route `wegoagane.com/api/*`, production deploy + smoke pass, D1 write verification; docs + deploy workflow updated |
 | 2026-04-23 | **M8+M9:** AI adapter (`AI_ENABLED`) with retry+fallback, `memorials` table + recommendation AI telemetry columns, `POST /v1/memorial`, death flow memorial API wiring with fallback, API tests + deploy AI precheck, smoke script verifies recommend + memorial |
+| 2026-04-23 | **PR #12–#13:** API foundation + AI gate / `aiMeta` / truthy `AI_ENABLED` / Wrangler prod AI vars merged to `main` |
+| 2026-04-23 | **PR #14:** OpenRouter **`openrouter/auto`** defaults + skip `provider.sort` for auto + **`resolvedModelId`** telemetry |
+| 2026-04-23 | **`5255d3b` on `main`:** **`extractJsonPayload`** before parse — fixes `ai_invalid_json` when models wrap JSON in fences or lead with prose; production memorial/recommend verified **`sourceType: "ai"`** when gate + token healthy |
