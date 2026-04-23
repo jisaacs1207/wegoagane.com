@@ -206,6 +206,59 @@ curl -sS -X POST "https://wegoagane.com/api/v1/memorial" \
 
 ---
 
+## M11 share pipeline (R2 + OG)
+
+Share lifecycle endpoints (same under `/v1/*` and `/api/v1/*`):
+
+- `POST /api/v1/share` (create/ensure run)
+- `GET /api/v1/share/:runId` (poll status: `queued|rendering|ready|failed`)
+- `GET /api/v1/share/:runId/image` (R2-backed image; fallback SVG while pending)
+- `GET /api/v1/share/:runId/og` (bot-friendly OG/Twitter meta HTML)
+
+Required Worker bindings/vars in [`packages/api/wrangler.toml`](../packages/api/wrangler.toml):
+
+- R2 binding: `SHARE_IMAGES`
+- `SHARE_IMAGE_BASE_URL` (default: `https://wegoagane.com/api/v1/share`)
+- `SHARE_RENDER_TIMEOUT_MS` (default: `20000`)
+
+Runbook:
+
+1. Create/configure preview + production R2 buckets used by `SHARE_IMAGES`.
+2. Apply latest migrations (includes `share_runs` table):
+
+```bash
+npm run db:migrate:production --prefix packages/api
+```
+
+3. Deploy API Worker:
+
+```bash
+npm run deploy:production --prefix packages/api
+```
+
+4. Verify share lifecycle end-to-end:
+
+```bash
+curl -sS -X POST "https://wegoagane.com/api/v1/share" \
+  -H "content-type: application/json" \
+  -d '{"sessionId":"smoke-session","destinyId":"<existing-destiny-id>"}' | jq
+```
+
+Then poll:
+
+```bash
+curl -sS "https://wegoagane.com/api/v1/share/<runId>" | jq
+```
+
+And confirm image + OG:
+
+```bash
+curl -I "https://wegoagane.com/api/v1/share/<runId>/image"
+curl -sS "https://wegoagane.com/api/v1/share/<runId>/og" | rg "og:image|twitter:card|og:title"
+```
+
+---
+
 ## After you add new required CI jobs
 
 If GitHub gains a new **required** job for merges, add it to ruleset **`wegoagane-main-ci`** or run:
@@ -231,4 +284,4 @@ Open `http://localhost:5173` (Vite default).
 
 ---
 
-*Production **https://wegoagane.com** on Cloudflare Pages from `main` — see [`docs/handoff/STATUS.md`](handoff/STATUS.md). Cloudflare Pages references as of April 22, 2026; DNS + API + OpenRouter ops updated April 23, 2026.*
+*Production **https://wegoagane.com** on Cloudflare Pages from `main` — see [`docs/handoff/STATUS.md`](handoff/STATUS.md). Cloudflare Pages references as of April 22, 2026; DNS + API + OpenRouter + M11 share ops updated April 23, 2026.*

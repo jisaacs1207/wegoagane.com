@@ -2,20 +2,22 @@ name = "wegoagane-api"
 main = "src/index.ts"
 compatibility_date = "2026-04-23"
 
-# Workers Logs (see https://developers.cloudflare.com/workers/observability/logs/workers-logs/)
-[observability]
-enabled = true
-head_sampling_rate = 1
-
 # Route API traffic on the live domain through this Worker.
 routes = [
   { pattern = "wegoagane.com/api/*", zone_name = "wegoagane.com" },
   { pattern = "www.wegoagane.com/api/*", zone_name = "wegoagane.com" }
 ]
 
+# Workers Logs (see https://developers.cloudflare.com/workers/observability/logs/workers-logs/)
+[observability]
+enabled = true
+head_sampling_rate = 1
+
 [vars]
 APP_ENV = "dev"
 SITE_ORIGIN = "https://wegoagane.com"
+SHARE_IMAGE_BASE_URL = "https://wegoagane.com/api/v1/share"
+SHARE_RENDER_TIMEOUT_MS = "20000"
 AI_ENABLED = "false"
 AI_GATEWAY_URL = "https://openrouter.ai/api/v1/chat/completions"
 AI_MODEL_DESTINY = "openrouter/auto"
@@ -28,12 +30,19 @@ binding = "DB"
 database_name = "wegoagane"
 database_id = "6a55f3b2-2222-4f2e-8951-d5763075d3ee"
 
+[[r2_buckets]]
+binding = "SHARE_IMAGES"
+bucket_name = "wegoagane-share-images"
+preview_bucket_name = "wegoagane-share-images-preview"
+
 [env.preview]
 name = "wegoagane-api-preview"
 
 [env.preview.vars]
 APP_ENV = "preview"
 SITE_ORIGIN = "https://wegoagane.com"
+SHARE_IMAGE_BASE_URL = "https://wegoagane.com/api/v1/share"
+SHARE_RENDER_TIMEOUT_MS = "20000"
 AI_ENABLED = "false"
 AI_GATEWAY_URL = "https://openrouter.ai/api/v1/chat/completions"
 AI_MODEL_DESTINY = "openrouter/auto"
@@ -46,6 +55,11 @@ binding = "DB"
 database_name = "wegoagane-preview"
 database_id = "b550b523-ba75-4d45-878d-ec327306c508"
 
+[[env.preview.r2_buckets]]
+binding = "SHARE_IMAGES"
+bucket_name = "wegoagane-share-images-preview"
+preview_bucket_name = "wegoagane-share-images-preview"
+
 [env.production]
 name = "wegoagane-api-production"
 
@@ -56,6 +70,8 @@ head_sampling_rate = 1
 [env.production.vars]
 APP_ENV = "production"
 SITE_ORIGIN = "https://wegoagane.com"
+SHARE_IMAGE_BASE_URL = "https://wegoagane.com/api/v1/share"
+SHARE_RENDER_TIMEOUT_MS = "20000"
 # OpenRouter: set secret AI_GATEWAY_TOKEN in Cloudflare; flip to "false" to force template-only.
 AI_ENABLED = "true"
 AI_GATEWAY_URL = "https://openrouter.ai/api/v1/chat/completions"
@@ -68,3 +84,8 @@ AI_PROVIDER_SORT = "latency"
 binding = "DB"
 database_name = "wegoagane"
 database_id = "6a55f3b2-2222-4f2e-8951-d5763075d3ee"
+
+[[env.production.r2_buckets]]
+binding = "SHARE_IMAGES"
+bucket_name = "wegoagane-share-images"
+preview_bucket_name = "wegoagane-share-images-preview"
