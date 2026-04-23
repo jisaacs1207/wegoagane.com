@@ -376,7 +376,11 @@ When you add **lint** or **test** jobs later, come back to **Settings → Rules 
 
 ## Step 6: Live wegoagane.com (Pages + DNS)
 
-**Current state:** Production is **https://wegoagane.com** (and **`https://wegoagane-com.pages.dev`**) via **Cloudflare Pages** on branch **`main`** — app in **`apps/web`**, output **`dist`**. Full setup, SPA notes, and **DNS pitfalls** (parking records → 522/525): **[`docs/deploy-wegoagane-com.md`](../deploy-wegoagane-com.md)**.
+**Current state:** Production is **https://wegoagane.com** (and **`https://wegoagane-com.pages.dev`**) via **Cloudflare Pages** on branch **`main`** — app in **`apps/web`**, output **`dist`**.
+
+API foundation now lives in **`packages/api`** (Worker + D1). To tie it to the real site, route **`/api/*`** to Worker (configured in `packages/api/wrangler.toml`) and deploy with a `CLOUDFLARE_API_TOKEN`.
+
+`api-deploy.yml` uses repository secret **`CLOUDFLARE_API_TOKEN`** for production migrations + deploy. See full runbook (including 405/route troubleshooting): **[`docs/deploy-wegoagane-com.md`](../deploy-wegoagane-com.md)**.
 
 Local iteration: **`cd apps/web && npm run dev`**.
 

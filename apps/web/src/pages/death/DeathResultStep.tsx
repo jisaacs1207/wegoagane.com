@@ -1,14 +1,30 @@
 import { Link } from "react-router-dom";
-import { destinyFixture, memorialFixture } from "../../content/cardFixtures";
+import { useEffect, useState } from "react";
+import { destinyFixture, memorialFixture, type DestinyFixture } from "../../content/cardFixtures";
 import { DestinyCard } from "../../components/cards/DestinyCard";
 import { MemorialCard } from "../../components/cards/MemorialCard";
+import { fetchDestiny } from "../../lib/recommendClient";
 
 export function DeathResultStep() {
+  const [destiny, setDestiny] = useState<DestinyFixture>(destinyFixture);
+
+  useEffect(() => {
+    const mood = sessionStorage.getItem("death.mood") ?? undefined;
+    const nextSignal = sessionStorage.getItem("death.nextSignal") ?? undefined;
+
+    void fetchDestiny({
+      entryPath: "release_spirit",
+      signals: { mood, nextSignal },
+    })
+      .then(setDestiny)
+      .catch(() => setDestiny(destinyFixture));
+  }, []);
+
   return (
     <div>
       <MemorialCard data={memorialFixture} />
       <div style={{ marginTop: 14 }}>
-        <DestinyCard data={destinyFixture} />
+        <DestinyCard data={destiny} />
       </div>
       <div className="card" style={{ marginTop: 14 }}>
         <p style={{ margin: 0, fontSize: 13, color: "var(--ts)", lineHeight: 1.45 }}>

@@ -1,0 +1,31 @@
+{
+  "name": "wegoagane-api",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:preview": "wrangler deploy --env preview",
+    "deploy:production": "wrangler deploy --env production",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 migrations apply wegoagane --local",
+    "db:migrate:remote": "wrangler d1 migrations apply wegoagane --remote",
+    "db:migrate:preview": "wrangler d1 migrations apply wegoagane-preview --remote --env preview",
+    "db:migrate:production": "wrangler d1 migrations apply wegoagane --remote --env production",
+    "smoke:preview": "node ./scripts/smoke.mjs https://wegoagane.com",
+    "smoke:production": "node ./scripts/smoke.mjs https://wegoagane.com"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.44.2",
+    "hono": "^4.10.1",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260418.0",
+    "drizzle-kit": "^0.31.6",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.41.0"
+  }
+}

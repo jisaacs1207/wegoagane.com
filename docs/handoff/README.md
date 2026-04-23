@@ -38,6 +38,8 @@ Each milestone should leave something **usable and tangible** (not a pile of blo
 
 **Live site:** **https://wegoagane.com** — Cloudflare Pages from **`main`** ([deploy doc](../deploy-wegoagane-com.md): root **`apps/web`**, output **`dist`**, DNS + custom domains). In-app **M2** card/icon QA: **`/design/cards`**.
 
+**API foundation (branch stage):** `packages/api` — Cloudflare Worker with Hono + Drizzle + D1 migrations (`/v1/recommend`) for M3-M7 deterministic pipeline, with same-domain route target `wegoagane.com/api/*`.
+
 ---
 
 *Handbook derived from handoff v4 (April 22, 2026). Section numbers preserved for traceability.*

@@ -18,7 +18,10 @@ export function DeathNextSignalStep() {
             key={s}
             type="button"
             className={`chip ${selected === s ? "chip-selected" : ""}`}
-            onClick={() => setSelected(s)}
+            onClick={() => {
+              setSelected(s);
+              sessionStorage.setItem("death.nextSignal", s);
+            }}
           >
             {s}
           </button>

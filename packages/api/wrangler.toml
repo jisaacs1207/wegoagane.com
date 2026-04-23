@@ -1,0 +1,42 @@
+name = "wegoagane-api"
+main = "src/index.ts"
+compatibility_date = "2026-04-23"
+
+# Route API traffic on the live domain through this Worker.
+routes = [
+  { pattern = "wegoagane.com/api/*", zone_name = "wegoagane.com" },
+  { pattern = "www.wegoagane.com/api/*", zone_name = "wegoagane.com" }
+]
+
+[vars]
+APP_ENV = "dev"
+SITE_ORIGIN = "https://wegoagane.com"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "wegoagane"
+database_id = "6a55f3b2-2222-4f2e-8951-d5763075d3ee"
+
+[env.preview]
+name = "wegoagane-api-preview"
+
+[env.preview.vars]
+APP_ENV = "preview"
+SITE_ORIGIN = "https://wegoagane.com"
+
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "wegoagane-preview"
+database_id = "b550b523-ba75-4d45-878d-ec327306c508"
+
+[env.production]
+name = "wegoagane-api-production"
+
+[env.production.vars]
+APP_ENV = "production"
+SITE_ORIGIN = "https://wegoagane.com"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "wegoagane"
+database_id = "6a55f3b2-2222-4f2e-8951-d5763075d3ee"

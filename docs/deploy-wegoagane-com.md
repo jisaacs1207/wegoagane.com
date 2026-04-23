@@ -136,6 +136,36 @@ Cloudflare injects variables such as **`CI=true`**, **`CF_PAGES=1`**, **`CF_PAGE
 
 **GitHub Actions** (this repo’s **Web** job) and **Cloudflare Pages** builds are **separate**. Keep them aligned on Node version and install/build commands so green CI correlates with green Pages deploys.
 
+## API on the same domain (`/api/*`)
+
+The frontend now calls **`/api/v1/recommend`**. In production this is handled by a **separate Worker** (`packages/api`) routed on the same domain:
+
+- `wegoagane.com/api/*`
+- `www.wegoagane.com/api/*`
+
+Routing is declared in [`packages/api/wrangler.toml`](../packages/api/wrangler.toml). This keeps API and SPA split operationally (Worker + D1 vs Pages), while avoiding CORS by staying same-origin.
+
+### One-time API production wiring
+
+1. Set real D1 IDs in [`packages/api/wrangler.toml`](../packages/api/wrangler.toml):
+   - `env.preview ... database_id`
+   - `env.production ... database_id`
+2. Set `CLOUDFLARE_API_TOKEN` in your shell (Workers + D1 edit permissions).
+3. Apply migrations and deploy:
+
+```bash
+npm run db:migrate:production --prefix packages/api
+npm run deploy:production --prefix packages/api
+```
+
+4. Verify live:
+
+```bash
+node packages/api/scripts/smoke.mjs https://wegoagane.com
+```
+
+If this returns HTTP `405` on `POST /api/v1/recommend`, `/api/*` is still handled by Pages/another rule, not the Worker route.
+
 ---
 
 ## After you add new required CI jobs

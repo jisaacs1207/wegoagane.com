@@ -18,7 +18,10 @@ export function DeathMoodStep() {
             key={m}
             type="button"
             className={`chip ${selected === m ? "chip-selected" : ""}`}
-            onClick={() => setSelected(m)}
+            onClick={() => {
+              setSelected(m);
+              sessionStorage.setItem("death.mood", m);
+            }}
           >
             {m}
           </button>
