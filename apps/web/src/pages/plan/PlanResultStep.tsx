@@ -32,7 +32,12 @@ export function PlanResultStep() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingDestiny, setIsLoadingDestiny] = useState(true);
   const [loadError, setLoadError] = useState<string>("");
+  const [loadingPhase, setLoadingPhase] = useState("Reviewing your run intent...");
   const [recommendVariantId, setRecommendVariantId] = useState<string | null>(null);
+
+  async function wait(ms: number) {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  }
 
   useEffect(() => {
     const intent = sessionStorage.getItem("plan.intent") ?? undefined;
@@ -54,13 +59,31 @@ export function PlanResultStep() {
     void (async () => {
       setIsLoadingDestiny(true);
       setLoadError("");
+      setLoadingPhase("Reviewing your run intent...");
+      const phaseTimer1 = setTimeout(() => setLoadingPhase("Comparing class survivability paths..."), 900);
+      const phaseTimer2 = setTimeout(() => setLoadingPhase("Forging your recommended route..."), 1800);
+      const phaseTimer3 = setTimeout(() => setLoadingPhase("Sealing your run plan..."), 3000);
       try {
-        const result = await fetchDestiny({
-          entryPath: "draft_a_run",
-          sessionId: seededSession,
-          // Never block initial card render on experiment assignment latency.
-          signals: { intent, freeform, memoryHints: buildMemoryHints() },
-        });
+        const startedAt = Date.now();
+        let result: Awaited<ReturnType<typeof fetchDestiny>> | null = null;
+        while (!result && Date.now() - startedAt < 12000) {
+          try {
+            result = await fetchDestiny({
+              entryPath: "draft_a_run",
+              sessionId: seededSession,
+              // Never block initial card render on experiment assignment latency.
+              signals: { intent, freeform, memoryHints: buildMemoryHints() },
+            });
+          } catch {
+            await wait(1200);
+          }
+        }
+        if (!result) {
+          setDestiny(null);
+          setLoadError("Your route is still being planned. Hold a moment while we complete your destiny draft.");
+          return;
+        }
+
         setDestiny(result.output);
         setSessionId(result.sessionId);
         setDestinyId(result.destinyId);
@@ -78,8 +101,11 @@ export function PlanResultStep() {
           .catch(() => {});
       } catch {
         setDestiny(null);
-        setLoadError("Could not generate a destiny yet. Try again in a moment.");
+        setLoadError("Route planning is delayed. The system is still refining your best next path.");
       } finally {
+        clearTimeout(phaseTimer1);
+        clearTimeout(phaseTimer2);
+        clearTimeout(phaseTimer3);
         setIsLoadingDestiny(false);
       }
     })();
@@ -210,9 +236,12 @@ export function PlanResultStep() {
         <div className="card">
           <p className="step-label">Draft a run</p>
           <h1 className="hero-question">Building your destiny...</h1>
-          <p className="hero-sub">
-            {isLoadingDestiny ? "Finding your best fit now." : loadError}
-          </p>
+          <div className="forge-status-row">
+            <span className="forge-spinner" aria-hidden="true" />
+            <p className="hero-sub" style={{ margin: 0 }}>
+              {isLoadingDestiny ? loadingPhase : loadError}
+            </p>
+          </div>
         </div>
       )}
       <p style={{ marginTop: 14, fontSize: 13, color: "var(--ts)" }}>

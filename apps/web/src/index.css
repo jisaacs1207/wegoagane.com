@@ -279,3 +279,29 @@ a:hover {
   font-size: 13px;
   color: var(--ts);
 }
+
+.forge-status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.forge-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(196, 163, 90, 0.25);
+  border-top-color: var(--gold-bright);
+  animation: forge-spin 0.9s linear infinite;
+  flex: 0 0 auto;
+}
+
+@keyframes forge-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
