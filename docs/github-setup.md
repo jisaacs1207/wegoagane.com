@@ -374,11 +374,11 @@ When you add **lint** or **test** jobs later, come back to **Settings → Rules 
 
 ---
 
-## Step 6: Live wegoagane.com (later, when there is a real build)
+## Step 6: Live wegoagane.com (Pages + DNS)
 
-The app lives in **`apps/web`** and builds to **`apps/web/dist`**. Follow **[`docs/deploy-wegoagane-com.md`](../deploy-wegoagane-com.md)** for Cloudflare Pages (root `apps/web`, build `npm ci && npm run build`, output `dist`, custom domain **wegoagane.com**).
+**Current state:** Production is **https://wegoagane.com** (and **`https://wegoagane-com.pages.dev`**) via **Cloudflare Pages** on branch **`main`** — app in **`apps/web`**, output **`dist`**. Full setup, SPA notes, and **DNS pitfalls** (parking records → 522/525): **[`docs/deploy-wegoagane-com.md`](../deploy-wegoagane-com.md)**.
 
-Until DNS + Pages are connected, **`npm run dev`** inside `apps/web` is the fastest way to click through flows locally.
+Local iteration: **`cd apps/web && npm run dev`**.
 
 ---
 
