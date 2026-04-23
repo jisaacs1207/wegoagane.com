@@ -12,6 +12,7 @@ type RecommendRequest = {
     intent?: string;
     freeform?: string;
     excludedClasses?: ClassId[];
+    preferredClass?: ClassId;
   };
 };
 
@@ -60,11 +61,17 @@ export type DestinyResult = {
 };
 
 type FeedbackChoice = "accept" | "almost_right" | "miss";
+type FeedbackStage = "reroll_gate" | "post_accept";
+export type RerollReason = "wrong_class" | "wrong_energy" | "wrong_goals" | "almost_right" | "just_curious";
+export type PostAcceptRating = "not_this" | "itll_do" | "good_pick" | "this_is_it" | "perfect";
 
 type FeedbackRequest = {
   sessionId: string;
   destinyId: string;
   choice: FeedbackChoice;
+  stage?: FeedbackStage;
+  rerollReason?: RerollReason;
+  postAcceptRating?: PostAcceptRating;
   note?: string;
   rerollFromClassId?: ClassId;
   rerollToClassId?: ClassId;
@@ -78,6 +85,7 @@ export type FeedbackSummary = {
     almostRight: number;
     miss: number;
   };
+  postAcceptRatings: Record<PostAcceptRating, number>;
 };
 
 export async function fetchDestiny(input: RecommendRequest): Promise<DestinyResult> {

@@ -6,6 +6,13 @@ const emptySummary: FeedbackSummary = {
   total: 0,
   rerollsFromAlmostRight: 0,
   counts: { accept: 0, almostRight: 0, miss: 0 },
+  postAcceptRatings: {
+    not_this: 0,
+    itll_do: 0,
+    good_pick: 0,
+    this_is_it: 0,
+    perfect: 0,
+  },
 };
 
 export function FeedbackSummaryPage() {
@@ -55,6 +62,24 @@ export function FeedbackSummaryPage() {
         </p>
         <p style={{ margin: "6px 0 0", fontSize: 14 }}>
           Miss: <strong>{summary.counts.miss}</strong> ({missPct}%)
+        </p>
+      </div>
+      <div className="card" style={{ marginTop: 12 }}>
+        <p style={{ margin: 0, fontSize: 13, color: "var(--ts)" }}>Post-accept ratings</p>
+        <p style={{ margin: "8px 0 0", fontSize: 14 }}>
+          Not this: <strong>{summary.postAcceptRatings.not_this}</strong>
+        </p>
+        <p style={{ margin: "6px 0 0", fontSize: 14 }}>
+          It'll do: <strong>{summary.postAcceptRatings.itll_do}</strong>
+        </p>
+        <p style={{ margin: "6px 0 0", fontSize: 14 }}>
+          Good pick: <strong>{summary.postAcceptRatings.good_pick}</strong>
+        </p>
+        <p style={{ margin: "6px 0 0", fontSize: 14 }}>
+          This is it: <strong>{summary.postAcceptRatings.this_is_it}</strong>
+        </p>
+        <p style={{ margin: "6px 0 0", fontSize: 14 }}>
+          Perfect: <strong>{summary.postAcceptRatings.perfect}</strong>
         </p>
       </div>
 

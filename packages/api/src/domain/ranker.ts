@@ -70,7 +70,15 @@ export function rankArchetypes(input: RecommendInput): RankedArchetype[] {
     return a.faction === "either" || a.faction === factionPreference;
   });
 
-  const ranked = filtered.map((a) => scoreArchetype(a, desired));
+  const preferredClass = input.signals.preferredClass;
+  const ranked = filtered.map((a) => {
+    const scored = scoreArchetype(a, desired);
+    if (preferredClass && a.classId === preferredClass) {
+      scored.score += 3;
+      scored.reasons.push("preferred_class");
+    }
+    return scored;
+  });
   ranked.sort((a, b) => b.score - a.score);
   return ranked;
 }

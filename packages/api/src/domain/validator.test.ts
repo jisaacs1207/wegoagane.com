@@ -38,6 +38,8 @@ test("validateDestinyFeedbackInput accepts valid M10 payload", () => {
     sessionId: "session-1",
     destinyId: "destiny-1",
     choice: "almost_right",
+    stage: "reroll_gate",
+    rerollReason: "almost_right",
     rerollFromClassId: "mage",
     rerollToClassId: "warrior",
   });

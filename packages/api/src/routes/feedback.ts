@@ -14,6 +14,9 @@ export async function handleFeedback(c: Context<ApiEnv>) {
     sessionId: input.sessionId,
     destinyId: input.destinyId,
     choice: input.choice,
+    stage: input.stage ?? "reroll_gate",
+    rerollReason: input.rerollReason ?? null,
+    postAcceptRating: input.postAcceptRating ?? null,
     note: input.note ?? null,
     rerollFromClassId: input.rerollFromClassId ?? null,
     rerollToClassId: input.rerollToClassId ?? null,
@@ -26,13 +29,19 @@ export async function handleFeedback(c: Context<ApiEnv>) {
 feedbackRouter.post("/", handleFeedback);
 
 export async function handleFeedbackSummary(c: Context<ApiEnv>) {
-  const [totalsResult, rerollResult, groupedResult] = await Promise.all([
+  const [totalsResult, rerollResult, groupedResult, postAcceptResult] = await Promise.all([
     c.env.DB.prepare("SELECT COUNT(*) AS total FROM destiny_feedback").first<{ total: number }>(),
     c.env.DB.prepare(
       "SELECT COUNT(*) AS rerolls FROM destiny_feedback WHERE choice = 'almost_right' AND reroll_to_class_id IS NOT NULL",
     ).first<{ rerolls: number }>(),
     c.env.DB.prepare("SELECT choice, COUNT(*) AS count FROM destiny_feedback GROUP BY choice").all<{
       choice: string;
+      count: number;
+    }>(),
+    c.env.DB.prepare(
+      "SELECT post_accept_rating AS rating, COUNT(*) AS count FROM destiny_feedback WHERE stage = 'post_accept' AND post_accept_rating IS NOT NULL GROUP BY post_accept_rating",
+    ).all<{
+      rating: string;
       count: number;
     }>(),
   ]);
@@ -49,10 +58,24 @@ export async function handleFeedbackSummary(c: Context<ApiEnv>) {
     if (row.choice === "miss") counts.miss = row.count;
   }
 
+  const postAcceptRatings: Record<string, number> = {
+    not_this: 0,
+    itll_do: 0,
+    good_pick: 0,
+    this_is_it: 0,
+    perfect: 0,
+  };
+  for (const row of postAcceptResult.results ?? []) {
+    if (row.rating in postAcceptRatings) {
+      postAcceptRatings[row.rating] = row.count;
+    }
+  }
+
   return c.json({
     total: totalsResult?.total ?? 0,
     rerollsFromAlmostRight: rerollResult?.rerolls ?? 0,
     counts,
+    postAcceptRatings,
   });
 }
 

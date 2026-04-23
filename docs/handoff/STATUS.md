@@ -1,6 +1,6 @@
 # Build status & iteration contract
 
-**Last updated:** 2026-04-23 (production AI verified; OpenRouter Auto + ops docs refresh)
+**Last updated:** 2026-04-23 (M10 refinement + rating gate shipped)
 
 ---
 
@@ -8,10 +8,10 @@
 
 | Field | Value |
 |--------|--------|
-| **Current milestone** | **M10 (next)** — refinement + rating gate (reroll, “almost right,” post-accept rating) |
+| **Current milestone** | **M11 (next)** — share images + OG (Browser Rendering → R2) |
 | **Blocked by** | — |
-| **Last build iteration** | **M3–M9 + AI hardened on `main`:** Worker `POST /api/v1/recommend` + `POST /api/v1/memorial`, D1 + Drizzle (`memorials`, AI columns on `recommendation_logs`), web death flow + fixture fallbacks. **AI ops:** OpenRouter **`openrouter/auto`** defaults in `wrangler.toml`; truthy `AI_ENABLED`; **`aiMeta`** (`gate`, `modelId`, **`resolvedModelId`**, errors, latency); **`extractJsonPayload`** before `JSON.parse` for fenced/prose LLM output; `provider.sort` omitted when model is auto. **CI:** API typecheck + migration drift + **`npm test`**. **Git:** feature branches → PR → merge (e.g. **#12–#14** on this repo); do not turn off `main` ruleset for routine work. **Prod smoke:** memorial + recommend return **`output.sourceType: "ai"`** when gate + key healthy. |
-| **Next “request to move forward” criteria** | Keep **Web** + **API** CI green on `main`; add ruleset required check **API** if not already; watch OpenRouter **cost/latency** (auto picks premium models sometimes); implement **M10** rating/refinement slice when ready. |
+| **Last build iteration** | **M10 shipped:** rating-gate reroll flow in both planning and death results; five reroll reasons (`wrong_class`, `wrong_energy`, `wrong_goals`, `almost_right`, `just_curious`) + optional notes; reason-specific mutation strategy (`excludedClasses` or `preferredClass`) and restart to goals on `wrong_goals`; post-accept non-blocking 5-point rating (`not_this` → `perfect`); structured persistence in `destiny_feedback` (`stage`, `reroll_reason`, `post_accept_rating`) + API summary endpoint (`/api/v1/feedback/summary`) + dev summary route (`/ops/feedback`). |
+| **Next “request to move forward” criteria** | Start **M11** by generating share images from accepted runs (Worker Browser Rendering → R2), add async UX state for share generation, and verify social preview metadata for Discord/Twitter. Keep Web/API CI green and migration drift clean. |
 
 ---
 
@@ -59,7 +59,7 @@ Aligned with [04-engineering-data-ops.md](04-engineering-data-ops.md) §26, grou
 | **M7** | Workers + D1 + session persistence | **Shipped:** `packages/api` Worker + Drizzle schema + migration + inserts into sessions/question_answers/destinies/recommendation_logs; live on `wegoagane.com/api/*` | M6 | — |
 | **M8** | AI Gateway + presentation layer | **Shipped:** OpenRouter-backed adapter; defaults **`openrouter/auto`**; deterministic winner unchanged; retry + validate + fallback; **`aiMeta`** + **`resolvedModelId`**; JSON extraction for markdown-wrapped responses | M6–M7 | Revisit pinned vs auto when cost/tier policy is set (§18) |
 | **M9** | Memorial pipeline | **Shipped:** template-first memorial pipeline + validator + persistence + `POST /api/v1/memorial` with AI optional enrichment and fallback | M8 | Name suggest vs optional (29.5); tone “bullshit death” (29.3) |
-| **M10** | Refinement + rating gate | Reroll reasons, “almost right,” post-accept rating | M6–M9 | — |
+| **M10** | Refinement + rating gate | **Shipped:** required reroll rating gate, reason-driven reroll/refinement behavior, and post-accept non-blocking rating capture with structured feedback telemetry | M6–M9 | — |
 | **M11** | Share images + OG | Browser Rendering → R2; async UX; Discord/Twitter preview | M2, M7 | — |
 | **M12** | Analytics + observability | PostHog events per §21; validation_failed + cost alerts | M7+ | Acceptance stats on cards? (29.8) |
 | **M13** | Local memory + polish | localStorage biases; content iteration | M10–M12 | Planning “first HC” signal (29.4) |
@@ -113,3 +113,4 @@ When the checklist is complete enough for the next milestone, update **Current m
 | 2026-04-23 | **PR #12–#13:** API foundation + AI gate / `aiMeta` / truthy `AI_ENABLED` / Wrangler prod AI vars merged to `main` |
 | 2026-04-23 | **PR #14:** OpenRouter **`openrouter/auto`** defaults + skip `provider.sort` for auto + **`resolvedModelId`** telemetry |
 | 2026-04-23 | **`5255d3b` on `main`:** **`extractJsonPayload`** before parse — fixes `ai_invalid_json` when models wrap JSON in fences or lead with prose; production memorial/recommend verified **`sourceType: "ai"`** when gate + token healthy |
+| 2026-04-23 | **M10 complete:** reroll rating gate + five reason options, reason-aware reroll mutation (`wrong_class` / `wrong_energy` / `wrong_goals` / `almost_right` / `just_curious`), post-accept 5-point rating, `destiny_feedback` schema extended (`stage`, `reroll_reason`, `post_accept_rating`), and `/api/v1/feedback/summary` + `/ops/feedback` for quick ops validation |

@@ -33,6 +33,7 @@ export const recommendInputSchema = z.object({
     freeform: z.string().max(240).optional(),
     factionPreference: z.enum(factionValues).optional(),
     excludedClasses: z.array(z.enum(classValues)).max(6).optional(),
+    preferredClass: z.enum(classValues).optional(),
   }),
 });
 
@@ -51,6 +52,11 @@ export const destinyFeedbackInputSchema = z.object({
   sessionId: z.string().min(1).max(80),
   destinyId: z.string().min(1).max(80),
   choice: z.enum(["accept", "almost_right", "miss"]),
+  stage: z.enum(["reroll_gate", "post_accept"]).optional(),
+  rerollReason: z
+    .enum(["wrong_class", "wrong_energy", "wrong_goals", "almost_right", "just_curious"])
+    .optional(),
+  postAcceptRating: z.enum(["not_this", "itll_do", "good_pick", "this_is_it", "perfect"]).optional(),
   note: z.string().max(240).optional(),
   rerollFromClassId: z.enum(classValues).optional(),
   rerollToClassId: z.enum(classValues).optional(),
