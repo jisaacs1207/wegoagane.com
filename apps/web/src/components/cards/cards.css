@@ -1,0 +1,200 @@
+/* M2 card shells — handbook §14 memorial warmth + §15 share framing */
+
+.memorial-card {
+  position: relative;
+  border-radius: var(--radius-card);
+  border: 1px solid #4a4034;
+  padding: 16px 16px 28px;
+  background: linear-gradient(165deg, #242018 0%, #1e1b18 48%, #1a1816 100%);
+  overflow: hidden;
+}
+
+.memorial-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 10px;
+}
+
+.memorial-card__mark {
+  color: var(--gold-dim);
+  display: flex;
+  align-items: center;
+}
+
+.memorial-card__faction {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--bm);
+}
+
+.memorial-card__faction--horde {
+  color: #f0b8c4;
+  border-color: #7a3040;
+  background: rgba(196, 31, 59, 0.12);
+}
+
+.memorial-card__faction--alliance {
+  color: #b8d8f5;
+  border-color: #2a5a8a;
+  background: rgba(26, 120, 194, 0.12);
+}
+
+.memorial-card__faction--neutral {
+  color: var(--ts);
+}
+
+.memorial-card__facts {
+  font-size: 12px;
+  color: var(--ts);
+  margin: 0 0 12px;
+  line-height: 1.4;
+}
+
+.memorial-card__epitaph {
+  margin: 0;
+  font-size: 18px;
+  font-style: italic;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--tp);
+}
+
+.card-watermark {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--tx);
+  user-select: none;
+}
+
+.destiny-card {
+  border-radius: var(--radius-card);
+  border: 1px solid var(--bm);
+  background: var(--s2);
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.destiny-card__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.destiny-card__stripe {
+  width: 3px;
+  align-self: stretch;
+  border-radius: 2px;
+  background: var(--destiny-class, var(--mage));
+  flex-shrink: 0;
+}
+
+.destiny-card__titles h2 {
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.destiny-card__titles p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ts);
+}
+
+.destiny-card__tier {
+  margin-top: 12px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--td);
+}
+
+.destiny-card__bullets {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--tp);
+  line-height: 1.45;
+}
+
+.destiny-card__bullets li {
+  margin-bottom: 4px;
+}
+
+.share-combo {
+  margin-top: 18px;
+}
+
+.share-combo__label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--td);
+  margin-bottom: 10px;
+}
+
+.share-combo__label svg {
+  color: var(--gold-dim);
+}
+
+.share-combo__grid {
+  display: grid;
+  gap: 12px;
+  max-width: 420px;
+  grid-template-columns: 1fr;
+}
+
+.share-combo__panel {
+  min-height: 100%;
+}
+
+.share-combo__bridge {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold-dim);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+@media (min-width: 520px) {
+  .share-combo__grid {
+    grid-template-columns: 1fr auto 1fr;
+    gap: 14px;
+    max-width: 560px;
+    align-items: stretch;
+  }
+
+  .share-combo__bridge {
+    display: flex;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    padding: 0 4px;
+  }
+}
+
+.design-cards-grid {
+  display: grid;
+  gap: 20px;
+}
+
+@media (min-width: 560px) {
+  .design-cards-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}

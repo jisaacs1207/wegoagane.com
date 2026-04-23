@@ -1,25 +1,20 @@
 import { Link } from "react-router-dom";
+import { destinyFixture, memorialFixture } from "../../content/cardFixtures";
+import { DestinyCard } from "../../components/cards/DestinyCard";
+import { MemorialCard } from "../../components/cards/MemorialCard";
+import { ShareComboLayout } from "../../components/cards/ShareComboLayout";
 
 export function DeathResultStep() {
   return (
     <div>
+      <MemorialCard data={memorialFixture} />
+      <DestinyCard data={destinyFixture} />
       <div className="card">
-        <p className="step-label">Memorial · stub</p>
-        <h1 className="hero-question" style={{ fontStyle: "italic", fontWeight: 600 }}>
-          &ldquo;They pulled once too often.&rdquo;
-        </h1>
-        <p className="hero-sub">Level 47 · Stranglethorn · patrol (placeholder)</p>
-        <p style={{ margin: 0, fontSize: 13, color: "var(--ts)" }}>
-          Real epitaphs and post-mortem copy will come from the memorial pipeline + validator.
+        <ShareComboLayout memorial={memorialFixture} destiny={destinyFixture} />
+        <p style={{ margin: "14px 0 0", fontSize: 12, color: "var(--ts)" }}>
+          Combo layout is the default death-flow share artifact (handbook §15.1). Image export + OG land in M11.
         </p>
-      </div>
-      <div className="card">
-        <p className="step-label">Destiny · stub</p>
-        <div className="destiny-preview">
-          <h3>Orc Frost Mage · Safe path</h3>
-          <p>First 10 Levels checklist, talents, and share card — wired in later milestones.</p>
-        </div>
-        <div className="flow-nav" style={{ marginTop: 20 }}>
+        <div className="flow-nav" style={{ marginTop: 18 }}>
           <Link to="/" className="btn-ghost" style={{ display: "inline-flex", alignItems: "center" }}>
             Home
           </Link>

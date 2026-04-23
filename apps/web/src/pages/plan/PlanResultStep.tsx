@@ -1,14 +1,15 @@
 import { Link } from "react-router-dom";
+import { planningDestinyFixture } from "../../content/cardFixtures";
+import { DestinyCard } from "../../components/cards/DestinyCard";
 
 export function PlanResultStep() {
   return (
-    <div className="card">
-      <p className="step-label">Destiny · stub</p>
-      <div className="destiny-preview">
-        <h3>Tauren Enhancement Shaman · Safe path</h3>
-        <p>No memorial in planning mode — refinement and share land in later milestones.</p>
-      </div>
-      <div className="flow-nav" style={{ marginTop: 20 }}>
+    <div>
+      <DestinyCard data={planningDestinyFixture} />
+      <p style={{ marginTop: 14, fontSize: 13, color: "var(--ts)" }}>
+        Planning mode skips memorial chrome — only the next Destiny card is shown here.
+      </p>
+      <div className="flow-nav" style={{ marginTop: 8 }}>
         <Link to="/" className="btn-ghost" style={{ display: "inline-flex", alignItems: "center" }}>
           Home
         </Link>

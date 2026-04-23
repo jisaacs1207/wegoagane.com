@@ -4,6 +4,7 @@ import { DeathFlowPage } from "./pages/DeathFlowPage";
 import { HomePage } from "./pages/HomePage";
 import { LuckyRollPage } from "./pages/LuckyRollPage";
 import { PlanFlowPage } from "./pages/PlanFlowPage";
+import { DesignCardsPage } from "./pages/DesignCardsPage";
 import { SharePlaceholderPage } from "./pages/SharePlaceholderPage";
 
 export function App() {
@@ -15,6 +16,7 @@ export function App() {
         <Route path="/draft-a-run/*" element={<PlanFlowPage />} />
         <Route path="/lucky-roll" element={<LuckyRollPage />} />
         <Route path="/share/:runId" element={<SharePlaceholderPage />} />
+        <Route path="/design/cards" element={<DesignCardsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppShell>
