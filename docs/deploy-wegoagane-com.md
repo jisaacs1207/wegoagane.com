@@ -154,10 +154,10 @@ Routing is declared in [`packages/api/wrangler.toml`](../packages/api/wrangler.t
 3. Configure AI vars (optional, defaults are safe template-only):
    - `AI_ENABLED` (`"false"` default)
    - `AI_GATEWAY_URL` (OpenRouter: `https://openrouter.ai/api/v1/chat/completions`)
-   - `AI_MODEL_DESTINY` (OpenRouter id format: `provider/model`, example `openai/gpt-4.1-mini`)
-   - `AI_MODEL_MEMORIAL` (example `anthropic/claude-3.5-sonnet`)
+   - `AI_MODEL_DESTINY` (default in repo: **`openrouter/auto`** — see [Auto Router](https://openrouter.ai/docs/features/model-routing); pinned ids use `provider/model`)
+   - `AI_MODEL_MEMORIAL` (same; **`openrouter/auto`** by default)
    - `AI_APP_TITLE` (maps to OpenRouter `X-OpenRouter-Title`)
-   - `AI_PROVIDER_SORT` (`latency`, `price`, or `throughput`)
+   - `AI_PROVIDER_SORT` (`latency`, `price`, or `throughput` — not sent with `openrouter/auto`)
    - Wrangler secret: `AI_GATEWAY_TOKEN`
 4. Apply migrations and deploy:
 
@@ -176,7 +176,7 @@ If this returns HTTP `405` on `POST /api/v1/recommend`, `/api/*` is still handle
 
 **Wrangler vs dashboard:** `wrangler deploy` applies `[env.production.vars]` from `packages/api/wrangler.toml`. A deploy can **overwrite** Worker variables you set only in the Cloudflare UI. Keep `AI_ENABLED` and other non-secrets in `wrangler.toml` in sync with what you want in production, and use **Secrets** for `AI_GATEWAY_TOKEN` only.
 
-Responses from `POST /api/v1/recommend` and `POST /api/v1/memorial` include **`aiMeta`** (`gate`, `providerError`, `modelId`, …) so you can see whether the AI gate is open (`gate.ready`) and why OpenRouter fell back (`providerError`) without guessing.
+Responses from `POST /api/v1/recommend` and `POST /api/v1/memorial` include **`aiMeta`** (`gate`, `providerError`, `modelId` = request model, **`resolvedModelId`** = OpenRouter’s chosen model when present, …) so you can see whether the AI gate is open (`gate.ready`) and why OpenRouter fell back (`providerError`) without guessing.
 
 ### OpenRouter notes (current API)
 
