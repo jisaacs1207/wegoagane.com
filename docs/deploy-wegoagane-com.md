@@ -178,6 +178,23 @@ If this returns HTTP `405` on `POST /api/v1/recommend`, `/api/*` is still handle
 
 Responses from `POST /api/v1/recommend` and `POST /api/v1/memorial` include **`aiMeta`** (`gate`, `providerError`, `modelId` = request model, **`resolvedModelId`** = OpenRouter’s chosen model when present, …) so you can see whether the AI gate is open (`gate.ready`) and why OpenRouter fell back (`providerError`) without guessing.
 
+**Symptom → look here**
+
+| Symptom | Likely cause |
+|---------|----------------|
+| `output.sourceType` is `"template"` / `fallbackUsed: true` | **`aiMeta.gate`** not ready (`AI_ENABLED` false, missing secret, etc.) or **`aiMeta.providerError`** from OpenRouter |
+| `ai_invalid_json` in **`aiMeta`** | Model returned JSON wrapped in markdown fences or leading prose — fixed in Worker by **`extractJsonPayload`** before parse; redeploy if you still see this on old revisions |
+| `sourceType: "ai"` + **`resolvedModelId`** set | Healthy Auto or pinned model path |
+
+Example (memorial, production):
+
+```bash
+curl -sS -X POST "https://wegoagane.com/api/v1/memorial" \
+  -H "content-type: application/json" \
+  -d '{"zone":"Durotar","cause":"Overpull","mood":"dry","nextSignal":"smaller pulls","faction":"horde","characterName":"Smoke","level":10}' \
+  | jq '{sourceType: .output.sourceType, fallbackUsed: .output.fallbackUsed, aiMeta}'
+```
+
 ### OpenRouter notes (current API)
 
 - Chat completion endpoint: `POST https://openrouter.ai/api/v1/chat/completions`
@@ -214,4 +231,4 @@ Open `http://localhost:5173` (Vite default).
 
 ---
 
-*Production **https://wegoagane.com** on Cloudflare Pages from `main` — see [`docs/handoff/STATUS.md`](handoff/STATUS.md). Cloudflare Pages references as of April 22, 2026; DNS lessons appended April 23, 2026.*
+*Production **https://wegoagane.com** on Cloudflare Pages from `main` — see [`docs/handoff/STATUS.md`](handoff/STATUS.md). Cloudflare Pages references as of April 22, 2026; DNS + API + OpenRouter ops updated April 23, 2026.*

@@ -4,7 +4,7 @@ This package is the M3-M9 backend foundation:
 
 - Drizzle typed schema + SQL migrations (D1)
 - Deterministic ranker + validator + template-only destiny output
-- Optional AI Gateway enrichment (env-gated, validator-first fallback)
+- Optional **OpenRouter** enrichment (env-gated, validator-first fallback)
 - Hono routes for recommendation + memorial generation
 - Persistence for sessions, destinies, memorials, and recommendation logs
 
@@ -72,6 +72,17 @@ Runtime request headers now include OpenRouter attribution defaults:
 When AI is disabled/unavailable/invalid, both pipelines return validated template output.
 
 API responses include **`aiMeta.resolvedModelId`** when OpenRouter returns the concrete model used (Auto Router sets top-level `model` in the completion response per [OpenRouter docs](https://openrouter.ai/docs/features/model-routing)).
+
+### Debugging production (quick)
+
+Always inspect **`aiMeta`** (not only `output`): gate off → template path; `providerError` → upstream/model; `ai_invalid_json` after a provider change → ensure latest Worker includes **`extractJsonPayload`** (fenced JSON / prose prefix).
+
+```bash
+curl -sS -X POST "https://wegoagane.com/api/v1/memorial" \
+  -H "content-type: application/json" \
+  -d '{"zone":"Durotar","cause":"Overpull","mood":"dry","nextSignal":"smaller pulls","faction":"horde","characterName":"DocCheck","level":10}' \
+  | jq '{sourceType: .output.sourceType, fallbackUsed: .output.fallbackUsed, aiMeta}'
+```
 
 ## Model bakeoff (optimize destiny vs memorial)
 

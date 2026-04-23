@@ -4,7 +4,7 @@
 
 **Full single-file copy (frozen v4):** [`docs/wegoagane-handoff-v4-archive.md`](wegoagane-handoff-v4-archive.md)
 
-**Current build tracker:** [`docs/handoff/STATUS.md`](handoff/STATUS.md)
+**Current build tracker:** [`docs/handoff/STATUS.md`](handoff/STATUS.md) — **M3–M9 on `main`**, production API + optional **OpenRouter** (`openrouter/auto` defaults, **`aiMeta`** / **`resolvedModelId`**).
 
 ---
 
