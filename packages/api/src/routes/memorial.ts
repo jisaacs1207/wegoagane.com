@@ -1,4 +1,6 @@
 import { type Context, Hono } from "hono";
+import { captureServerEvent } from "../analytics/posthog";
+import { AnalyticsEvent } from "../analytics/events";
 import { enrichMemorial, getAiGateStatus } from "../ai/adapter";
 import { getDb, type ApiEnv } from "../db/client";
 import { memorials, questionAnswers, sessions } from "../db/schema";
@@ -16,6 +18,12 @@ export async function handleMemorial(c: Context<ApiEnv>) {
   const failures =
     aiResult.validationFailures.length > 0 ? aiResult.validationFailures : validateMemorialOutput(output);
   if (failures.length > 0) {
+    c.executionCtx.waitUntil(
+      captureServerEvent(c.env, AnalyticsEvent.MemorialGenerationFailed, input.sessionId ?? "anonymous", {
+        reason: "validation_failed",
+        validationFailures: failures,
+      }),
+    );
     return c.json({ error: "validation_failed", failures }, 422);
   }
 
@@ -67,6 +75,17 @@ export async function handleMemorial(c: Context<ApiEnv>) {
     sourceType: output.sourceType,
     contentJson: JSON.stringify(output),
   });
+
+  c.executionCtx.waitUntil(
+    captureServerEvent(c.env, AnalyticsEvent.MemorialGenerated, sessionId, {
+      memorialId,
+      sourceType: output.sourceType,
+      fallbackUsed: aiResult.telemetry.fallbackUsed,
+      resolvedModelId: aiResult.telemetry.resolvedModelId,
+      aiErrorType: aiResult.telemetry.providerError,
+      aiLatencyMs: aiResult.telemetry.latencyMs,
+    }),
+  );
 
   return c.json({
     sessionId,

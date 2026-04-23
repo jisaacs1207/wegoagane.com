@@ -1,6 +1,8 @@
 import { type Context, Hono } from "hono";
 import { z } from "zod";
 import type { ApiEnv } from "../db/client";
+import { captureServerEvent } from "../analytics/posthog";
+import { AnalyticsEvent } from "../analytics/events";
 import { fallbackShareSvg, renderShareSvg, shareImageUrl, type SharePayload, type ShareStatus } from "../domain/share";
 
 const createShareSchema = z.object({
@@ -86,6 +88,10 @@ async function processShareRun(env: ApiEnv["Bindings"], runId: string): Promise<
       .prepare("UPDATE share_runs SET status = 'failed', error = ?2, updated_at = ?3 WHERE run_id = ?1")
       .bind(runId, "share_images_binding_missing", Date.now())
       .run();
+    await captureServerEvent(env, AnalyticsEvent.ShareFailed, runId, {
+      runId,
+      error: "share_images_binding_missing",
+    });
     return;
   }
   const now = Date.now();
@@ -93,6 +99,10 @@ async function processShareRun(env: ApiEnv["Bindings"], runId: string): Promise<
     .prepare("UPDATE share_runs SET status = 'rendering', updated_at = ?2, error = NULL WHERE run_id = ?1")
     .bind(runId, now)
     .run();
+  await captureServerEvent(env, AnalyticsEvent.ShareRendering, runId, {
+    runId,
+    status: "rendering",
+  });
 
   try {
     const run = await getShareRun(db, runId);
@@ -115,12 +125,23 @@ async function processShareRun(env: ApiEnv["Bindings"], runId: string): Promise<
       )
       .bind(runId, key, imageUrl, Date.now())
       .run();
+    await captureServerEvent(env, AnalyticsEvent.ShareReady, run.session_id, {
+      runId,
+      destinyId: run.destiny_id,
+      status: "ready",
+      renderLatencyMs: Date.now() - now,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "share_render_failed";
     await db
       .prepare("UPDATE share_runs SET status = 'failed', error = ?2, updated_at = ?3 WHERE run_id = ?1")
       .bind(runId, message.slice(0, 240), Date.now())
       .run();
+    await captureServerEvent(env, AnalyticsEvent.ShareFailed, runId, {
+      runId,
+      error: message.slice(0, 240),
+      renderLatencyMs: Date.now() - now,
+    });
   }
 }
 
@@ -144,6 +165,14 @@ export async function handleCreateShare(c: Context<ApiEnv>) {
     if (row.status === "queued" || row.status === "failed") {
       c.executionCtx.waitUntil(processShareRun(c.env, row.run_id));
     }
+    c.executionCtx.waitUntil(
+      captureServerEvent(c.env, AnalyticsEvent.ShareStarted, row.session_id, {
+        runId: row.run_id,
+        destinyId: row.destiny_id,
+        status: row.status,
+        reused: true,
+      }),
+    );
     return c.json(asClientResponse(row));
   }
 
@@ -157,6 +186,15 @@ export async function handleCreateShare(c: Context<ApiEnv>) {
 
   c.executionCtx.waitUntil(processShareRun(c.env, runId));
   const created = await getShareRun(c.env.DB, runId);
+  c.executionCtx.waitUntil(
+    captureServerEvent(c.env, AnalyticsEvent.ShareStarted, input.sessionId, {
+      runId,
+      destinyId: input.destinyId,
+      memorialId: input.memorialId ?? null,
+      status: "queued",
+      reused: false,
+    }),
+  );
   return c.json(asClientResponse(created as ShareRow), 201);
 }
 
@@ -240,7 +278,49 @@ export async function handleGetShareOg(c: Context<ApiEnv>) {
   return c.html(html);
 }
 
+export async function handleShareSummary(c: Context<ApiEnv>) {
+  const rowsResult = await c.env.DB.prepare(
+    "SELECT status, error, created_at, updated_at FROM share_runs ORDER BY created_at DESC LIMIT 200",
+  ).all<{
+    status: ShareStatus;
+    error: string | null;
+    created_at: number;
+    updated_at: number;
+  }>();
+
+  const rows = rowsResult.results ?? [];
+  const counts = {
+    queued: 0,
+    rendering: 0,
+    ready: 0,
+    failed: 0,
+  };
+  const latencies: number[] = [];
+  for (const row of rows) {
+    counts[row.status] += 1;
+    if (row.status === "ready") {
+      latencies.push(Math.max(0, row.updated_at - row.created_at));
+    }
+  }
+  latencies.sort((a, b) => a - b);
+  const avgLatencyMs =
+    latencies.length > 0 ? Math.round(latencies.reduce((sum, n) => sum + n, 0) / latencies.length) : null;
+  const p95LatencyMs =
+    latencies.length > 0 ? latencies[Math.min(latencies.length - 1, Math.floor(latencies.length * 0.95))] : null;
+  const total = rows.length;
+  const failedRate = total > 0 ? Number((counts.failed / total).toFixed(4)) : 0;
+
+  return c.json({
+    sampleSize: total,
+    counts,
+    failedRate,
+    avgLatencyMs,
+    p95LatencyMs,
+  });
+}
+
 shareRouter.post("/", handleCreateShare);
+shareRouter.get("/summary/health", handleShareSummary);
 shareRouter.get("/:runId", handleGetShare);
 shareRouter.get("/:runId/image", handleGetShareImage);
 shareRouter.get("/:runId/og", handleGetShareOg);

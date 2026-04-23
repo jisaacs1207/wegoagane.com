@@ -1,4 +1,6 @@
 import { type Context, Hono } from "hono";
+import { captureServerEvent } from "../analytics/posthog";
+import { AnalyticsEvent } from "../analytics/events";
 import { getDb, type ApiEnv } from "../db/client";
 import { destinyFeedback } from "../db/schema";
 import { validateDestinyFeedbackInput } from "../domain/validator";
@@ -22,6 +24,18 @@ export async function handleFeedback(c: Context<ApiEnv>) {
     rerollToClassId: input.rerollToClassId ?? null,
     createdAt: new Date(Date.now()),
   });
+
+  c.executionCtx.waitUntil(
+    captureServerEvent(c.env, AnalyticsEvent.FeedbackSubmitted, input.sessionId, {
+      destinyId: input.destinyId,
+      choice: input.choice,
+      stage: input.stage ?? "reroll_gate",
+      rerollReason: input.rerollReason ?? null,
+      postAcceptRating: input.postAcceptRating ?? null,
+      rerollFromClassId: input.rerollFromClassId ?? null,
+      rerollToClassId: input.rerollToClassId ?? null,
+    }),
+  );
 
   return c.json({ ok: true });
 }

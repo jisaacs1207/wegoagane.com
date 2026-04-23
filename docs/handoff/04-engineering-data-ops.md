@@ -302,6 +302,16 @@ Surface in PostHog dashboards + Workers Logs + OpenRouter usage/cost (dashboard 
 ### Senior-dev note on monitoring
 Set two alerts at launch: (1) validation_failed spikes above 10% of generations, (2) daily AI spend exceeds cap. Everything else can wait until you have real traffic. Don't build a dashboard until you have questions to ask it.
 
+### 21.4 M12 analytics implementation (current)
+
+- API emits PostHog server events for generation, feedback, and share lifecycle.
+- Web emits PostHog client events for flow start, reroll reasons, accepts, share page state transitions, and post-accept ratings.
+- Runtime analytics config is served by API (`/api/v1/analytics/config`) so web can initialize with `POSTHOG_HOST` + project token without hardcoding build-time keys.
+- Share health summary endpoint (`/api/v1/share/summary/health`) exposes sample counts, failed rate, average latency, and p95 latency for operational checks.
+- Initial thresholds:
+  - `share_failed_rate > 10%`
+  - `share_render_p95 > 8000ms`
+
 ## 26. Implementation order
 
 1. App shell + routing

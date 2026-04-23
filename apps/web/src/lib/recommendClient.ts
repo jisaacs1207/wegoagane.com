@@ -106,6 +106,15 @@ export type ShareRunResponse = {
   error: string | null;
 };
 
+export type AnalyticsConfigResponse = {
+  posthog: {
+    enabled: boolean;
+    host: string;
+    key: string | null;
+    uiHost: string;
+  };
+};
+
 export async function fetchDestiny(input: RecommendRequest): Promise<DestinyResult> {
   const response = await fetch("/api/v1/recommend", {
     method: "POST",
@@ -192,4 +201,12 @@ export async function fetchShareRun(runId: string): Promise<ShareRunResponse> {
     throw new Error(`share_status_failed:${response.status}`);
   }
   return (await response.json()) as ShareRunResponse;
+}
+
+export async function fetchAnalyticsConfig(): Promise<AnalyticsConfigResponse> {
+  const response = await fetch("/api/v1/analytics/config");
+  if (!response.ok) {
+    throw new Error(`analytics_config_failed:${response.status}`);
+  }
+  return (await response.json()) as AnalyticsConfigResponse;
 }

@@ -259,6 +259,48 @@ curl -sS "https://wegoagane.com/api/v1/share/<runId>/og" | rg "og:image|twitter:
 
 ---
 
+## M12 analytics + observability (PostHog US)
+
+Runtime config:
+
+- API Worker vars:
+  - `POSTHOG_ENABLED` (`"true"` in production)
+  - `POSTHOG_HOST` (`https://us.i.posthog.com`)
+- API Worker secret:
+  - `POSTHOG_PROJECT_API_KEY` (`phc_...`)
+- Web analytics host:
+  - `https://us.i.posthog.com` (resolved via `/api/v1/analytics/config`)
+
+Set API secret:
+
+```bash
+npx wrangler secret put POSTHOG_PROJECT_API_KEY --env production
+```
+
+Optional deploy guard vars/secrets used by `.github/workflows/api-deploy.yml`:
+
+- `vars.API_POSTHOG_ENABLED`
+- `vars.API_POSTHOG_HOST`
+- `secrets.API_POSTHOG_PROJECT_API_KEY`
+
+M12 endpoints/events to verify:
+
+- `GET /api/v1/analytics/config`
+- `GET /api/v1/share/summary/health`
+- PostHog events:
+  - `destiny_generated`, `destiny_generation_failed`
+  - `memorial_generated`, `memorial_generation_failed`
+  - `feedback_submitted`
+  - `share_started`, `share_rendering`, `share_ready`, `share_failed`
+  - `flow_started`, `reroll_reason_selected`, `accept_clicked`, `share_viewed`, `share_status_changed`, `post_accept_rating_submitted`
+
+Suggested initial alerts:
+
+- `share_failed_rate > 10%` on latest sample (see `/api/v1/share/summary/health`)
+- `share_render_p95 > 8000ms`
+
+---
+
 ## After you add new required CI jobs
 
 If GitHub gains a new **required** job for merges, add it to ruleset **`wegoagane-main-ci`** or run:

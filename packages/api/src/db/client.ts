@@ -8,6 +8,9 @@ export type ApiEnv = {
     SITE_ORIGIN?: string;
     SHARE_IMAGE_BASE_URL?: string;
     SHARE_RENDER_TIMEOUT_MS?: string;
+    POSTHOG_ENABLED?: string | boolean;
+    POSTHOG_HOST?: string;
+    POSTHOG_PROJECT_API_KEY?: string;
     /** Plain var or JSON binding; compare with `isTruthyEnv` in adapter, not `=== "true"` only */
     AI_ENABLED?: string | boolean;
     AI_GATEWAY_URL?: string;

@@ -4,6 +4,9 @@ import { BrowserRouter } from "react-router-dom";
 import { App } from "./App";
 import "./index.css";
 import "./components/cards/cards.css";
+import { initAnalytics } from "./lib/analytics";
+
+void initAnalytics();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

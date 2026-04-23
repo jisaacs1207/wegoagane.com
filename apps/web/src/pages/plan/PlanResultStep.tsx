@@ -8,6 +8,7 @@ import {
   type RerollReason,
   submitDestinyFeedback,
 } from "../../lib/recommendClient";
+import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 
 const rerollReasons: Array<{ value: RerollReason; label: string }> = [
   { value: "wrong_class", label: "Wrong class" },
@@ -47,12 +48,19 @@ export function PlanResultStep() {
       .catch(() => {
         setDestiny(planningDestinyFixture);
       });
+    trackEvent(AnalyticsEvent.FlowStarted, { flow: "draft_a_run" });
   }, []);
 
   async function runRerollWithReason(reason: RerollReason) {
     if (!sessionId || !destinyId || isSubmitting) return;
     setIsSubmitting(true);
     setActionMessage("");
+    trackEvent(AnalyticsEvent.RerollReasonSelected, {
+      flow: "draft_a_run",
+      reason,
+      destinyId,
+      sessionId,
+    });
     try {
       const intent = sessionStorage.getItem("plan.intent") ?? undefined;
       const freeform = sessionStorage.getItem("plan.freeform") ?? undefined;
@@ -115,6 +123,7 @@ export function PlanResultStep() {
     if (!sessionId || !destinyId || isSubmitting) return;
     setIsSubmitting(true);
     setActionMessage("");
+    trackEvent(AnalyticsEvent.AcceptClicked, { flow: "draft_a_run", destinyId, sessionId });
     try {
       await submitDestinyFeedback({
         sessionId,

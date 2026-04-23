@@ -29,10 +29,31 @@ function escape(text: string): string {
     .replaceAll("'", "&#39;");
 }
 
+function wrapLines(input: string, maxChars: number): string[] {
+  const words = input.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [""];
+  const lines: string[] = [];
+  let line = "";
+  for (const word of words) {
+    const next = line ? `${line} ${word}` : word;
+    if (next.length > maxChars && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = next;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
 export function renderShareSvg(payload: SharePayload): string {
+  const headlineLines = wrapLines(payload.destiny.headline, 36).slice(0, 2);
+  const sublineLines = wrapLines(payload.destiny.subline, 54).slice(0, 2);
+  const tierLines = wrapLines(payload.destiny.tierProse, 72).slice(0, 2);
   const destinyBullets = payload.destiny.bullets
     .slice(0, 4)
-    .map((b, i) => `<tspan x="56" dy="${i === 0 ? 0 : 30}">• ${escape(b)}</tspan>`)
+    .map((b, i) => `<tspan x="56" dy="${i === 0 ? 0 : 34}">• ${escape(b)}</tspan>`)
     .join("");
 
   const memorialBlock = payload.memorial
@@ -52,7 +73,10 @@ export function renderShareSvg(payload: SharePayload): string {
     : "";
 
   const destinyStartY = payload.memorial ? 300 : 80;
-  const bulletsY = destinyStartY + 146;
+  const headlineY = destinyStartY + 92;
+  const sublineY = headlineY + headlineLines.length * 46 + 8;
+  const tierY = sublineY + sublineLines.length * 30 + 10;
+  const bulletsY = tierY + tierLines.length * 30 + 24;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
@@ -66,14 +90,14 @@ export function renderShareSvg(payload: SharePayload): string {
   ${memorialBlock}
   <rect x="40" y="${destinyStartY}" width="1200" height="${payload.memorial ? 380 : 600}" rx="20" fill="#1c2233" />
   <text x="56" y="${destinyStartY + 48}" font-size="24" fill="#93a0c8" font-family="Inter, system-ui, sans-serif">Next Destiny</text>
-  <text x="56" y="${destinyStartY + 92}" font-size="44" fill="#f3f5fb" font-weight="700" font-family="Inter, system-ui, sans-serif">
-    ${escape(payload.destiny.headline)}
+  <text x="56" y="${headlineY}" font-size="44" fill="#f3f5fb" font-weight="700" font-family="Inter, system-ui, sans-serif">
+    ${headlineLines.map((line, i) => `<tspan x="56" dy="${i === 0 ? 0 : 46}">${escape(line)}</tspan>`).join("")}
   </text>
-  <text x="56" y="${destinyStartY + 126}" font-size="22" fill="#cfd6ea" font-family="Inter, system-ui, sans-serif">
-    ${escape(payload.destiny.subline)}
+  <text x="56" y="${sublineY}" font-size="22" fill="#cfd6ea" font-family="Inter, system-ui, sans-serif">
+    ${sublineLines.map((line, i) => `<tspan x="56" dy="${i === 0 ? 0 : 30}">${escape(line)}</tspan>`).join("")}
   </text>
-  <text x="56" y="${destinyStartY + 164}" font-size="20" fill="#a9b2cc" font-family="Inter, system-ui, sans-serif">
-    ${escape(payload.destiny.tierProse)}
+  <text x="56" y="${tierY}" font-size="20" fill="#a9b2cc" font-family="Inter, system-ui, sans-serif">
+    ${tierLines.map((line, i) => `<tspan x="56" dy="${i === 0 ? 0 : 30}">${escape(line)}</tspan>`).join("")}
   </text>
   <text x="56" y="${bulletsY}" font-size="26" fill="#e7ecfb" font-family="Inter, system-ui, sans-serif">
     ${destinyBullets}
