@@ -416,6 +416,61 @@ These are release discipline checks layered on top of existing M11–M13 runbook
 - If a workflow can be built and kept stable in under ~60 minutes of code, code it directly.
 - If integration churn is high (many SaaS connectors, auth tokens, schema drift), use cheap automation glue.
 
+## Autonomous growth engine runtime (full-auto)
+
+- Worker cron trigger (`*/20 * * * *`) now drives autonomous growth cycles through `POST /api/v1/growth/tick`.
+- New growth endpoints:
+  - `POST /api/v1/growth/generate`
+  - `POST /api/v1/growth/assign`
+  - `POST /api/v1/growth/outcome`
+  - `POST /api/v1/growth/promote`
+  - `GET /api/v1/growth/health`
+- New runtime vars:
+  - `GROWTH_AUTOPILOT_ENABLED`
+  - `GROWTH_HARD_STOP_ENABLED`
+  - `GROWTH_DEFAULT_TRAFFIC_PERCENT`
+  - `GROWTH_DEFAULT_HOLDOUT_PERCENT`
+  - `GROWTH_MIN_SAMPLE_SIZE`
+  - `GROWTH_CONTROL_TOKEN` (secret; required for control endpoints in production)
+- GitHub automation: `.github/workflows/growth-autopilot-check.yml` polls `GET /api/v1/growth/health` hourly as a lightweight availability guard.
+
+Hardening in this baseline:
+- Promotion now requires threshold pass and significance-aware accept-rate comparison against baseline promoted variant.
+- Guardrail checks block unknown/scraped asset provenance and missing license tags for community-licensed sources.
+- UI copy experiments are applied through a local accessibility-safe sanitizer and default fallback path.
+
+### Growth control token rotation (quick runbook)
+
+1. Generate a new strong token locally (for example: `openssl rand -hex 32`).
+2. Set it as Cloudflare secret:
+   - `npx wrangler secret put GROWTH_CONTROL_TOKEN --env preview`
+   - `npx wrangler secret put GROWTH_CONTROL_TOKEN --env production`
+3. Redeploy API worker to ensure scheduled and control paths pick up the new secret.
+4. Validate:
+   - unauthenticated `POST /api/v1/growth/tick` returns `403` in production
+   - authenticated request with header `x-growth-control-token` returns `200`
+5. If needed, revoke old automation tokens that referenced the previous value.
+
+### Final production release checklist (growth + core)
+
+- API safety:
+  - `API_GROWTH_CONTROL_TOKEN` present in GitHub secrets and `GROWTH_CONTROL_TOKEN` set in Cloudflare.
+  - `POST /api/v1/growth/tick` returns `403` without token and `200` with `x-growth-control-token`.
+  - `GET /api/v1/growth/health` returns healthy JSON payload.
+- Data readiness:
+  - Run `npm run db:migrate:production --prefix packages/api`.
+  - Confirm new growth tables exist and are writable.
+- Runtime:
+  - Cron trigger enabled (`*/20 * * * *`) and `GROWTH_AUTOPILOT_ENABLED=true` only when ready.
+  - `GROWTH_HARD_STOP_ENABLED=true` in production.
+- Quality gates:
+  - API: `npm run typecheck --prefix packages/api` and `npm run test --prefix packages/api`.
+  - Web: `npm run build --prefix apps/web`.
+  - Smoke: `GROWTH_CONTROL_TOKEN=... npm run smoke:growth:production --prefix packages/api` (verifies growth auth deny/allow + growth health + analytics growth config).
+- Post-release observation window (first 24h):
+  - Check PostHog for `growth_assignment_served`, `growth_decision_made`, `growth_hard_stop_triggered`.
+  - Verify no unexpected spike in rerolls or validation failures.
+
 ---
 
 ## Asset and data ingestion risk matrix

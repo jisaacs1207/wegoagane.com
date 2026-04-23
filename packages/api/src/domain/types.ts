@@ -21,12 +21,74 @@ export type RecommendSignals = {
   excludedClasses?: ClassId[];
   preferredClass?: ClassId;
   memoryHints?: MemoryHints;
+  recommendVariantId?: string;
 };
 
 export type RecommendInput = {
   sessionId?: string;
   entryPath: EntryPath;
   signals: RecommendSignals;
+};
+
+export type GrowthSurface = "content" | "recommendation" | "ui" | "share" | "onboarding";
+export type GrowthVariantType = "persona_combo" | "copy" | "ui_micro" | "share_prompt" | "ranker_policy";
+export type GrowthVariantStatus = "draft" | "validated" | "active" | "promoted" | "retired";
+export type GrowthGuardrailStatus = "pending" | "pass" | "fail";
+export type GrowthExperimentStatus = "running" | "paused" | "completed";
+export type GrowthDecisionAction = "promote" | "hold" | "retire";
+
+export type GrowthVariantPayload = {
+  headline?: string;
+  subline?: string;
+  ctaPrimary?: string;
+  ctaSecondary?: string;
+  sharePromptPrefix?: string;
+  provenance?: {
+    assetSource?: "official" | "community_licensed" | "user_generated" | "unknown";
+    scrapedFrom?: string;
+    licenseTag?: string;
+  };
+  rankerTweaks?: {
+    preferredClassBoost?: number;
+    memoryWeightScale?: number;
+  };
+  personaCombo?: {
+    classId?: ClassId;
+    professionFocus?: string;
+    playstyle?: string;
+  };
+};
+
+export type GrowthVariant = {
+  id: string;
+  surface: GrowthSurface;
+  variantType: GrowthVariantType;
+  status: GrowthVariantStatus;
+  promptVersion?: string;
+  promptText?: string;
+  payload: GrowthVariantPayload;
+  payloadHash: string;
+  noveltyScore: number;
+  guardrailStatus: GrowthGuardrailStatus;
+  guardrailNotes?: string;
+  sampleSize: number;
+  acceptRate: number;
+  rerollsPerSession: number;
+  postAcceptRatingAvg: number;
+  shareCompletionRate: number;
+  validationFailureRate: number;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type GrowthAssignment = {
+  assignmentId: string;
+  sessionId: string;
+  surface: GrowthSurface;
+  variantId: string | null;
+  experimentId: string | null;
+  payload: GrowthVariantPayload | null;
+  holdout: boolean;
 };
 
 export type MemoryRerollReason =

@@ -4,6 +4,7 @@ import { handleMemorial } from "./routes/memorial";
 import { handleFeedback, handleFeedbackSummary } from "./routes/feedback";
 import { handleCreateShare, handleGetShare, handleGetShareImage, handleGetShareOg, handleShareSummary } from "./routes/share";
 import { handleAnalyticsConfig, handleMemoryHealth } from "./routes/analytics";
+import { growthRouter } from "./routes/growth";
 import type { ApiEnv } from "./db/client";
 
 const app = new Hono<ApiEnv>();
@@ -25,6 +26,12 @@ app.get("/", (c) =>
       "GET /v1/share/summary/health",
       "GET /v1/analytics/config",
       "GET /v1/analytics/memory-health",
+      "POST /v1/growth/generate",
+      "POST /v1/growth/assign",
+      "POST /v1/growth/outcome",
+      "POST /v1/growth/promote",
+      "GET /v1/growth/health",
+      "POST /v1/growth/tick",
     ],
   }),
 );
@@ -41,6 +48,7 @@ app.get("/v1/share/:runId/image", handleGetShareImage);
 app.get("/v1/share/:runId/og", handleGetShareOg);
 app.get("/v1/analytics/config", handleAnalyticsConfig);
 app.get("/v1/analytics/memory-health", handleMemoryHealth);
+app.route("/v1/growth", growthRouter);
 
 // Same handlers under /api/* for live domain Worker Route patterns.
 app.get("/api/health", (c) => c.json({ ok: true, ts: Date.now() }));
@@ -55,5 +63,20 @@ app.get("/api/v1/share/:runId/image", handleGetShareImage);
 app.get("/api/v1/share/:runId/og", handleGetShareOg);
 app.get("/api/v1/analytics/config", handleAnalyticsConfig);
 app.get("/api/v1/analytics/memory-health", handleMemoryHealth);
+app.route("/api/v1/growth", growthRouter);
 
-export default app;
+export default {
+  fetch: app.fetch,
+  scheduled: async (_event: ScheduledEvent, env: ApiEnv["Bindings"], ctx: ExecutionContext) => {
+    const enabled = String(env.GROWTH_AUTOPILOT_ENABLED ?? "false").toLowerCase() === "true";
+    if (!enabled) return;
+    const origin = env.SITE_ORIGIN ?? "https://wegoagane.com";
+    const headers: Record<string, string> = {};
+    if (env.GROWTH_CONTROL_TOKEN) headers["x-growth-control-token"] = env.GROWTH_CONTROL_TOKEN;
+    ctx.waitUntil(
+      fetch(`${origin}/api/v1/growth/tick`, { method: "POST", headers }).catch(() => {
+        // Keep cron non-blocking.
+      }),
+    );
+  },
+};

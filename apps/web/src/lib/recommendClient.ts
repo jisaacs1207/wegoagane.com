@@ -24,6 +24,7 @@ type RecommendRequest = {
     excludedClasses?: ClassId[];
     preferredClass?: ClassId;
     memoryHints?: MemoryHints;
+    recommendVariantId?: string;
   };
 };
 
@@ -131,6 +132,30 @@ export type AnalyticsConfigResponse = {
     degradeScale: number;
     lookbackLimit: number;
   };
+  growth: {
+    autopilotEnabled: boolean;
+    hardStopEnabled: boolean;
+    defaultTrafficPercent: number;
+    defaultHoldoutPercent: number;
+    minSampleSize: number;
+  };
+};
+
+export type GrowthSurface = "content" | "recommendation" | "ui" | "share" | "onboarding";
+export type GrowthAssignmentResponse = {
+  assignmentId: string;
+  sessionId: string;
+  surface: GrowthSurface;
+  variantId: string | null;
+  experimentId: string | null;
+  payload: {
+    headline?: string;
+    subline?: string;
+    ctaPrimary?: string;
+    ctaSecondary?: string;
+    sharePromptPrefix?: string;
+  } | null;
+  holdout: boolean;
 };
 
 export async function fetchDestiny(input: RecommendRequest): Promise<DestinyResult> {
@@ -227,4 +252,35 @@ export async function fetchAnalyticsConfig(): Promise<AnalyticsConfigResponse> {
     throw new Error(`analytics_config_failed:${response.status}`);
   }
   return (await response.json()) as AnalyticsConfigResponse;
+}
+
+export async function fetchGrowthAssignment(input: {
+  sessionId: string;
+  surface: GrowthSurface;
+  entryPath?: "release_spirit" | "draft_a_run" | "lucky_roll";
+}): Promise<GrowthAssignmentResponse> {
+  const response = await fetch("/api/v1/growth/assign", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    throw new Error(`growth_assign_failed:${response.status}`);
+  }
+  return (await response.json()) as GrowthAssignmentResponse;
+}
+
+export async function submitGrowthOutcome(input: {
+  assignmentId: string;
+  converted?: boolean;
+  outcome?: Record<string, unknown>;
+}): Promise<void> {
+  const response = await fetch("/api/v1/growth/outcome", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    throw new Error(`growth_outcome_failed:${response.status}`);
+  }
 }

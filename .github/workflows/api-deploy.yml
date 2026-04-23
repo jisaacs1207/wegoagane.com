@@ -76,6 +76,23 @@ jobs:
             test -n "${API_MEMORY_LOOKBACK_LIMIT}" || { echo "Missing vars.API_MEMORY_LOOKBACK_LIMIT"; exit 1; }
           fi
 
+      - name: Verify growth engine deploy inputs
+        env:
+          API_GROWTH_AUTOPILOT_ENABLED: ${{ vars.API_GROWTH_AUTOPILOT_ENABLED }}
+          API_GROWTH_HARD_STOP_ENABLED: ${{ vars.API_GROWTH_HARD_STOP_ENABLED }}
+          API_GROWTH_DEFAULT_TRAFFIC_PERCENT: ${{ vars.API_GROWTH_DEFAULT_TRAFFIC_PERCENT }}
+          API_GROWTH_DEFAULT_HOLDOUT_PERCENT: ${{ vars.API_GROWTH_DEFAULT_HOLDOUT_PERCENT }}
+          API_GROWTH_MIN_SAMPLE_SIZE: ${{ vars.API_GROWTH_MIN_SAMPLE_SIZE }}
+          API_GROWTH_CONTROL_TOKEN: ${{ secrets.API_GROWTH_CONTROL_TOKEN }}
+        run: |
+          if [ "${API_GROWTH_AUTOPILOT_ENABLED}" = "true" ]; then
+            test -n "${API_GROWTH_HARD_STOP_ENABLED}" || { echo "Missing vars.API_GROWTH_HARD_STOP_ENABLED"; exit 1; }
+            test -n "${API_GROWTH_DEFAULT_TRAFFIC_PERCENT}" || { echo "Missing vars.API_GROWTH_DEFAULT_TRAFFIC_PERCENT"; exit 1; }
+            test -n "${API_GROWTH_DEFAULT_HOLDOUT_PERCENT}" || { echo "Missing vars.API_GROWTH_DEFAULT_HOLDOUT_PERCENT"; exit 1; }
+            test -n "${API_GROWTH_MIN_SAMPLE_SIZE}" || { echo "Missing vars.API_GROWTH_MIN_SAMPLE_SIZE"; exit 1; }
+            test -n "${API_GROWTH_CONTROL_TOKEN}" || { echo "Missing secrets.API_GROWTH_CONTROL_TOKEN"; exit 1; }
+          fi
+
       - name: Apply production migrations
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

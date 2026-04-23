@@ -13,6 +13,13 @@
 | **Last build iteration** | **M13 shipped:** hybrid memory path (browser `localStorage` + API-derived session history) now biases deterministic ranking with configurable weights/clamps, balanced rollout defaults, degrade-mode controls, memory observability (`/api/v1/analytics/memory-health`), and deploy guard wiring for memory vars. |
 | **Next “request to move forward” criteria** | Start **M14** with trust-first expansion: ship additional archetypes only if each passes quality gate (mechanical correctness, First-10 quality, source-tag completeness, non-generic language) and validation/acceptance metrics remain healthy; run AI-first sprint mode (1-2 day build + 3-7 day validation soak). |
 
+### Autonomous growth engine baseline (implemented)
+
+- Variant lifecycle persistence added for candidate variants, experiment assignment, decisions, and growth run logs.
+- Full-auto loop endpoints added (`generate`, `assign`, `outcome`, `promote`, `health`, `tick`) with cron trigger orchestration.
+- UI/recommendation/share surfaces now consume assignment payloads with safe fallback behavior.
+- Operator control surface available at `/ops/growth` and API health endpoint `GET /api/v1/growth/health`.
+
 ---
 
 ## Recent engineering decisions (record)

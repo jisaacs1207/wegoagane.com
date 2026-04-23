@@ -11,8 +11,10 @@ import { MemorialCard } from "../../components/cards/MemorialCard";
 import {
   createShareRun,
   fetchDestiny,
+  fetchGrowthAssignment,
   fetchMemorial,
   type RerollReason,
+  submitGrowthOutcome,
   submitDestinyFeedback,
 } from "../../lib/recommendClient";
 import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
@@ -36,6 +38,8 @@ export function DeathResultStep() {
   const [note, setNote] = useState("");
   const [showRerollGate, setShowRerollGate] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [recommendAssignmentId, setRecommendAssignmentId] = useState<string | null>(null);
+  const [recommendVariantId, setRecommendVariantId] = useState<string | null>(null);
 
   useEffect(() => {
     const mood = sessionStorage.getItem("death.mood") ?? undefined;
@@ -46,10 +50,17 @@ export function DeathResultStep() {
       sessionStorage.setItem("death.sessionId", sessionId);
     }
 
+    void fetchGrowthAssignment({ sessionId, surface: "recommendation", entryPath: "release_spirit" })
+      .then((assignment) => {
+        setRecommendAssignmentId(assignment.assignmentId);
+        setRecommendVariantId(assignment.variantId);
+      })
+      .catch(() => {});
+
     void fetchDestiny({
       entryPath: "release_spirit",
       sessionId,
-      signals: { mood, nextSignal, memoryHints: buildMemoryHints() },
+      signals: { mood, nextSignal, memoryHints: buildMemoryHints(), recommendVariantId: recommendVariantId ?? undefined },
     })
       .then((result) => {
         setDestiny(result.output);
@@ -57,6 +68,9 @@ export function DeathResultStep() {
         setDestinyId(result.destinyId);
         sessionStorage.setItem("death.sessionId", result.sessionId);
         sessionStorage.setItem("death.destinyId", result.destinyId);
+        if (recommendAssignmentId) {
+          void submitGrowthOutcome({ assignmentId: recommendAssignmentId, converted: true, outcome: { event: "recommend_rendered", destinyId: result.destinyId } }).catch(() => {});
+        }
       })
       .catch(() => setDestiny(destinyFixture));
 
@@ -73,7 +87,7 @@ export function DeathResultStep() {
       .then(setMemorial)
       .catch(() => setMemorial(memorialFixture));
     trackEvent(AnalyticsEvent.FlowStarted, { flow: "release_spirit" });
-  }, []);
+  }, [recommendAssignmentId, recommendVariantId]);
 
   async function runRerollWithReason(reason: RerollReason) {
     if (!sessionId || !destinyId || isSubmitting) return;
@@ -116,6 +130,7 @@ export function DeathResultStep() {
           mood,
           nextSignal,
           memoryHints: buildMemoryHints(),
+          recommendVariantId: recommendVariantId ?? undefined,
           excludedClasses:
             reason === "wrong_class" || reason === "just_curious" ? [destiny.classId] : undefined,
           preferredClass: reason === "wrong_energy" || reason === "almost_right" ? destiny.classId : undefined,

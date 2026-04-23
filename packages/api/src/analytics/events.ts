@@ -10,6 +10,11 @@ export const AnalyticsEvent = {
   ShareFailed: "share_failed",
   ShareViewed: "share_viewed",
   MemoryHealthEvaluated: "memory_health_evaluated",
+  GrowthCandidatesGenerated: "growth_candidates_generated",
+  GrowthGuardrailEvaluated: "growth_guardrail_evaluated",
+  GrowthAssignmentServed: "growth_assignment_served",
+  GrowthDecisionMade: "growth_decision_made",
+  GrowthHardStopTriggered: "growth_hard_stop_triggered",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvent)[keyof typeof AnalyticsEvent];

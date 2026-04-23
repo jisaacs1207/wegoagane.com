@@ -43,6 +43,7 @@ export const recommendationLogs = sqliteTable("recommendation_logs", {
   aiInputTokens: integer("ai_input_tokens"),
   aiOutputTokens: integer("ai_output_tokens"),
   aiErrorType: text("ai_error_type"),
+  growthVariantId: text("growth_variant_id"),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
 
@@ -86,4 +87,87 @@ export const shareRuns = sqliteTable("share_runs", {
   error: text("error"),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+export const growthVariants = sqliteTable("growth_variants", {
+  id: text("id").primaryKey(),
+  surface: text("surface").notNull(),
+  variantType: text("variant_type").notNull(),
+  status: text("status").notNull().default("draft"),
+  promptVersion: text("prompt_version"),
+  promptText: text("prompt_text"),
+  payloadJson: text("payload_json").notNull(),
+  payloadHash: text("payload_hash").notNull(),
+  noveltyScore: real("novelty_score").notNull().default(0),
+  guardrailStatus: text("guardrail_status").notNull().default("pending"),
+  guardrailNotes: text("guardrail_notes"),
+  sampleSize: integer("sample_size").notNull().default(0),
+  acceptRate: real("accept_rate").notNull().default(0),
+  rerollsPerSession: real("rerolls_per_session").notNull().default(0),
+  postAcceptRatingAvg: real("post_accept_rating_avg").notNull().default(0),
+  shareCompletionRate: real("share_completion_rate").notNull().default(0),
+  validationFailureRate: real("validation_failure_rate").notNull().default(0),
+  promotedAt: integer("promoted_at", { mode: "timestamp_ms" }),
+  retiredAt: integer("retired_at", { mode: "timestamp_ms" }),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+export const growthExperiments = sqliteTable("growth_experiments", {
+  id: text("id").primaryKey(),
+  surface: text("surface").notNull(),
+  name: text("name").notNull(),
+  status: text("status").notNull().default("running"),
+  holdoutPercent: integer("holdout_percent").notNull().default(10),
+  trafficPercent: integer("traffic_percent").notNull().default(25),
+  minSampleSize: integer("min_sample_size").notNull().default(40),
+  baselineVariantId: text("baseline_variant_id"),
+  startedAt: integer("started_at", { mode: "timestamp_ms" }).notNull(),
+  endedAt: integer("ended_at", { mode: "timestamp_ms" }),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+export const growthExperimentVariants = sqliteTable("growth_experiment_variants", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  experimentId: text("experiment_id").notNull(),
+  variantId: text("variant_id").notNull(),
+  weight: real("weight").notNull().default(1),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+export const growthAssignments = sqliteTable("growth_assignments", {
+  id: text("id").primaryKey(),
+  experimentId: text("experiment_id"),
+  variantId: text("variant_id"),
+  surface: text("surface").notNull(),
+  sessionId: text("session_id").notNull(),
+  entryPath: text("entry_path"),
+  assignedAt: integer("assigned_at", { mode: "timestamp_ms" }).notNull(),
+  seenAt: integer("seen_at", { mode: "timestamp_ms" }),
+  convertedAt: integer("converted_at", { mode: "timestamp_ms" }),
+  outcomeJson: text("outcome_json"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+export const growthDecisions = sqliteTable("growth_decisions", {
+  id: text("id").primaryKey(),
+  variantId: text("variant_id").notNull(),
+  action: text("action").notNull(),
+  reason: text("reason").notNull(),
+  metricsJson: text("metrics_json").notNull(),
+  thresholdJson: text("threshold_json").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+export const growthRuns = sqliteTable("growth_runs", {
+  id: text("id").primaryKey(),
+  runType: text("run_type").notNull(),
+  status: text("status").notNull().default("running"),
+  inputJson: text("input_json"),
+  outputJson: text("output_json"),
+  error: text("error"),
+  startedAt: integer("started_at", { mode: "timestamp_ms" }).notNull(),
+  finishedAt: integer("finished_at", { mode: "timestamp_ms" }),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });

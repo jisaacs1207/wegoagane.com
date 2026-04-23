@@ -341,6 +341,19 @@ Set two alerts at launch: (1) validation_failed spikes above 10% of generations,
   2. if still degraded, set `MEMORY_BIAS_ENABLED=false`
 
 ### 21.6 AI-first prompt-pack governance (M14+)
+### 21.7 Autonomous growth engine data + operations
+
+- New D1 entities: `growth_variants`, `growth_experiments`, `growth_experiment_variants`, `growth_assignments`, `growth_decisions`, `growth_runs`.
+- Recommendation logs now include `growth_variant_id` for downstream outcome attribution.
+- Runtime endpoints:
+  - assign variant (`POST /api/v1/growth/assign`)
+  - capture outcome (`POST /api/v1/growth/outcome`)
+  - generate/validate candidates (`POST /api/v1/growth/generate`)
+  - score/promotion tick (`POST /api/v1/growth/promote`)
+  - ops health (`GET /api/v1/growth/health`)
+- Orchestration:
+  - Cloudflare cron invokes `POST /api/v1/growth/tick`.
+  - GitHub scheduled workflow checks growth health endpoint hourly.
 
 - Treat generated content/assets as draft outputs requiring gated promotion.
 - Maintain prompt packs per lane:

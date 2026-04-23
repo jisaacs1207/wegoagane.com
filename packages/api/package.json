@@ -17,7 +17,9 @@
     "db:migrate:production": "wrangler d1 migrations apply wegoagane --remote --env production",
     "eval:models": "tsx ./scripts/model-bakeoff.ts",
     "smoke:preview": "node ./scripts/smoke.mjs https://wegoagane.com",
-    "smoke:production": "node ./scripts/smoke.mjs https://wegoagane.com"
+    "smoke:production": "node ./scripts/smoke.mjs https://wegoagane.com",
+    "smoke:growth:preview": "node ./scripts/smoke.mjs https://wegoagane.com",
+    "smoke:growth:production": "node ./scripts/smoke.mjs https://wegoagane.com"
   },
   "dependencies": {
     "drizzle-orm": "^0.44.2",
