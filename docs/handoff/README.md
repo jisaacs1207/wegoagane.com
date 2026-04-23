@@ -36,7 +36,7 @@ Each milestone should leave something **usable and tangible** (not a pile of blo
 
 **GitHub (remote, rulesets, deploy prep):** [../github-setup.md](../github-setup.md) — includes **Step 4** using current **Rules → Rulesets** UI.
 
-**Live site:** **https://wegoagane.com** — Cloudflare Pages from **`main`** ([deploy doc](../deploy-wegoagane-com.md): root **`apps/web`**, output **`dist`**, DNS + custom domains).
+**Live site:** **https://wegoagane.com** — Cloudflare Pages from **`main`** ([deploy doc](../deploy-wegoagane-com.md): root **`apps/web`**, output **`dist`**, DNS + custom domains). In-app **M2** card/icon QA: **`/design/cards`**.
 
 ---
 

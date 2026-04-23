@@ -21,6 +21,11 @@ export function HomePage() {
             <span className="entry-btn-desc">Surprise me with a full Destiny card</span>
           </Link>
         </div>
+        <p style={{ margin: "18px 0 0", fontSize: 12, color: "var(--td)" }}>
+          <Link to="/design/cards" style={{ color: "var(--ts)" }}>
+            M2 card shells & icons (dev)
+          </Link>
+        </p>
       </div>
     </div>
   );

@@ -1,25 +1,22 @@
 import { Link } from "react-router-dom";
+import { destinyFixture, memorialFixture } from "../../content/cardFixtures";
+import { DestinyCard } from "../../components/cards/DestinyCard";
+import { MemorialCard } from "../../components/cards/MemorialCard";
 
 export function DeathResultStep() {
   return (
     <div>
-      <div className="card">
-        <p className="step-label">Memorial · stub</p>
-        <h1 className="hero-question" style={{ fontStyle: "italic", fontWeight: 600 }}>
-          &ldquo;They pulled once too often.&rdquo;
-        </h1>
-        <p className="hero-sub">Level 47 · Stranglethorn · patrol (placeholder)</p>
-        <p style={{ margin: 0, fontSize: 13, color: "var(--ts)" }}>
-          Real epitaphs and post-mortem copy will come from the memorial pipeline + validator.
-        </p>
+      <MemorialCard data={memorialFixture} />
+      <div style={{ marginTop: 14 }}>
+        <DestinyCard data={destinyFixture} />
       </div>
-      <div className="card">
-        <p className="step-label">Destiny · stub</p>
-        <div className="destiny-preview">
-          <h3>Orc Frost Mage · Safe path</h3>
-          <p>First 10 Levels checklist, talents, and share card — wired in later milestones.</p>
-        </div>
-        <div className="flow-nav" style={{ marginTop: 20 }}>
+      <div className="card" style={{ marginTop: 14 }}>
+        <p style={{ margin: 0, fontSize: 13, color: "var(--ts)", lineHeight: 1.45 }}>
+          Memorial and next destiny can export as one image for sharing. See a{" "}
+          <strong>narrow side-by-side layout</strong> on{" "}
+          <Link to="/design/cards">card shells</Link> — polish, imagery, and real copy ship in later milestones.
+        </p>
+        <div className="flow-nav" style={{ marginTop: 18 }}>
           <Link to="/" className="btn-ghost" style={{ display: "inline-flex", alignItems: "center" }}>
             Home
           </Link>

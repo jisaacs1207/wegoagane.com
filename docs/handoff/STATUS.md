@@ -1,6 +1,6 @@
 # Build status & iteration contract
 
-**Last updated:** 2026-04-23 (production live; see changelog at bottom of this file)
+**Last updated:** 2026-04-23 (M2 shipped in app; see changelog at bottom of this file)
 
 ---
 
@@ -8,10 +8,10 @@
 
 | Field | Value |
 |--------|--------|
-| **Current milestone** | **M2 (next)** — icons + card UI shells ([04-engineering-data-ops.md](04-engineering-data-ops.md) §26) |
+| **Current milestone** | **M3 (next)** — archetype schema + small fixture JSON in repo ([04-engineering-data-ops.md](04-engineering-data-ops.md) §26) |
 | **Blocked by** | — |
-| **Last build iteration** | **M1 shipped:** `apps/web` on **https://wegoagane.com** + **https://wegoagane-com.pages.dev** via Cloudflare Pages (`main`); CI **Handbook layout** + **Web**; DNS: apex **`CNAME` → `wegoagane-com.pages.dev`** (proxied); registrar parking records removed; [deploy-wegoagane-com.md](../deploy-wegoagane-com.md) |
-| **Next “request to move forward” criteria** | **M2:** icon set + Memorial / Destiny / share-layout components with static fixtures; confirm or defer remaining §29 items before locking card chrome ([06-risks-open-decisions-checklist.md](06-risks-open-decisions-checklist.md) §29). |
+| **Last build iteration** | **M2 shipped:** original **class SVG** set (`ClassIcon` + glyphs); **`MemorialCard`**, **`DestinyCard`**, **`ShareComboLayout`** + [`cardFixtures.ts`](../../apps/web/src/content/cardFixtures.ts); wired into Release Spirit result, Draft result, `/share/:runId`, **`/design/cards`** QA; full **§14.5** class CSS tokens in `index.css` |
+| **Next “request to move forward” criteria** | **M3:** JSON schema + typed loader + **3–5** MVP archetype fixtures (confirm count in MVP table); still resolve §29 where it blocks layout ([06-risks-open-decisions-checklist.md](06-risks-open-decisions-checklist.md) §29). |
 
 ---
 
@@ -36,7 +36,7 @@ Aligned with [04-engineering-data-ops.md](04-engineering-data-ops.md) §26, grou
 |----|------------|------------------------------|--------------|--------------------------------------------------|
 | **M0** | Handbook + process | Multi-file `docs/handoff/`, archive monolith, STATUS workflow; **GitHub Actions CI** green on push (handbook structure gate — see [04-engineering-data-ops.md](04-engineering-data-ops.md) §17.4) | — | — |
 | **M1** | App shell + routing | **Shipped on `main`:** `apps/web` Vite SPA — `/`, `/release-spirit/*`, `/draft-a-run/*`, `/lucky-roll`, `/share/:runId`; CI **Web**; Cloudflare Pages + **https://wegoagane.com**; `_redirects` comment-only (no `/*` SPA rewrite — see [deploy doc — SPA](../deploy-wegoagane-com.md#spa-routing-and-refresh)) | M0 | Wordmark/typography (29.1) partial OK with tokens |
-| **M2** | Icons + card UI shell | Original SVG icon set; Memorial / Destiny / share-layout components render static fixtures | M1 | Tier labels vs prose-only (29.7) |
+| **M2** | Icons + card UI shell | **Shipped on `main`:** `ClassIcon` (+ `MemorialMarkIcon`, `ShareFrameIcon`); `MemorialCard`, `DestinyCard`, `ShareComboLayout`; fixtures in `apps/web/src/content/cardFixtures.ts`; route **`/design/cards`**; tier line as **prose** pending §29.7 | M1 | Tier labels vs prose-only (29.7) — **deferred:** prose `tierProse` on Destiny card |
 | **M3** | Archetype schema + fixture JSON | Schema + **small** MVP archetype set in repo; loads in app | M0 | **MVP archetype count** |
 | **M4** | **Output validator** | Validator runs on fixture + rejects bad outputs; no generator without it | M3 | — |
 | **M5** | Deterministic ranker | Tag overlap / weighted ranker picks archetype from signals; explainable in plain English | M3–M4 | — |
@@ -55,7 +55,7 @@ Aligned with [04-engineering-data-ops.md](04-engineering-data-ops.md) §26, grou
 
 ## Review gates (ongoing — tighten before UI-heavy work)
 
-**M1** shipped with handbook tokens and flow stubs; the items below still gate **card chrome, share polish, and content scale** (M2+). Record decisions in [06-risks-open-decisions-checklist.md](06-risks-open-decisions-checklist.md) (or short `ADR-*.md` in this folder).
+**M1–M2** shipped with handbook tokens, flow stubs, and **card shells + class icons**. The checklist below still gates **layout lock**, **share CTA**, and **content scale** (M3+). Record decisions in [06-risks-open-decisions-checklist.md](06-risks-open-decisions-checklist.md) (or short `ADR-*.md` in this folder).
 
 1. **§29 — Open decisions:** Minimum before locking Memorial/Destiny layout: **29.2** (combined vs tabbed), **29.6** (share CTA), **29.7** (tier labels).  
 2. **MVP archetype slice:** Set the count and **which** classes/philosophies ship first in M3–M6.  
@@ -91,3 +91,4 @@ When the checklist is complete enough for the next milestone, update **Current m
 | 2026-04-22 | **`apps/web`** Vite + React Router usable flows; CI job **Web**; [deploy-wegoagane-com.md](../deploy-wegoagane-com.md) |
 | 2026-04-23 | **Production live:** Cloudflare Pages from `main`; **https://wegoagane.com** (apex `CNAME` → `wegoagane-com.pages.dev`, proxied); removed Namecheap parking **A** / **www** CNAME; PR #7 `_redirects` comment-only fix |
 | 2026-04-23 | STATUS: **M1** marked shipped on `main`; **M2** set as current milestone; review gates reframed post-M1 |
+| 2026-04-23 | **M2:** `apps/web` class icons + Memorial / Destiny / share combo components; `/design/cards`; STATUS → **M3** next |
