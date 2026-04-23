@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { planningDestinyFixture, type DestinyFixture } from "../../content/cardFixtures";
+import { type DestinyFixture } from "../../content/cardFixtures";
 import { DestinyCard } from "../../components/cards/DestinyCard";
 import {
   createShareRun,
@@ -23,13 +23,15 @@ const rerollReasons: Array<{ value: RerollReason; label: string }> = [
 
 export function PlanResultStep() {
   const navigate = useNavigate();
-  const [destiny, setDestiny] = useState<DestinyFixture>(planningDestinyFixture);
+  const [destiny, setDestiny] = useState<DestinyFixture | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [destinyId, setDestinyId] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string>("");
   const [note, setNote] = useState("");
   const [showRerollGate, setShowRerollGate] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingDestiny, setIsLoadingDestiny] = useState(true);
+  const [loadError, setLoadError] = useState<string>("");
   const [recommendVariantId, setRecommendVariantId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -38,49 +40,54 @@ export function PlanResultStep() {
     const existingSession = sessionStorage.getItem("plan.sessionId") ?? undefined;
 
     const seededSession = existingSession ?? crypto.randomUUID();
-    void (async () => {
-      let assignmentId: string | null = null;
-      let variantId: string | null = null;
-      try {
-        const assignment = await fetchGrowthAssignment({
-          sessionId: seededSession,
-          surface: "recommendation",
-          entryPath: "draft_a_run",
-        });
-        assignmentId = assignment.assignmentId;
-        variantId = assignment.variantId;
+    const assignmentPromise = fetchGrowthAssignment({
+      sessionId: seededSession,
+      surface: "recommendation",
+      entryPath: "draft_a_run",
+    })
+      .then((assignment) => {
         setRecommendVariantId(assignment.variantId);
-      } catch {
-        // Non-blocking: default recommendation path still works.
-      }
+        return assignment;
+      })
+      .catch(() => null);
 
+    void (async () => {
+      setIsLoadingDestiny(true);
+      setLoadError("");
       try {
         const result = await fetchDestiny({
           entryPath: "draft_a_run",
           sessionId: seededSession,
-          signals: { intent, freeform, memoryHints: buildMemoryHints(), recommendVariantId: variantId ?? undefined },
+          // Never block initial card render on experiment assignment latency.
+          signals: { intent, freeform, memoryHints: buildMemoryHints() },
         });
         setDestiny(result.output);
         setSessionId(result.sessionId);
         setDestinyId(result.destinyId);
         sessionStorage.setItem("plan.sessionId", result.sessionId);
         sessionStorage.setItem("plan.destinyId", result.destinyId);
-        if (assignmentId) {
-          void submitGrowthOutcome({
-            assignmentId,
-            converted: true,
-            outcome: { event: "recommend_rendered", destinyId: result.destinyId },
-          }).catch(() => {});
-        }
+        assignmentPromise
+          .then((assignment) => {
+            if (!assignment) return;
+            void submitGrowthOutcome({
+              assignmentId: assignment.assignmentId,
+              converted: true,
+              outcome: { event: "recommend_rendered", destinyId: result.destinyId },
+            }).catch(() => {});
+          })
+          .catch(() => {});
       } catch {
-        setDestiny(planningDestinyFixture);
+        setDestiny(null);
+        setLoadError("Could not generate a destiny yet. Try again in a moment.");
+      } finally {
+        setIsLoadingDestiny(false);
       }
     })();
     trackEvent(AnalyticsEvent.FlowStarted, { flow: "draft_a_run" });
   }, []);
 
   async function runRerollWithReason(reason: RerollReason) {
-    if (!sessionId || !destinyId || isSubmitting) return;
+    if (!sessionId || !destinyId || !destiny || isSubmitting) return;
     setIsSubmitting(true);
     setActionMessage("");
     trackEvent(AnalyticsEvent.RerollReasonSelected, {
@@ -164,7 +171,7 @@ export function PlanResultStep() {
   }
 
   async function acceptAndOpenPostRating() {
-    if (!sessionId || !destinyId || isSubmitting) return;
+    if (!sessionId || !destinyId || !destiny || isSubmitting) return;
     setIsSubmitting(true);
     setActionMessage("");
     trackEvent(AnalyticsEvent.AcceptClicked, { flow: "draft_a_run", destinyId, sessionId });
@@ -197,7 +204,17 @@ export function PlanResultStep() {
 
   return (
     <div>
-      <DestinyCard data={destiny} />
+      {destiny ? (
+        <DestinyCard data={destiny} />
+      ) : (
+        <div className="card">
+          <p className="step-label">Draft a run</p>
+          <h1 className="hero-question">Building your destiny...</h1>
+          <p className="hero-sub">
+            {isLoadingDestiny ? "Finding your best fit now." : loadError}
+          </p>
+        </div>
+      )}
       <p style={{ marginTop: 14, fontSize: 13, color: "var(--ts)" }}>
         Planning mode skips memorial chrome — only the next Destiny card is shown here.
       </p>
