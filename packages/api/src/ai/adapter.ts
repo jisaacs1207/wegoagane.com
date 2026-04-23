@@ -27,6 +27,22 @@ export function getAiGateStatus(env: ApiEnv["Bindings"]) {
 
 const OPENROUTER_AUTO = "openrouter/auto";
 
+/** Some models wrap JSON in ``` fences or add prose; extract a JSON object substring before parse. */
+export function extractJsonPayload(raw: string): string {
+  let s = raw.trim();
+  const fenceIdx = s.search(/```(?:json)?\s*\n?/i);
+  if (fenceIdx >= 0) {
+    let after = s.slice(fenceIdx).replace(/^```(?:json)?\s*\n?/i, "");
+    const endFence = after.indexOf("```");
+    if (endFence >= 0) after = after.slice(0, endFence);
+    s = after.trim();
+  }
+  const start = s.indexOf("{");
+  const end = s.lastIndexOf("}");
+  if (start >= 0 && end > start) return s.slice(start, end + 1);
+  return s;
+}
+
 function baseTelemetry(modelId: string | null, enabled: boolean): AiTelemetry {
   return {
     enabled,
@@ -146,7 +162,7 @@ export async function enrichDestiny(
     telemetry.resolvedModelId = result.resolvedModel ?? null;
     let parsed: DestinyOutput;
     try {
-      parsed = JSON.parse(result.content) as DestinyOutput;
+      parsed = JSON.parse(extractJsonPayload(result.content)) as DestinyOutput;
     } catch {
       telemetry.providerError = "ai_invalid_json";
       continue;
@@ -204,7 +220,7 @@ export async function enrichMemorial(
     telemetry.resolvedModelId = result.resolvedModel ?? null;
     let parsed: MemorialOutput;
     try {
-      parsed = JSON.parse(result.content) as MemorialOutput;
+      parsed = JSON.parse(extractJsonPayload(result.content)) as MemorialOutput;
     } catch {
       telemetry.providerError = "ai_invalid_json";
       continue;
