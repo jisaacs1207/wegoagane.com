@@ -30,6 +30,7 @@ jobs:
           npm ci --prefix packages/api
           npm run typecheck --prefix packages/api
           npm run test --prefix packages/api
+          npm run check:routes --prefix packages/api
 
       - name: Verify AI/OpenRouter deploy inputs
         env:
@@ -102,3 +103,8 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: npm run deploy:production --prefix packages/api
+
+      - name: Post-deploy growth smoke check
+        env:
+          GROWTH_CONTROL_TOKEN: ${{ secrets.API_GROWTH_CONTROL_TOKEN }}
+        run: npm run smoke:growth:production --prefix packages/api

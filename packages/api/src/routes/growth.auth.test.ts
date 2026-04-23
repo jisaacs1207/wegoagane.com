@@ -33,3 +33,41 @@ test("growth control route returns 200 with valid token", async () => {
   const body = (await res.json()) as { ok: boolean };
   assert.equal(body.ok, true);
 });
+
+test("growth generate route enforces token", async () => {
+  const denied = await app.fetch(
+    new Request("http://localhost/v1/growth/generate?authProbe=true", { method: "POST" }),
+    baseEnv,
+    testCtx,
+  );
+  assert.equal(denied.status, 403);
+
+  const allowed = await app.fetch(
+    new Request("http://localhost/v1/growth/generate?authProbe=true", {
+      method: "POST",
+      headers: { "x-growth-control-token": "test-growth-token" },
+    }),
+    baseEnv,
+    testCtx,
+  );
+  assert.equal(allowed.status, 200);
+});
+
+test("growth promote route enforces token", async () => {
+  const denied = await app.fetch(
+    new Request("http://localhost/v1/growth/promote?authProbe=true", { method: "POST" }),
+    baseEnv,
+    testCtx,
+  );
+  assert.equal(denied.status, 403);
+
+  const allowed = await app.fetch(
+    new Request("http://localhost/v1/growth/promote?authProbe=true", {
+      method: "POST",
+      headers: { "x-growth-control-token": "test-growth-token" },
+    }),
+    baseEnv,
+    testCtx,
+  );
+  assert.equal(allowed.status, 200);
+});

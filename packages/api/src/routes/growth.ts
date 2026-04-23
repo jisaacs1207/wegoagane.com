@@ -106,6 +106,9 @@ async function ensureRunningExperiment(db: ReturnType<typeof getDb>, surface: Gr
 }
 
 export async function handleGenerateCandidates(c: Context<ApiEnv>) {
+  if (c.req.query("authProbe") === "true") {
+    return c.json({ ok: true, auth: "passed", route: "generate" });
+  }
   const surface = (c.req.query("surface") ?? "ui") as GrowthSurface;
   const count = Math.max(1, Math.min(8, Number(c.req.query("count") ?? "3")));
   const now = new Date();
@@ -232,6 +235,9 @@ function decide(
 }
 
 export async function handlePromoteTick(c: Context<ApiEnv>) {
+  if (c.req.query("authProbe") === "true") {
+    return c.json({ ok: true, auth: "passed", route: "promote" });
+  }
   const db = getDb(c.env.DB);
   const hardStopEnabled = isTruthy(c.env.GROWTH_HARD_STOP_ENABLED, true);
   const now = new Date();

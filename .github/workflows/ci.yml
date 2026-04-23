@@ -104,3 +104,11 @@ jobs:
         run: |
           npm run db:generate
           git diff --exit-code migrations
+
+      - name: Verify migrations apply locally from scratch
+        run: |
+          npm run db:migrate:local
+
+      - name: Verify wrangler route scoping safety
+        run: |
+          npm run check:routes
