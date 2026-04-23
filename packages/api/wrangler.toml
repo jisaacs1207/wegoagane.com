@@ -11,6 +11,12 @@ routes = [
 [vars]
 APP_ENV = "dev"
 SITE_ORIGIN = "https://wegoagane.com"
+AI_ENABLED = "false"
+AI_GATEWAY_URL = "https://openrouter.ai/api/v1/chat/completions"
+AI_MODEL_DESTINY = "openai/gpt-4.1-mini"
+AI_MODEL_MEMORIAL = "anthropic/claude-3.5-sonnet"
+AI_APP_TITLE = "wegoagane-api"
+AI_PROVIDER_SORT = "latency"
 
 [[d1_databases]]
 binding = "DB"
@@ -23,6 +29,12 @@ name = "wegoagane-api-preview"
 [env.preview.vars]
 APP_ENV = "preview"
 SITE_ORIGIN = "https://wegoagane.com"
+AI_ENABLED = "false"
+AI_GATEWAY_URL = "https://openrouter.ai/api/v1/chat/completions"
+AI_MODEL_DESTINY = "openai/gpt-4.1-mini"
+AI_MODEL_MEMORIAL = "anthropic/claude-3.5-sonnet"
+AI_APP_TITLE = "wegoagane-api"
+AI_PROVIDER_SORT = "latency"
 
 [[env.preview.d1_databases]]
 binding = "DB"
@@ -35,6 +47,12 @@ name = "wegoagane-api-production"
 [env.production.vars]
 APP_ENV = "production"
 SITE_ORIGIN = "https://wegoagane.com"
+AI_ENABLED = "false"
+AI_GATEWAY_URL = "https://openrouter.ai/api/v1/chat/completions"
+AI_MODEL_DESTINY = "openai/gpt-4.1-mini"
+AI_MODEL_MEMORIAL = "anthropic/claude-3.5-sonnet"
+AI_APP_TITLE = "wegoagane-api"
+AI_PROVIDER_SORT = "latency"
 
 [[env.production.d1_databases]]
 binding = "DB"

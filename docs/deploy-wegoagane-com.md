@@ -138,7 +138,7 @@ Cloudflare injects variables such as **`CI=true`**, **`CF_PAGES=1`**, **`CF_PAGE
 
 ## API on the same domain (`/api/*`)
 
-The frontend now calls **`/api/v1/recommend`**. In production this is handled by a **separate Worker** (`packages/api`) routed on the same domain:
+The frontend now calls **`/api/v1/recommend`** and **`/api/v1/memorial`**. In production this is handled by a **separate Worker** (`packages/api`) routed on the same domain:
 
 - `wegoagane.com/api/*`
 - `www.wegoagane.com/api/*`
@@ -151,20 +151,37 @@ Routing is declared in [`packages/api/wrangler.toml`](../packages/api/wrangler.t
    - `env.preview ... database_id`
    - `env.production ... database_id`
 2. Set `CLOUDFLARE_API_TOKEN` in your shell (Workers + D1 edit permissions).
-3. Apply migrations and deploy:
+3. Configure AI vars (optional, defaults are safe template-only):
+   - `AI_ENABLED` (`"false"` default)
+   - `AI_GATEWAY_URL` (OpenRouter: `https://openrouter.ai/api/v1/chat/completions`)
+   - `AI_MODEL_DESTINY` (OpenRouter id format: `provider/model`, example `openai/gpt-4.1-mini`)
+   - `AI_MODEL_MEMORIAL` (example `anthropic/claude-3.5-sonnet`)
+   - `AI_APP_TITLE` (maps to OpenRouter `X-OpenRouter-Title`)
+   - `AI_PROVIDER_SORT` (`latency`, `price`, or `throughput`)
+   - Wrangler secret: `AI_GATEWAY_TOKEN`
+4. Apply migrations and deploy:
 
 ```bash
 npm run db:migrate:production --prefix packages/api
 npm run deploy:production --prefix packages/api
 ```
 
-4. Verify live:
+5. Verify live:
 
 ```bash
 node packages/api/scripts/smoke.mjs https://wegoagane.com
 ```
 
 If this returns HTTP `405` on `POST /api/v1/recommend`, `/api/*` is still handled by Pages/another rule, not the Worker route.
+
+### OpenRouter notes (current API)
+
+- Chat completion endpoint: `POST https://openrouter.ai/api/v1/chat/completions`
+- Supported structured output mode in this project: `response_format: { "type": "json_object" }`
+- Attribution headers recommended by OpenRouter and sent by this API:
+  - `HTTP-Referer` (site origin)
+  - `X-OpenRouter-Title` (app title)
+- Model IDs should use OpenRouter `provider/model` naming.
 
 ---
 

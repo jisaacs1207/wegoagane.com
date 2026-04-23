@@ -1,4 +1,5 @@
 import { type Context, Hono } from "hono";
+import { enrichDestiny } from "../ai/adapter";
 import { getDb, type ApiEnv } from "../db/client";
 import { destinies, questionAnswers, recommendationLogs, sessions } from "../db/schema";
 import { rankArchetypes } from "../domain/ranker";
@@ -20,8 +21,13 @@ export async function handleRecommend(c: Context<ApiEnv>) {
   if (!top) {
     return c.json({ error: "no_ranked_candidate" }, 400);
   }
-  const output = renderTemplateDestiny(top);
-  const failures = validateTemplateOutput(output, input.signals.factionPreference);
+  const templateOutput = renderTemplateDestiny(top);
+  const aiResult = await enrichDestiny(c.env, input, templateOutput);
+  const output = aiResult.output;
+  const failures =
+    aiResult.validationFailures.length > 0
+      ? aiResult.validationFailures
+      : validateTemplateOutput(output, input.signals.factionPreference);
   if (failures.length > 0) {
     return c.json({ error: "validation_failed", failures }, 422);
   }
@@ -73,6 +79,14 @@ export async function handleRecommend(c: Context<ApiEnv>) {
     confidenceScore,
     reasonsJson: JSON.stringify(top.reasons),
     validationFailures: failures.length,
+    sourceType: output.sourceType,
+    fallbackUsed: aiResult.telemetry.fallbackUsed,
+    aiModelId: aiResult.telemetry.modelId,
+    aiLatencyMs: aiResult.telemetry.latencyMs,
+    aiRetries: aiResult.telemetry.retries,
+    aiInputTokens: aiResult.telemetry.inputTokens,
+    aiOutputTokens: aiResult.telemetry.outputTokens,
+    aiErrorType: aiResult.telemetry.providerError,
     createdAt: new Date(now),
   });
 
@@ -83,6 +97,9 @@ export async function handleRecommend(c: Context<ApiEnv>) {
     score: top.score,
     confidenceScore,
     reasons: top.reasons,
+    sourceType: output.sourceType,
+    fallbackUsed: aiResult.telemetry.fallbackUsed,
+    validationFailures: failures,
     output,
   });
 }

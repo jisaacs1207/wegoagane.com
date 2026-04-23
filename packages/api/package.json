@@ -9,11 +9,13 @@
     "deploy:preview": "wrangler deploy --env preview",
     "deploy:production": "wrangler deploy --env production",
     "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test src/**/*.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply wegoagane --local",
     "db:migrate:remote": "wrangler d1 migrations apply wegoagane --remote",
     "db:migrate:preview": "wrangler d1 migrations apply wegoagane-preview --remote --env preview",
     "db:migrate:production": "wrangler d1 migrations apply wegoagane --remote --env production",
+    "eval:models": "tsx ./scripts/model-bakeoff.ts",
     "smoke:preview": "node ./scripts/smoke.mjs https://wegoagane.com",
     "smoke:production": "node ./scripts/smoke.mjs https://wegoagane.com"
   },
@@ -24,7 +26,9 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260418.0",
+    "@types/node": "^25.6.0",
     "drizzle-kit": "^0.31.6",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "wrangler": "^4.41.0"
   }

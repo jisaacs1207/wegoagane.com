@@ -1,6 +1,6 @@
 # Build status & iteration contract
 
-**Last updated:** 2026-04-23 (remote API tie-in live on domain; see changelog at bottom of this file)
+**Last updated:** 2026-04-23 (M8+M9 safe rollout slice implemented with AI-gated fallback + memorial endpoint)
 
 ---
 
@@ -8,10 +8,10 @@
 
 | Field | Value |
 |--------|--------|
-| **Current milestone** | **M8 (next)** — AI Gateway + presentation layer on top of deterministic API pipeline |
+| **Current milestone** | **M10 (next)** — refinement + rating gate after M8+M9 backend/frontend wire-up |
 | **Blocked by** | — |
-| **Last build iteration** | Added `packages/api` (**Hono + Drizzle + D1 migrations**) with deterministic recommendation pipeline (`archetypes.ts` 8 fixtures, `validator.ts`, `ranker.ts`, `template.ts`, `POST /api/v1/recommend`); web result pages call `/api/v1/recommend` with fixture fallback; added CI job **API** + `api-deploy.yml`; configured Worker routes for `wegoagane.com/api/*` in `wrangler.toml`; smoke script added. |
-| **Next “request to move forward” criteria** | Keep API + Web checks green on `main`, add ruleset required check **`API`** after first green `main` run if missing, then implement **M8** AI Gateway + **M9** memorial pipeline while preserving validator-first behavior. |
+| **Last build iteration** | Implemented AI adapter boundary (`packages/api/src/ai/*`) with env-gated retries + deterministic fallback; extended Drizzle schema (`memorials` + AI telemetry on `recommendation_logs`) and generated migration; added `POST /v1/memorial` + `/api/v1/memorial`; integrated recommend AI enrichment with validation + fallback metadata; wired death flow frontend to memorial API with fixture fallback; added API unit tests + CI test gate + deploy precheck for AI inputs; updated smoke script + deployment docs. |
+| **Next “request to move forward” criteria** | Run production migration + deploy for migration `0001_*`, set Worker secret `AI_GATEWAY_TOKEN` and optional AI vars, and confirm live smoke checks (recommend + memorial + D1 write counts). |
 
 ---
 
@@ -42,8 +42,8 @@ Aligned with [04-engineering-data-ops.md](04-engineering-data-ops.md) §26, grou
 | **M5** | Deterministic ranker | **Shipped:** weighted tag-overlap ranker in `packages/api/src/domain/ranker.ts` with explainable reasons | M3–M4 | — |
 | **M6** | Template-only Destiny pipeline | **Shipped:** rank → template render → validate in `packages/api/src/domain/template.ts` and `POST /api/v1/recommend` | M4–M5 | Combined vs tabbed result (29.2); share CTA (29.6) |
 | **M7** | Workers + D1 + session persistence | **Shipped:** `packages/api` Worker + Drizzle schema + migration + inserts into sessions/question_answers/destinies/recommendation_logs; live on `wegoagane.com/api/*` | M6 | — |
-| **M8** | AI Gateway + presentation layer | Tier A/B behind gateway; AI never inventing structured facts | M6–M7 | Model IDs pinned in code/config (tiers in §18) |
-| **M9** | Memorial pipeline | Epitaph + post-mortem with validation + fallbacks | M8 | Name suggest vs optional (29.5); tone “bullshit death” (29.3) |
+| **M8** | AI Gateway + presentation layer | **Shipped:** AI adapter layer behind env flag; deterministic winner remains source of truth; AI enrichment validated with retry + fallback; response metadata includes `sourceType` + fallback status | M6–M7 | Model IDs pinned in code/config (tiers in §18) |
+| **M9** | Memorial pipeline | **Shipped:** template-first memorial pipeline + validator + persistence + `POST /api/v1/memorial` with AI optional enrichment and fallback | M8 | Name suggest vs optional (29.5); tone “bullshit death” (29.3) |
 | **M10** | Refinement + rating gate | Reroll reasons, “almost right,” post-accept rating | M6–M9 | — |
 | **M11** | Share images + OG | Browser Rendering → R2; async UX; Discord/Twitter preview | M2, M7 | — |
 | **M12** | Analytics + observability | PostHog events per §21; validation_failed + cost alerts | M7+ | Acceptance stats on cards? (29.8) |
@@ -94,3 +94,4 @@ When the checklist is complete enough for the next milestone, update **Current m
 | 2026-04-23 | **M2:** `apps/web` class icons + Memorial / Destiny / share combo components; `/design/cards`; STATUS → **M3** next |
 | 2026-04-23 | **M3–M7 foundation (branch):** `packages/api` Hono+Drizzle+D1 migrations, validator/ranker/template pipeline, `/v1/recommend`, web pages calling API with fixture fallback |
 | 2026-04-23 | Remote tie-in **live**: Worker route `wegoagane.com/api/*`, production deploy + smoke pass, D1 write verification; docs + deploy workflow updated |
+| 2026-04-23 | **M8+M9:** AI adapter (`AI_ENABLED`) with retry+fallback, `memorials` table + recommendation AI telemetry columns, `POST /v1/memorial`, death flow memorial API wiring with fallback, API tests + deploy AI precheck, smoke script verifies recommend + memorial |

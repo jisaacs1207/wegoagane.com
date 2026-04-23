@@ -4,6 +4,14 @@ export type ApiEnv = {
   Bindings: {
     DB: D1Database;
     APP_ENV: string;
+    SITE_ORIGIN?: string;
+    AI_ENABLED?: string;
+    AI_GATEWAY_URL?: string;
+    AI_GATEWAY_TOKEN?: string;
+    AI_MODEL_DESTINY?: string;
+    AI_MODEL_MEMORIAL?: string;
+    AI_APP_TITLE?: string;
+    AI_PROVIDER_SORT?: string;
   };
 };
 

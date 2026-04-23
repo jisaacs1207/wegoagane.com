@@ -31,7 +31,7 @@ export function MemorialCard({ data, compact }: Props) {
         <span className={fc}>{factionLabel[data.faction]}</span>
       </div>
       <p className="memorial-card__facts">
-        <strong>{data.characterName}</strong> · Level {data.level} · {data.location} · {data.cause}
+        <strong>{data.characterName}</strong> · Level {data.level ?? "?"} · {data.location} · {data.cause}
       </p>
       <p id={epitaphId} className="memorial-card__epitaph">
         &ldquo;{data.epitaph}&rdquo;
