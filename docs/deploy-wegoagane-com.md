@@ -301,6 +301,48 @@ Suggested initial alerts:
 
 ---
 
+## M13 hybrid memory rollout (balanced + degrade)
+
+Runtime config:
+
+- API Worker vars:
+  - `MEMORY_BIAS_ENABLED` (`"true"` for M13)
+  - `MEMORY_BROWSER_WEIGHT` (default `0.45`)
+  - `MEMORY_SERVER_WEIGHT` (default `0.55`)
+  - `MEMORY_MAX_BIAS` (default `1.5`)
+  - `MEMORY_DEGRADE_MODE` (`"false"` normally; set `"true"` during degradation response)
+  - `MEMORY_DEGRADE_SCALE` (default `0.5`)
+  - `MEMORY_LOOKBACK_LIMIT` (default `80` preview / `120` production)
+
+Optional deploy guard vars used by `.github/workflows/api-deploy.yml`:
+
+- `vars.API_MEMORY_BIAS_ENABLED`
+- `vars.API_MEMORY_BROWSER_WEIGHT`
+- `vars.API_MEMORY_SERVER_WEIGHT`
+- `vars.API_MEMORY_MAX_BIAS`
+- `vars.API_MEMORY_DEGRADE_MODE`
+- `vars.API_MEMORY_DEGRADE_SCALE`
+- `vars.API_MEMORY_LOOKBACK_LIMIT`
+
+M13 endpoints/events to verify:
+
+- `GET /api/v1/analytics/config` (memory block present)
+- `GET /api/v1/analytics/memory-health`
+- PostHog events/properties include:
+  - `memory_profile_updated` (web)
+  - `destiny_generated` properties: `memoryEnabled`, weights, confidence, clamp hits, selected bias
+  - `memory_health_evaluated` with `recommendedAction`
+
+Degradation runbook:
+
+1. Reduce memory influence first:
+   - set `MEMORY_DEGRADE_MODE="true"` and deploy API
+2. Recheck `GET /api/v1/analytics/memory-health` and PostHog KPI window
+3. If still degraded, disable:
+   - set `MEMORY_BIAS_ENABLED="false"` and deploy API
+
+---
+
 ## After you add new required CI jobs
 
 If GitHub gains a new **required** job for merges, add it to ruleset **`wegoagane-main-ci`** or run:

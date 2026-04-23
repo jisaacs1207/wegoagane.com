@@ -3,6 +3,16 @@ import type { DestinyFixture, MemorialFixture } from "../content/cardFixtures";
 
 type EntryPath = "release_spirit" | "draft_a_run" | "lucky_roll";
 
+export type RerollReason = "wrong_class" | "wrong_energy" | "wrong_goals" | "almost_right" | "just_curious";
+export type PostAcceptRating = "not_this" | "itll_do" | "good_pick" | "this_is_it" | "perfect";
+export type MemoryHints = {
+  version: number;
+  classAffinity?: Partial<Record<ClassId, number>>;
+  rerollReasonCounts?: Partial<Record<RerollReason, number>>;
+  confidence?: number;
+  updatedAt?: number;
+};
+
 type RecommendRequest = {
   sessionId?: string;
   entryPath: EntryPath;
@@ -13,6 +23,7 @@ type RecommendRequest = {
     freeform?: string;
     excludedClasses?: ClassId[];
     preferredClass?: ClassId;
+    memoryHints?: MemoryHints;
   };
 };
 
@@ -62,8 +73,6 @@ export type DestinyResult = {
 
 type FeedbackChoice = "accept" | "almost_right" | "miss";
 type FeedbackStage = "reroll_gate" | "post_accept";
-export type RerollReason = "wrong_class" | "wrong_energy" | "wrong_goals" | "almost_right" | "just_curious";
-export type PostAcceptRating = "not_this" | "itll_do" | "good_pick" | "this_is_it" | "perfect";
 
 type FeedbackRequest = {
   sessionId: string;
@@ -112,6 +121,15 @@ export type AnalyticsConfigResponse = {
     host: string;
     key: string | null;
     uiHost: string;
+  };
+  memory: {
+    enabled: boolean;
+    browserWeight: number;
+    serverWeight: number;
+    maxBias: number;
+    degradeMode: boolean;
+    degradeScale: number;
+    lookbackLimit: number;
   };
 };
 

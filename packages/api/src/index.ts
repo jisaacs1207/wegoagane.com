@@ -3,7 +3,7 @@ import { handleRecommend } from "./routes/recommend";
 import { handleMemorial } from "./routes/memorial";
 import { handleFeedback, handleFeedbackSummary } from "./routes/feedback";
 import { handleCreateShare, handleGetShare, handleGetShareImage, handleGetShareOg, handleShareSummary } from "./routes/share";
-import { handleAnalyticsConfig } from "./routes/analytics";
+import { handleAnalyticsConfig, handleMemoryHealth } from "./routes/analytics";
 import type { ApiEnv } from "./db/client";
 
 const app = new Hono<ApiEnv>();
@@ -24,6 +24,7 @@ app.get("/", (c) =>
       "GET /v1/share/:runId/og",
       "GET /v1/share/summary/health",
       "GET /v1/analytics/config",
+      "GET /v1/analytics/memory-health",
     ],
   }),
 );
@@ -39,6 +40,7 @@ app.get("/v1/share/:runId", handleGetShare);
 app.get("/v1/share/:runId/image", handleGetShareImage);
 app.get("/v1/share/:runId/og", handleGetShareOg);
 app.get("/v1/analytics/config", handleAnalyticsConfig);
+app.get("/v1/analytics/memory-health", handleMemoryHealth);
 
 // Same handlers under /api/* for live domain Worker Route patterns.
 app.get("/api/health", (c) => c.json({ ok: true, ts: Date.now() }));
@@ -52,5 +54,6 @@ app.get("/api/v1/share/:runId", handleGetShare);
 app.get("/api/v1/share/:runId/image", handleGetShareImage);
 app.get("/api/v1/share/:runId/og", handleGetShareOg);
 app.get("/api/v1/analytics/config", handleAnalyticsConfig);
+app.get("/api/v1/analytics/memory-health", handleMemoryHealth);
 
 export default app;

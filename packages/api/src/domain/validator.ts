@@ -22,6 +22,7 @@ const classValues = [
 
 const factionValues = ["horde", "alliance"] as const;
 const entryPathValues = ["release_spirit", "draft_a_run", "lucky_roll"] as const;
+const rerollReasonValues = ["wrong_class", "wrong_energy", "wrong_goals", "almost_right", "just_curious"] as const;
 
 export const recommendInputSchema = z.object({
   sessionId: z.string().min(1).max(80).optional(),
@@ -34,6 +35,15 @@ export const recommendInputSchema = z.object({
     factionPreference: z.enum(factionValues).optional(),
     excludedClasses: z.array(z.enum(classValues)).max(6).optional(),
     preferredClass: z.enum(classValues).optional(),
+    memoryHints: z
+      .object({
+        version: z.number().int().min(1).max(8),
+        classAffinity: z.record(z.enum(classValues), z.number().min(-1).max(1)).optional(),
+        rerollReasonCounts: z.record(z.enum(rerollReasonValues), z.number().int().min(0).max(1000)).optional(),
+        confidence: z.number().min(0).max(1).optional(),
+        updatedAt: z.number().int().min(0).optional(),
+      })
+      .optional(),
   }),
 });
 

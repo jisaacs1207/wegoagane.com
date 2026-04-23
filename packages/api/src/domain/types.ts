@@ -20,12 +20,44 @@ export type RecommendSignals = {
   factionPreference?: Faction;
   excludedClasses?: ClassId[];
   preferredClass?: ClassId;
+  memoryHints?: MemoryHints;
 };
 
 export type RecommendInput = {
   sessionId?: string;
   entryPath: EntryPath;
   signals: RecommendSignals;
+};
+
+export type MemoryRerollReason =
+  | "wrong_class"
+  | "wrong_energy"
+  | "wrong_goals"
+  | "almost_right"
+  | "just_curious";
+
+export type MemoryHints = {
+  version: number;
+  classAffinity?: Partial<Record<ClassId, number>>;
+  rerollReasonCounts?: Partial<Record<MemoryRerollReason, number>>;
+  confidence?: number;
+  updatedAt?: number;
+};
+
+export type MemoryFeatures = {
+  classAffinity: Partial<Record<ClassId, number>>;
+  rerollReasonCounts: Partial<Record<MemoryRerollReason, number>>;
+  confidence: number;
+  sampleSize: number;
+};
+
+export type MemoryRankingConfig = {
+  enabled: boolean;
+  browserWeight: number;
+  serverWeight: number;
+  maxBias: number;
+  degradeMode: boolean;
+  degradeScale: number;
 };
 
 export type MemorialInput = {
@@ -55,6 +87,7 @@ export type RankedArchetype = {
   archetype: Archetype;
   score: number;
   reasons: string[];
+  memoryBiasApplied?: number;
 };
 
 export type DestinyOutput = {

@@ -1,6 +1,6 @@
 # Build status & iteration contract
 
-**Last updated:** 2026-04-23 (M12 analytics + observability shipped)
+**Last updated:** 2026-04-23 (M13 hybrid memory + polish shipped)
 
 ---
 
@@ -8,10 +8,10 @@
 
 | Field | Value |
 |--------|--------|
-| **Current milestone** | **M13 (next)** — local memory + polish |
+| **Current milestone** | **M14 (next)** — content iteration + polish follow-through |
 | **Blocked by** | — |
-| **Last build iteration** | **M12 shipped:** production PostHog integration on API + web with event taxonomy for generation, feedback, reroll/accept flow, and share lifecycle; API runtime analytics config endpoint (`/api/v1/analytics/config`); share observability endpoint (`/api/v1/share/summary/health`) with failed rate and p95 latency; deploy guard wiring for PostHog vars/secrets; production rollout and live smoke validation. |
-| **Next “request to move forward” criteria** | Start **M13** local-memory tuning: persist user preference bias signals and reuse them to steer recommendation defaults, then validate impact vs acceptance/reroll metrics. Keep Web/API CI green and analytics event flow healthy. |
+| **Last build iteration** | **M13 shipped:** hybrid memory path (browser `localStorage` + API-derived session history) now biases deterministic ranking with configurable weights/clamps, balanced rollout defaults, degrade-mode controls, memory observability (`/api/v1/analytics/memory-health`), and deploy guard wiring for memory vars. |
+| **Next “request to move forward” criteria** | Start **M14** content iteration: use M12/M13 analytics to tune archetype copy/weighting quality and reduce reroll pressure without increasing failure rates. Keep Web/API CI green and memory health action at `keep` under normal traffic. |
 
 ---
 
@@ -62,7 +62,7 @@ Aligned with [04-engineering-data-ops.md](04-engineering-data-ops.md) §26, grou
 | **M10** | Refinement + rating gate | **Shipped:** required reroll rating gate, reason-driven reroll/refinement behavior, and post-accept non-blocking rating capture with structured feedback telemetry | M6–M9 | — |
 | **M11** | Share images + OG | **Shipped:** async share generation lifecycle, R2 image storage + fallback image, `/share/:runId` polling UX, and OG metadata endpoint for social previews | M2, M7 | — |
 | **M12** | Analytics + observability | **Shipped:** PostHog event instrumentation (API + web), runtime analytics config, and share health summary with failed-rate + p95 thresholds | M7+ | Acceptance stats on cards? (29.8) |
-| **M13** | Local memory + polish | localStorage biases; content iteration | M10–M12 | Planning “first HC” signal (29.4) |
+| **M13** | Local memory + polish | **Shipped:** hybrid memory hints + server memory read-path + weighted/clamped ranker integration + degrade controls and memory health endpoint | M10–M12 | Planning “first HC” signal (29.4) |
 
 **Test notes (recurring):** phone-first flows; “just generate” death path; validator abuse cases ([06-risks-open-decisions-checklist.md](06-risks-open-decisions-checklist.md) §33); 320px share width; Lucky Roll distribution.
 
@@ -116,3 +116,4 @@ When the checklist is complete enough for the next milestone, update **Current m
 | 2026-04-23 | **M10 complete:** reroll rating gate + five reason options, reason-aware reroll mutation (`wrong_class` / `wrong_energy` / `wrong_goals` / `almost_right` / `just_curious`), post-accept 5-point rating, `destiny_feedback` schema extended (`stage`, `reroll_reason`, `post_accept_rating`), and `/api/v1/feedback/summary` + `/ops/feedback` for quick ops validation |
 | 2026-04-23 | **M11 complete:** share lifecycle + persistence (`share_runs`), async API routes (`/api/v1/share*`), R2 image storage + fallback SVG, web polling UX at `/share/:runId`, and OG metadata endpoint (`/api/v1/share/:runId/og`) |
 | 2026-04-23 | **M12 complete:** PostHog US instrumentation in API + web, analytics config endpoint, deploy prechecks for PostHog vars/secrets, share health summary endpoint + operational thresholds, and production smoke verification of event flow |
+| 2026-04-23 | **M13 complete:** browser memory profile (`localStorage`) + memory hints in recommend requests, API history-derived memory features from `destiny_feedback` + `recommendation_logs`, weighted/clamped hybrid memory ranker, and memory degradation runbook (`reduce weights` then `disable`) with `/api/v1/analytics/memory-health` |

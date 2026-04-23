@@ -57,6 +57,25 @@ jobs:
             test -n "${API_POSTHOG_PROJECT_API_KEY}" || { echo "Missing secrets.API_POSTHOG_PROJECT_API_KEY"; exit 1; }
           fi
 
+      - name: Verify memory-bias deploy inputs
+        env:
+          API_MEMORY_BIAS_ENABLED: ${{ vars.API_MEMORY_BIAS_ENABLED }}
+          API_MEMORY_BROWSER_WEIGHT: ${{ vars.API_MEMORY_BROWSER_WEIGHT }}
+          API_MEMORY_SERVER_WEIGHT: ${{ vars.API_MEMORY_SERVER_WEIGHT }}
+          API_MEMORY_MAX_BIAS: ${{ vars.API_MEMORY_MAX_BIAS }}
+          API_MEMORY_DEGRADE_MODE: ${{ vars.API_MEMORY_DEGRADE_MODE }}
+          API_MEMORY_DEGRADE_SCALE: ${{ vars.API_MEMORY_DEGRADE_SCALE }}
+          API_MEMORY_LOOKBACK_LIMIT: ${{ vars.API_MEMORY_LOOKBACK_LIMIT }}
+        run: |
+          if [ "${API_MEMORY_BIAS_ENABLED}" = "true" ]; then
+            test -n "${API_MEMORY_BROWSER_WEIGHT}" || { echo "Missing vars.API_MEMORY_BROWSER_WEIGHT"; exit 1; }
+            test -n "${API_MEMORY_SERVER_WEIGHT}" || { echo "Missing vars.API_MEMORY_SERVER_WEIGHT"; exit 1; }
+            test -n "${API_MEMORY_MAX_BIAS}" || { echo "Missing vars.API_MEMORY_MAX_BIAS"; exit 1; }
+            test -n "${API_MEMORY_DEGRADE_MODE}" || { echo "Missing vars.API_MEMORY_DEGRADE_MODE"; exit 1; }
+            test -n "${API_MEMORY_DEGRADE_SCALE}" || { echo "Missing vars.API_MEMORY_DEGRADE_SCALE"; exit 1; }
+            test -n "${API_MEMORY_LOOKBACK_LIMIT}" || { echo "Missing vars.API_MEMORY_LOOKBACK_LIMIT"; exit 1; }
+          fi
+
       - name: Apply production migrations
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

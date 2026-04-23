@@ -312,6 +312,20 @@ Set two alerts at launch: (1) validation_failed spikes above 10% of generations,
   - `share_failed_rate > 10%`
   - `share_render_p95 > 8000ms`
 
+### 21.5 M13 hybrid memory implementation (current)
+
+- Browser local memory persists class-level preference hints and reroll reason counts in `localStorage` (versioned, safe-parse fallback).
+- Recommend requests now include optional `memoryHints` (browser side): class affinity, reroll reason frequency, confidence, freshness.
+- API derives server memory features from recent `destiny_feedback` + `recommendation_logs` (bounded lookback).
+- Ranker merges browser/server memory with configurable weights and clamps so current intent remains dominant.
+- Balanced rollout defaults:
+  - browser weight `0.45`
+  - server weight `0.55`
+  - clamp `1.5`
+- Degrade policy:
+  1. set `MEMORY_DEGRADE_MODE=true` (reduces effective bias scale)
+  2. if still degraded, set `MEMORY_BIAS_ENABLED=false`
+
 ## 26. Implementation order
 
 1. App shell + routing

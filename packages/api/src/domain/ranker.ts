@@ -1,5 +1,5 @@
 import { archetypes } from "./archetypes";
-import type { Archetype, RankedArchetype, RecommendInput } from "./types";
+import type { Archetype, MemoryFeatures, MemoryRankingConfig, RankedArchetype, RecommendInput } from "./types";
 
 function normalizeText(...parts: Array<string | undefined>): string {
   return parts.filter(Boolean).join(" ").toLowerCase();
@@ -59,7 +59,49 @@ function scoreArchetype(archetype: Archetype, desiredTags: string[]): RankedArch
   return { archetype, score, reasons };
 }
 
-export function rankArchetypes(input: RecommendInput): RankedArchetype[] {
+export type RankerMemoryInput = {
+  browserMemory?: RecommendInput["signals"]["memoryHints"];
+  serverMemory?: MemoryFeatures;
+  config: MemoryRankingConfig;
+};
+
+export type RankerMemoryMeta = {
+  enabled: boolean;
+  degradeMode: boolean;
+  browserWeight: number;
+  serverWeight: number;
+  maxBias: number;
+  browserConfidence: number;
+  serverConfidence: number;
+  averageAppliedBias: number;
+  clampHits: number;
+};
+
+function clamp(n: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, n));
+}
+
+function combinedAffinity(
+  classId: Archetype["classId"],
+  memory: RankerMemoryInput,
+): { bias: number; clamped: boolean } {
+  if (!memory.config.enabled) return { bias: 0, clamped: false };
+  const browserAffinity = memory.browserMemory?.classAffinity?.[classId] ?? 0;
+  const serverAffinity = memory.serverMemory?.classAffinity?.[classId] ?? 0;
+  const browserConfidence = memory.browserMemory?.confidence ?? 0;
+  const serverConfidence = memory.serverMemory?.confidence ?? 0;
+  const weighted =
+    browserAffinity * memory.config.browserWeight * browserConfidence +
+    serverAffinity * memory.config.serverWeight * serverConfidence;
+  const scaled = weighted * (memory.config.degradeMode ? memory.config.degradeScale : 1);
+  const clamped = clamp(scaled, -memory.config.maxBias, memory.config.maxBias);
+  return { bias: clamped, clamped: clamped !== scaled };
+}
+
+export function rankArchetypes(
+  input: RecommendInput,
+  memory: RankerMemoryInput,
+): { ranked: RankedArchetype[]; memoryMeta: RankerMemoryMeta } {
   const desired = inferTags(input);
   const excluded = new Set(input.signals.excludedClasses ?? []);
   const factionPreference = input.signals.factionPreference;
@@ -71,14 +113,37 @@ export function rankArchetypes(input: RecommendInput): RankedArchetype[] {
   });
 
   const preferredClass = input.signals.preferredClass;
+  let clampHits = 0;
+  let biasTotal = 0;
   const ranked = filtered.map((a) => {
     const scored = scoreArchetype(a, desired);
     if (preferredClass && a.classId === preferredClass) {
       scored.score += 3;
       scored.reasons.push("preferred_class");
     }
+    const memoryBias = combinedAffinity(a.classId, memory);
+    if (memoryBias.bias !== 0) {
+      scored.score += memoryBias.bias;
+      scored.memoryBiasApplied = memoryBias.bias;
+      scored.reasons.push(`memory_bias:${memoryBias.bias > 0 ? "+" : ""}${memoryBias.bias.toFixed(2)}`);
+      biasTotal += memoryBias.bias;
+    }
+    if (memoryBias.clamped) clampHits += 1;
     return scored;
   });
   ranked.sort((a, b) => b.score - a.score);
-  return ranked;
+  return {
+    ranked,
+    memoryMeta: {
+      enabled: memory.config.enabled,
+      degradeMode: memory.config.degradeMode,
+      browserWeight: memory.config.browserWeight,
+      serverWeight: memory.config.serverWeight,
+      maxBias: memory.config.maxBias,
+      browserConfidence: memory.browserMemory?.confidence ?? 0,
+      serverConfidence: memory.serverMemory?.confidence ?? 0,
+      averageAppliedBias: ranked.length > 0 ? Number((biasTotal / ranked.length).toFixed(4)) : 0,
+      clampHits,
+    },
+  };
 }

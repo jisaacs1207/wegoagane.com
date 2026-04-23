@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { DestinyCard } from "../components/cards/DestinyCard";
 import { destinyFixture, type DestinyFixture } from "../content/cardFixtures";
 import { fetchDestiny } from "../lib/recommendClient";
+import { buildMemoryHints } from "../lib/memoryProfile";
 
 export function LuckyRollPage() {
   const [destiny, setDestiny] = useState<DestinyFixture>(destinyFixture);
@@ -10,7 +11,7 @@ export function LuckyRollPage() {
   useEffect(() => {
     void fetchDestiny({
       entryPath: "lucky_roll",
-      signals: { nextSignal: "Surprise me" },
+      signals: { nextSignal: "Surprise me", memoryHints: buildMemoryHints() },
     })
       .then((result) => setDestiny(result.output))
       .catch(() => setDestiny(destinyFixture));
