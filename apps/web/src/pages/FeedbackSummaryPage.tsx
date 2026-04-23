@@ -1,0 +1,75 @@
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { fetchFeedbackSummary, type FeedbackSummary } from "../lib/recommendClient";
+
+const emptySummary: FeedbackSummary = {
+  total: 0,
+  rerollsFromAlmostRight: 0,
+  counts: { accept: 0, almostRight: 0, miss: 0 },
+};
+
+export function FeedbackSummaryPage() {
+  const [summary, setSummary] = useState<FeedbackSummary>(emptySummary);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void fetchFeedbackSummary()
+      .then((result) => {
+        setSummary(result);
+        setError(null);
+      })
+      .catch(() => {
+        setError("Could not load feedback summary.");
+      });
+  }, []);
+
+  const safeTotal = Math.max(summary.total, 1);
+  const acceptPct = Math.round((summary.counts.accept / safeTotal) * 100);
+  const almostPct = Math.round((summary.counts.almostRight / safeTotal) * 100);
+  const missPct = Math.round((summary.counts.miss / safeTotal) * 100);
+
+  return (
+    <div className="card">
+      <p className="step-label">Ops</p>
+      <h1 className="hero-question">M10 feedback snapshot</h1>
+      <p className="hero-sub">Quick sanity view from `/api/v1/feedback/summary` while rating logic is evolving.</p>
+
+      <div className="flow-nav" style={{ marginTop: 14 }}>
+        <div className="card" style={{ minWidth: 150 }}>
+          <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Total ratings</p>
+          <p style={{ margin: "6px 0 0", fontSize: 26, fontWeight: 700 }}>{summary.total}</p>
+        </div>
+        <div className="card" style={{ minWidth: 150 }}>
+          <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Rerolls</p>
+          <p style={{ margin: "6px 0 0", fontSize: 26, fontWeight: 700 }}>{summary.rerollsFromAlmostRight}</p>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginTop: 12 }}>
+        <p style={{ margin: 0, fontSize: 13, color: "var(--ts)" }}>Breakdown</p>
+        <p style={{ margin: "8px 0 0", fontSize: 14 }}>
+          Accept: <strong>{summary.counts.accept}</strong> ({acceptPct}%)
+        </p>
+        <p style={{ margin: "6px 0 0", fontSize: 14 }}>
+          Almost right: <strong>{summary.counts.almostRight}</strong> ({almostPct}%)
+        </p>
+        <p style={{ margin: "6px 0 0", fontSize: 14 }}>
+          Miss: <strong>{summary.counts.miss}</strong> ({missPct}%)
+        </p>
+      </div>
+
+      {error ? (
+        <p style={{ marginTop: 10, marginBottom: 0, fontSize: 12, color: "#ef4444" }}>{error}</p>
+      ) : null}
+
+      <div className="flow-nav" style={{ marginTop: 14 }}>
+        <Link to="/" className="btn-ghost" style={{ display: "inline-flex", alignItems: "center" }}>
+          Home
+        </Link>
+        <Link to="/release-spirit/result" className="btn-primary" style={{ textDecoration: "none" }}>
+          Test death flow
+        </Link>
+      </div>
+    </div>
+  );
+}
