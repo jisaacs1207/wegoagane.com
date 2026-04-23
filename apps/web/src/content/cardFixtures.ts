@@ -4,7 +4,7 @@ import type { ClassId } from "../icons/types";
 export type MemorialFixture = {
   epitaph: string;
   characterName: string;
-  level: number;
+  level: number | null;
   location: string;
   cause: string;
   faction: "horde" | "alliance" | "neutral";

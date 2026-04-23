@@ -4,6 +4,7 @@ const base = process.argv[2] ?? "https://wegoagane.com";
 
 const healthUrl = `${base}/api/health`;
 const recommendUrl = `${base}/api/v1/recommend`;
+const memorialUrl = `${base}/api/v1/memorial`;
 
 const body = {
   entryPath: "draft_a_run",
@@ -35,9 +36,34 @@ async function run() {
     throw new Error("Recommend response missing destinyId/sessionId");
   }
 
+  const memorial = await fetch(memorialUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      sessionId: payload.sessionId,
+      zone: "Durotar",
+      cause: "Overpull",
+      mood: "frustrated",
+      nextSignal: "pull smaller",
+      faction: "horde",
+      characterName: "SmokeRun",
+      level: 12,
+    }),
+  });
+  if (!memorial.ok) {
+    const text = await memorial.text();
+    throw new Error(`Memorial failed (${memorial.status}) ${memorialUrl}: ${text}`);
+  }
+
+  const memorialPayload = await memorial.json();
+  if (!memorialPayload?.memorialId || !memorialPayload?.output?.epitaph) {
+    throw new Error("Memorial response missing memorialId/output");
+  }
+
   console.log("Smoke OK");
   console.log(`sessionId=${payload.sessionId}`);
   console.log(`destinyId=${payload.destinyId}`);
+  console.log(`memorialId=${memorialPayload.memorialId}`);
   console.log(`selectedArchetype=${payload.selectedArchetype}`);
 }
 

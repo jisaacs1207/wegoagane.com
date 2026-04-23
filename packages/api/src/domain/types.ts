@@ -27,6 +27,17 @@ export type RecommendInput = {
   signals: RecommendSignals;
 };
 
+export type MemorialInput = {
+  sessionId?: string;
+  zone: string;
+  cause: string;
+  mood?: string;
+  nextSignal?: string;
+  faction?: Faction;
+  characterName?: string;
+  level?: number;
+};
+
 export type Archetype = {
   key: string;
   classId: ClassId;
@@ -52,5 +63,17 @@ export type DestinyOutput = {
   tierProse: string;
   bullets: string[];
   rationale: string;
-  sourceType: "template";
+  sourceType: "template" | "ai";
 };
+
+export type MemorialOutput = {
+  epitaph: string;
+  characterName: string;
+  level: number | null;
+  location: string;
+  cause: string;
+  faction: Faction | "neutral";
+  sourceType: "template" | "ai";
+};
+
+export type AiErrorType = "ai_timeout" | "ai_invalid_json" | "ai_provider_error";

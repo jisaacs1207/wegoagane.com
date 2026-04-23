@@ -29,6 +29,22 @@ jobs:
         run: |
           npm ci --prefix packages/api
           npm run typecheck --prefix packages/api
+          npm run test --prefix packages/api
+
+      - name: Verify AI/OpenRouter deploy inputs
+        env:
+          API_AI_ENABLED: ${{ vars.API_AI_ENABLED }}
+          API_AI_GATEWAY_URL: ${{ vars.API_AI_GATEWAY_URL }}
+          API_AI_MODEL_DESTINY: ${{ vars.API_AI_MODEL_DESTINY }}
+          API_AI_MODEL_MEMORIAL: ${{ vars.API_AI_MODEL_MEMORIAL }}
+          API_AI_GATEWAY_TOKEN: ${{ secrets.API_AI_GATEWAY_TOKEN }}
+        run: |
+          if [ "${API_AI_ENABLED}" = "true" ]; then
+            test -n "${API_AI_GATEWAY_URL}" || { echo "Missing vars.API_AI_GATEWAY_URL (OpenRouter endpoint)"; exit 1; }
+            test -n "${API_AI_MODEL_DESTINY}" || { echo "Missing vars.API_AI_MODEL_DESTINY"; exit 1; }
+            test -n "${API_AI_MODEL_MEMORIAL}" || { echo "Missing vars.API_AI_MODEL_MEMORIAL"; exit 1; }
+            test -n "${API_AI_GATEWAY_TOKEN}" || { echo "Missing secrets.API_AI_GATEWAY_TOKEN (OpenRouter API key)"; exit 1; }
+          fi
 
       - name: Apply production migrations
         env:

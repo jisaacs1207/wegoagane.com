@@ -35,5 +35,28 @@ export const recommendationLogs = sqliteTable("recommendation_logs", {
   confidenceScore: real("confidence_score").notNull(),
   reasonsJson: text("reasons_json").notNull(),
   validationFailures: integer("validation_failures").notNull().default(0),
+  sourceType: text("source_type").notNull().default("template"),
+  fallbackUsed: integer("fallback_used", { mode: "boolean" }).notNull().default(false),
+  aiModelId: text("ai_model_id"),
+  aiLatencyMs: integer("ai_latency_ms"),
+  aiRetries: integer("ai_retries").notNull().default(0),
+  aiInputTokens: integer("ai_input_tokens"),
+  aiOutputTokens: integer("ai_output_tokens"),
+  aiErrorType: text("ai_error_type"),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+export const memorials = sqliteTable("memorials", {
+  id: text("id").primaryKey(),
+  sessionId: text("session_id").notNull(),
+  destinyId: text("destiny_id"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  characterName: text("character_name").notNull(),
+  level: integer("level"),
+  location: text("location").notNull(),
+  cause: text("cause").notNull(),
+  faction: text("faction").notNull(),
+  epitaph: text("epitaph").notNull(),
+  sourceType: text("source_type").notNull(),
+  contentJson: text("content_json").notNull(),
 });

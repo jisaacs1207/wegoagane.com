@@ -94,10 +94,11 @@ jobs:
           cache: npm
           cache-dependency-path: packages/api/package-lock.json
 
-      - name: Install and typecheck
+      - name: Install, typecheck, test
         run: |
           npm ci
           npm run typecheck
+          npm run test
 
       - name: Verify migration drift
         run: |

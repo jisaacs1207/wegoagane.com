@@ -1,28 +1,53 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { destinyFixture, memorialFixture, type DestinyFixture } from "../../content/cardFixtures";
+import {
+  destinyFixture,
+  memorialFixture,
+  type DestinyFixture,
+  type MemorialFixture,
+} from "../../content/cardFixtures";
 import { DestinyCard } from "../../components/cards/DestinyCard";
 import { MemorialCard } from "../../components/cards/MemorialCard";
-import { fetchDestiny } from "../../lib/recommendClient";
+import { fetchDestiny, fetchMemorial } from "../../lib/recommendClient";
 
 export function DeathResultStep() {
   const [destiny, setDestiny] = useState<DestinyFixture>(destinyFixture);
+  const [memorial, setMemorial] = useState<MemorialFixture>(memorialFixture);
 
   useEffect(() => {
     const mood = sessionStorage.getItem("death.mood") ?? undefined;
     const nextSignal = sessionStorage.getItem("death.nextSignal") ?? undefined;
+    const existingSession = sessionStorage.getItem("death.sessionId");
+    const sessionId = existingSession ?? crypto.randomUUID();
+    if (!existingSession) {
+      sessionStorage.setItem("death.sessionId", sessionId);
+    }
 
     void fetchDestiny({
       entryPath: "release_spirit",
+      sessionId,
       signals: { mood, nextSignal },
     })
       .then(setDestiny)
       .catch(() => setDestiny(destinyFixture));
+
+    void fetchMemorial({
+      sessionId,
+      zone: "Unknown Zone",
+      cause: "Unknown Cause",
+      mood,
+      nextSignal,
+      faction: "horde",
+      characterName: memorialFixture.characterName,
+      level: memorialFixture.level ?? undefined,
+    })
+      .then(setMemorial)
+      .catch(() => setMemorial(memorialFixture));
   }, []);
 
   return (
     <div>
-      <MemorialCard data={memorialFixture} />
+      <MemorialCard data={memorial} />
       <div style={{ marginTop: 14 }}>
         <DestinyCard data={destiny} />
       </div>
