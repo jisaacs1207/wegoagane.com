@@ -8,10 +8,10 @@
 
 | Field | Value |
 |--------|--------|
-| **Current milestone** | **Pre-M1** — handbook, CI, GitHub rules (Profile B), PR template ✅ |
+| **Current milestone** | **M1 (in PR)** — usable Vite SPA + deploy doc; merge `feat/m1-spa-usable` → `main` then connect Pages |
 | **Blocked by** | — |
-| **Last build iteration** | `.github/PULL_REQUEST_TEMPLATE.md` merged to `main`; ruleset helper + `docs/github-setup.md` complete for solo PR flow |
-| **Next “request to move forward” criteria** | **M1 — app shell:** start Vite + React Router (see [04-engineering-data-ops.md](04-engineering-data-ops.md) §26). Before **UI-locking** work: fill [Review gates](#review-gates-before-first-code-milestone) (§29, MVP slice, §30) as far as you can. |
+| **Last build iteration** | `apps/web` — landing, Release Spirit (4 steps), Draft a Run (3), Lucky Roll, share stub; CI job **Web**; [deploy-wegoagane-com.md](../deploy-wegoagane-com.md) |
+| **Next “request to move forward” criteria** | Merge PR → add ruleset required check **`Web`** (see PR body) → Cloudflare Pages per [deploy doc](../deploy-wegoagane-com.md) → **M2** icons + card shells ([04-engineering-data-ops.md](04-engineering-data-ops.md) §26). |
 
 ---
 
@@ -35,7 +35,7 @@ Aligned with [04-engineering-data-ops.md](04-engineering-data-ops.md) §26, grou
 | ID | Milestone | Definition of done (summary) | Depends on | Open decisions (§29) to resolve before / during |
 |----|------------|------------------------------|--------------|--------------------------------------------------|
 | **M0** | Handbook + process | Multi-file `docs/handoff/`, archive monolith, STATUS workflow; **GitHub Actions CI** green on push (handbook structure gate — see [04-engineering-data-ops.md](04-engineering-data-ops.md) §17.4) | — | — |
-| **M1** | App shell + routing | Vite React SPA deploys; routes for landing, death, planning, share placeholder; **extend CI** with `npm` lint/typecheck/test as soon as `package.json` exists | M0 | Wordmark/typography (29.1) partial OK with tokens |
+| **M1** | App shell + routing | **Shipped (this PR):** `apps/web` Vite SPA — `/`, `/release-spirit/*`, `/draft-a-run/*`, `/lucky-roll`, `/share/:runId`; CI job **Web** (`lint` + `build`); [deploy-wegoagane-com.md](../deploy-wegoagane-com.md) for **wegoagane.com** | M0 | Wordmark/typography (29.1) partial OK with tokens |
 | **M2** | Icons + card UI shell | Original SVG icon set; Memorial / Destiny / share-layout components render static fixtures | M1 | Tier labels vs prose-only (29.7) |
 | **M3** | Archetype schema + fixture JSON | Schema + **small** MVP archetype set in repo; loads in app | M0 | **MVP archetype count** |
 | **M4** | **Output validator** | Validator runs on fixture + rejects bad outputs; no generator without it | M3 | — |
@@ -88,3 +88,4 @@ When done, set **Current milestone** to M1 and clear **Blocked by**.
 | 2026-04-22 | [docs/github-setup.md](../github-setup.md): step roadmap + “after Step 2 continue Steps 3–6”; Step 3 made actionable |
 | 2026-04-22 | Profile B notes: `RULESET:` reminder + [`scripts/ruleset_add_required_check.py`](../scripts/ruleset_add_required_check.py) for new required checks |
 | 2026-04-22 | [`.github/PULL_REQUEST_TEMPLATE.md`](../.github/PULL_REQUEST_TEMPLATE.md) on `main`; STATUS workflow row set to **Pre-M1** |
+| 2026-04-22 | **`apps/web`** Vite + React Router usable flows; CI job **Web**; [deploy-wegoagane-com.md](../deploy-wegoagane-com.md) |
