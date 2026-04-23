@@ -3,6 +3,28 @@ import type { DestinyOutput, MemorialOutput, RecommendInput } from "../domain/ty
 import { validateMemorialOutput, validateTemplateOutput } from "../domain/validator";
 import type { AiTelemetry, DestinyAiResult, MemorialAiResult } from "./types";
 
+/** Cloudflare / Wrangler may supply booleans or strings ("true", "TRUE", "1"). */
+export function isTruthyEnv(value: unknown): boolean {
+  if (value === true) return true;
+  if (value === false || value === null || value === undefined) return false;
+  if (typeof value === "number") return value === 1;
+  const s = String(value).trim().toLowerCase();
+  if (s.length === 0) return false;
+  return s === "true" || s === "1" || s === "yes" || s === "on";
+}
+
+export function getAiGateStatus(env: ApiEnv["Bindings"]) {
+  const aiEnabled = isTruthyEnv(env.AI_ENABLED);
+  const hasGatewayUrl = !!env.AI_GATEWAY_URL?.trim();
+  const hasGatewayToken = !!env.AI_GATEWAY_TOKEN;
+  return {
+    aiEnabled,
+    hasGatewayUrl,
+    hasGatewayToken,
+    ready: aiEnabled && hasGatewayUrl && hasGatewayToken,
+  };
+}
+
 function baseTelemetry(modelId: string | null, enabled: boolean): AiTelemetry {
   return {
     enabled,
@@ -17,7 +39,7 @@ function baseTelemetry(modelId: string | null, enabled: boolean): AiTelemetry {
 }
 
 function isAiEnabled(env: ApiEnv["Bindings"]) {
-  return env.AI_ENABLED === "true" && !!env.AI_GATEWAY_URL && !!env.AI_GATEWAY_TOKEN;
+  return getAiGateStatus(env).ready;
 }
 
 async function callGateway(
@@ -131,6 +153,8 @@ export async function enrichDestiny(
     };
     const failures = validateTemplateOutput(candidate, input.signals.factionPreference);
     if (failures.length === 0) {
+      telemetry.fallbackUsed = false;
+      telemetry.providerError = null;
       return { output: candidate, validationFailures: [], telemetry };
     }
     telemetry.providerError = "ai_invalid_json";
@@ -187,6 +211,8 @@ export async function enrichMemorial(
     };
     const failures = validateMemorialOutput(candidate);
     if (failures.length === 0) {
+      telemetry.fallbackUsed = false;
+      telemetry.providerError = null;
       return { output: candidate, validationFailures: [], telemetry };
     }
     telemetry.providerError = "ai_invalid_json";

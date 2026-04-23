@@ -1,5 +1,5 @@
 import { type Context, Hono } from "hono";
-import { enrichMemorial } from "../ai/adapter";
+import { enrichMemorial, getAiGateStatus } from "../ai/adapter";
 import { getDb, type ApiEnv } from "../db/client";
 import { memorials, questionAnswers, sessions } from "../db/schema";
 import { renderTemplateMemorial } from "../domain/memorialTemplate";
@@ -74,6 +74,13 @@ export async function handleMemorial(c: Context<ApiEnv>) {
     sourceType: output.sourceType,
     fallbackUsed: aiResult.telemetry.fallbackUsed,
     validationFailures: failures,
+    aiMeta: {
+      gate: getAiGateStatus(c.env),
+      providerError: aiResult.telemetry.providerError,
+      modelId: aiResult.telemetry.modelId,
+      latencyMs: aiResult.telemetry.latencyMs,
+      retries: aiResult.telemetry.retries,
+    },
     output,
   });
 }
