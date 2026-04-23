@@ -27,6 +27,8 @@
   --radius-btn: 6px;
   --radius-pill: 4px;
   --font-sans: -apple-system, "Segoe UI", system-ui, sans-serif;
+  /* Memorial quote — design reference: serif italic for epitaph only */
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
 }
 
 *,
@@ -257,7 +259,7 @@ a:hover {
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--td);
+  color: var(--ts);
   margin-bottom: 8px;
 }
 

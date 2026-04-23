@@ -16,7 +16,9 @@ export function DesignCardsPage() {
     <div>
       <p className="step-label">M2 · design QA</p>
       <h1 className="hero-question">Card shells & icons</h1>
-      <p className="hero-sub">Original SVG glyphs (§14.4) and static fixtures. Not shipped to casual visitors — link from handbook / dev only.</p>
+      <p className="hero-sub">
+        Reference layouts: class glyphs (handbook §14.4), memorial warmth, destiny stripe, and memorial+destiny share combo (§15.1). Fixtures are placeholders until the pipeline ships.
+      </p>
 
       <div className="card" style={{ marginTop: 20 }}>
         <p className="step-label">Class icons</p>

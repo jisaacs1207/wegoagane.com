@@ -51,13 +51,14 @@
 
 .memorial-card__facts {
   font-size: 12px;
-  color: var(--ts);
+  color: #c4b8a4;
   margin: 0 0 12px;
   line-height: 1.4;
 }
 
 .memorial-card__epitaph {
   margin: 0;
+  font-family: var(--font-serif);
   font-size: 18px;
   font-style: italic;
   font-weight: 600;
@@ -72,9 +73,9 @@
   right: 10px;
   bottom: 8px;
   font-size: 9px;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--tx);
+  color: rgba(232, 220, 200, 0.45);
   user-select: none;
 }
 
@@ -117,9 +118,9 @@
 .destiny-card__tier {
   margin-top: 12px;
   font-size: 11px;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--td);
+  color: #b0a088;
 }
 
 .destiny-card__bullets {
@@ -143,14 +144,14 @@
   align-items: center;
   gap: 8px;
   font-size: 10px;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--td);
+  color: #a89870;
   margin-bottom: 10px;
 }
 
 .share-combo__label svg {
-  color: var(--gold-dim);
+  color: var(--gold);
 }
 
 .share-combo__grid {
@@ -158,9 +159,19 @@
   gap: 12px;
   max-width: 420px;
   grid-template-columns: 1fr;
+  align-items: stretch;
 }
 
 .share-combo__panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.share-combo__panel .memorial-card,
+.share-combo__panel .destiny-card {
+  flex: 1 1 auto;
+  width: 100%;
   min-height: 100%;
 }
 
@@ -168,10 +179,10 @@
   display: none;
   align-items: center;
   justify-content: center;
-  color: var(--gold-dim);
-  font-size: 11px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
+  color: var(--gold-bright);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 @media (min-width: 520px) {
@@ -179,14 +190,12 @@
     grid-template-columns: 1fr auto 1fr;
     gap: 14px;
     max-width: 560px;
-    align-items: stretch;
   }
 
   .share-combo__bridge {
     display: flex;
-    writing-mode: vertical-rl;
-    transform: rotate(180deg);
-    padding: 0 4px;
+    align-self: center;
+    padding: 0 2px;
   }
 }
 
