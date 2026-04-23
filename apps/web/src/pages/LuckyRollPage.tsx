@@ -12,7 +12,7 @@ export function LuckyRollPage() {
       entryPath: "lucky_roll",
       signals: { nextSignal: "Surprise me" },
     })
-      .then(setDestiny)
+      .then((result) => setDestiny(result.output))
       .catch(() => setDestiny(destinyFixture));
   }, []);
 

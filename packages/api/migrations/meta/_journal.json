@@ -15,6 +15,13 @@
       "when": 1776915556713,
       "tag": "0001_broad_dark_beast",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1776956031213,
+      "tag": "0002_blushing_jackpot",
+      "breakpoints": true
     }
   ]
 }

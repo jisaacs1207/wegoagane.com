@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { validateMemorialOutput, validateTemplateOutput } from "./validator";
+import {
+  validateDestinyFeedbackInput,
+  validateMemorialOutput,
+  validateTemplateOutput,
+} from "./validator";
 import type { DestinyOutput, MemorialOutput } from "./types";
 
 test("validateTemplateOutput accepts a valid template destiny", () => {
@@ -27,4 +31,15 @@ test("validateMemorialOutput rejects invalid memorial content", () => {
     sourceType: "template",
   };
   assert.ok(validateMemorialOutput(output).length > 0);
+});
+
+test("validateDestinyFeedbackInput accepts valid M10 payload", () => {
+  const input = validateDestinyFeedbackInput({
+    sessionId: "session-1",
+    destinyId: "destiny-1",
+    choice: "almost_right",
+    rerollFromClassId: "mage",
+    rerollToClassId: "warrior",
+  });
+  assert.equal(input.choice, "almost_right");
 });

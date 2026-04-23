@@ -60,3 +60,14 @@ export const memorials = sqliteTable("memorials", {
   sourceType: text("source_type").notNull(),
   contentJson: text("content_json").notNull(),
 });
+
+export const destinyFeedback = sqliteTable("destiny_feedback", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  sessionId: text("session_id").notNull(),
+  destinyId: text("destiny_id").notNull(),
+  choice: text("choice").notNull(),
+  note: text("note"),
+  rerollFromClassId: text("reroll_from_class_id"),
+  rerollToClassId: text("reroll_to_class_id"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+});

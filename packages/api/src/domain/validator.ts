@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { archetypes, classFactionMap } from "./archetypes";
-import type { DestinyOutput, MemorialInput, MemorialOutput, RecommendInput } from "./types";
+import type {
+  DestinyFeedbackInput,
+  DestinyOutput,
+  MemorialInput,
+  MemorialOutput,
+  RecommendInput,
+} from "./types";
 
 const classValues = [
   "mage",
@@ -41,12 +47,25 @@ export const memorialInputSchema = z.object({
   level: z.number().int().min(1).max(60).optional(),
 });
 
+export const destinyFeedbackInputSchema = z.object({
+  sessionId: z.string().min(1).max(80),
+  destinyId: z.string().min(1).max(80),
+  choice: z.enum(["accept", "almost_right", "miss"]),
+  note: z.string().max(240).optional(),
+  rerollFromClassId: z.enum(classValues).optional(),
+  rerollToClassId: z.enum(classValues).optional(),
+});
+
 export function validateRecommendInput(payload: unknown): RecommendInput {
   return recommendInputSchema.parse(payload);
 }
 
 export function validateMemorialInput(payload: unknown): MemorialInput {
   return memorialInputSchema.parse(payload);
+}
+
+export function validateDestinyFeedbackInput(payload: unknown): DestinyFeedbackInput {
+  return destinyFeedbackInputSchema.parse(payload);
 }
 
 export function validateTemplateOutput(
