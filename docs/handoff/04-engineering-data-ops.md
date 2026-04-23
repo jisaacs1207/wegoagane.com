@@ -379,7 +379,7 @@ Release verification flow:
 5. If still empty after cron window, run manual tick with token header and re-check health
 
 Known operational caveats:
-- Current `wrangler.toml` has top-level `routes`; preview Worker deploy can conflict with production route assignments.
+- `wrangler.toml` now scopes routes to `[env.production]` only (guarded by CI/deploy `check:routes`) to prevent preview/prod route collisions.
 - Growth engine may initialize with `experimentsRunning=0` and `variantsTotal=0` until first successful tick.
 - Decision state `hold` + `under_sampled` is expected early and indicates guardrails are functioning.
 

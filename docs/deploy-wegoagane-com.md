@@ -479,9 +479,9 @@ Rollout result:
   - This repo has no root package manifest. Run API scripts from `packages/api`, or use root with `--prefix packages/api` (never both together).
 - **Double-prefix path error** (`packages/api/packages/api/package.json`):
   - Caused by running `--prefix packages/api` while already inside `packages/api`.
-- **Preview deploy route collision**:
-  - `wrangler deploy --env preview` attempted to claim production routes because `routes` are top-level in `wrangler.toml`.
-  - For the current release we skipped preview Worker and shipped production-only.
+- **Preview deploy route collision** (resolved):
+  - `wrangler deploy --env preview` had attempted to claim production routes when `routes` were top-level in `wrangler.toml`.
+  - Routes are now scoped under `[env.production]` only, and CI/deploy enforce this with `npm run check:routes`.
 - **Smoke 404 on growth health before deploy**:
   - `GET /api/v1/growth/health` returned 404 until latest Worker deploy was applied.
 - **CI migration drift after manual migration**:

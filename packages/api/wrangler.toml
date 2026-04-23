@@ -3,12 +3,6 @@ main = "src/index.ts"
 compatibility_date = "2026-04-23"
 triggers = { crons = ["*/20 * * * *"] }
 
-# Route API traffic on the live domain through this Worker.
-routes = [
-  { pattern = "wegoagane.com/api/*", zone_name = "wegoagane.com" },
-  { pattern = "www.wegoagane.com/api/*", zone_name = "wegoagane.com" }
-]
-
 # Workers Logs (see https://developers.cloudflare.com/workers/observability/logs/workers-logs/)
 [observability]
 enabled = true
@@ -93,6 +87,11 @@ preview_bucket_name = "wegoagane-share-images-preview"
 
 [env.production]
 name = "wegoagane-api-production"
+# Route API traffic on the live domain through production only.
+routes = [
+  { pattern = "wegoagane.com/api/*", zone_name = "wegoagane.com" },
+  { pattern = "www.wegoagane.com/api/*", zone_name = "wegoagane.com" }
+]
 
 [env.production.observability]
 enabled = true
