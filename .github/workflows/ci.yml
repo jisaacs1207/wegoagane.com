@@ -39,6 +39,8 @@ jobs:
           test -f docs/deploy-wegoagane-com.md
           test -f docs/wegoagane-handoff-v4.md
           test -f apps/web/package.json
+          test -f packages/api/package.json
+          test -f packages/api/wrangler.toml
           test -f apps/web/public/_redirects
           test -f docs/wegoagane-handoff-v4-archive.md
           for f in \
@@ -76,3 +78,28 @@ jobs:
           npm ci
           npm run lint
           npm run build
+
+  api:
+    name: API
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/api
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: packages/api/package-lock.json
+
+      - name: Install and typecheck
+        run: |
+          npm ci
+          npm run typecheck
+
+      - name: Verify migration drift
+        run: |
+          npm run db:generate
+          git diff --exit-code migrations

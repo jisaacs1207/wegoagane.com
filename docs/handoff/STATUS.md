@@ -1,6 +1,6 @@
 # Build status & iteration contract
 
-**Last updated:** 2026-04-23 (M2 shipped in app; see changelog at bottom of this file)
+**Last updated:** 2026-04-23 (remote API tie-in staged in branch; see changelog at bottom of this file)
 
 ---
 
@@ -8,10 +8,10 @@
 
 | Field | Value |
 |--------|--------|
-| **Current milestone** | **M3 (next)** — archetype schema + small fixture JSON in repo ([04-engineering-data-ops.md](04-engineering-data-ops.md) §26) |
+| **Current milestone** | **M3–M7 (in branch)** — schema + validator + ranker + template pipeline + Worker/D1 scaffold + remote tie-in runbook |
 | **Blocked by** | — |
-| **Last build iteration** | **M2 shipped:** original **class SVG** set (`ClassIcon` + glyphs); **`MemorialCard`**, **`DestinyCard`**, **`ShareComboLayout`** + [`cardFixtures.ts`](../../apps/web/src/content/cardFixtures.ts); wired into Release Spirit result, Draft result, `/share/:runId`, **`/design/cards`** QA; full **§14.5** class CSS tokens in `index.css` |
-| **Next “request to move forward” criteria** | **M3:** JSON schema + typed loader + **3–5** MVP archetype fixtures (confirm count in MVP table); still resolve §29 where it blocks layout ([06-risks-open-decisions-checklist.md](06-risks-open-decisions-checklist.md) §29). |
+| **Last build iteration** | Added `packages/api` (**Hono + Drizzle + D1 migrations**) with deterministic recommendation pipeline (`archetypes.ts` 8 fixtures, `validator.ts`, `ranker.ts`, `template.ts`, `POST /v1/recommend`); web result pages call `/api/v1/recommend` with fixture fallback; added CI job **API** + `api-deploy.yml`; configured Worker routes for `wegoagane.com/api/*` in `wrangler.toml`; smoke script added. |
+| **Next “request to move forward” criteria** | Set real D1 IDs + `CLOUDFLARE_API_TOKEN`, run production migration/deploy, and pass smoke (`/api/health`, `/api/v1/recommend`) with D1 write checks; then continue **M8** AI Gateway + **M9** memorial pipeline. |
 
 ---
 
@@ -37,11 +37,11 @@ Aligned with [04-engineering-data-ops.md](04-engineering-data-ops.md) §26, grou
 | **M0** | Handbook + process | Multi-file `docs/handoff/`, archive monolith, STATUS workflow; **GitHub Actions CI** green on push (handbook structure gate — see [04-engineering-data-ops.md](04-engineering-data-ops.md) §17.4) | — | — |
 | **M1** | App shell + routing | **Shipped on `main`:** `apps/web` Vite SPA — `/`, `/release-spirit/*`, `/draft-a-run/*`, `/lucky-roll`, `/share/:runId`; CI **Web**; Cloudflare Pages + **https://wegoagane.com**; `_redirects` comment-only (no `/*` SPA rewrite — see [deploy doc — SPA](../deploy-wegoagane-com.md#spa-routing-and-refresh)) | M0 | Wordmark/typography (29.1) partial OK with tokens |
 | **M2** | Icons + card UI shell | **Shipped on `main`:** `ClassIcon` (+ `MemorialMarkIcon`, `ShareFrameIcon`); `MemorialCard`, `DestinyCard`, `ShareComboLayout`; fixtures in `apps/web/src/content/cardFixtures.ts`; route **`/design/cards`**; tier line as **prose** pending §29.7 | M1 | Tier labels vs prose-only (29.7) — **deferred:** prose `tierProse` on Destiny card |
-| **M3** | Archetype schema + fixture JSON | Schema + **small** MVP archetype set in repo; loads in app | M0 | **MVP archetype count** |
-| **M4** | **Output validator** | Validator runs on fixture + rejects bad outputs; no generator without it | M3 | — |
-| **M5** | Deterministic ranker | Tag overlap / weighted ranker picks archetype from signals; explainable in plain English | M3–M4 | — |
-| **M6** | Template-only Destiny pipeline | Rank → template render → validate → show card (no AI) | M4–M5 | Combined vs tabbed result (29.2); share CTA (29.6) |
-| **M7** | Workers + D1 + session persistence | API persists session, questions, destinies per [04-engineering-data-ops.md](04-engineering-data-ops.md) §19 | M6 | — |
+| **M3** | Archetype schema + fixture JSON | **In branch:** typed archetype schema + 8 archetype fixture set in `packages/api/src/domain/archetypes.ts` | M0 | **MVP archetype count** (operator selected 8 for this pass) |
+| **M4** | **Output validator** | **In branch:** request + output validation in `packages/api/src/domain/validator.ts` (class/faction + shape checks) | M3 | — |
+| **M5** | Deterministic ranker | **In branch:** weighted tag-overlap ranker in `packages/api/src/domain/ranker.ts` with explainable reasons | M3–M4 | — |
+| **M6** | Template-only Destiny pipeline | **In branch:** rank → template render → validate in `packages/api/src/domain/template.ts` and `POST /v1/recommend` | M4–M5 | Combined vs tabbed result (29.2); share CTA (29.6) |
+| **M7** | Workers + D1 + session persistence | **In branch:** `packages/api` Worker + Drizzle schema + migration + inserts into sessions/question_answers/destinies/recommendation_logs | M6 | — |
 | **M8** | AI Gateway + presentation layer | Tier A/B behind gateway; AI never inventing structured facts | M6–M7 | Model IDs pinned in code/config (tiers in §18) |
 | **M9** | Memorial pipeline | Epitaph + post-mortem with validation + fallbacks | M8 | Name suggest vs optional (29.5); tone “bullshit death” (29.3) |
 | **M10** | Refinement + rating gate | Reroll reasons, “almost right,” post-accept rating | M6–M9 | — |
@@ -92,3 +92,5 @@ When the checklist is complete enough for the next milestone, update **Current m
 | 2026-04-23 | **Production live:** Cloudflare Pages from `main`; **https://wegoagane.com** (apex `CNAME` → `wegoagane-com.pages.dev`, proxied); removed Namecheap parking **A** / **www** CNAME; PR #7 `_redirects` comment-only fix |
 | 2026-04-23 | STATUS: **M1** marked shipped on `main`; **M2** set as current milestone; review gates reframed post-M1 |
 | 2026-04-23 | **M2:** `apps/web` class icons + Memorial / Destiny / share combo components; `/design/cards`; STATUS → **M3** next |
+| 2026-04-23 | **M3–M7 foundation (branch):** `packages/api` Hono+Drizzle+D1 migrations, validator/ranker/template pipeline, `/v1/recommend`, web pages calling API with fixture fallback |
+| 2026-04-23 | Remote tie-in staged: `wrangler.toml` same-domain `/api/*` routes + env bindings, CI job **API**, deploy workflow `api-deploy.yml`, smoke + D1 verification commands in docs |

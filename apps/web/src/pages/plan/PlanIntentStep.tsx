@@ -26,7 +26,10 @@ export function PlanIntentStep() {
             key={i}
             type="button"
             className={`chip ${selected === i ? "chip-selected" : ""}`}
-            onClick={() => setSelected(i)}
+            onClick={() => {
+              setSelected(i);
+              sessionStorage.setItem("plan.intent", i);
+            }}
           >
             {i}
           </button>

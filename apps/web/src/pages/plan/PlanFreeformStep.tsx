@@ -12,7 +12,11 @@ export function PlanFreeformStep() {
       <p className="hero-sub">Optional — 80 characters max in production.</p>
       <textarea
         value={note}
-        onChange={(e) => setNote(e.target.value.slice(0, 80))}
+        onChange={(e) => {
+          const next = e.target.value.slice(0, 80);
+          setNote(next);
+          sessionStorage.setItem("plan.freeform", next);
+        }}
         rows={3}
         placeholder="e.g. hate pet management, already tried mage"
         style={{

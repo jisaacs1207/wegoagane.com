@@ -1,18 +1,30 @@
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { DestinyCard } from "../components/cards/DestinyCard";
+import { destinyFixture, type DestinyFixture } from "../content/cardFixtures";
+import { fetchDestiny } from "../lib/recommendClient";
 
 export function LuckyRollPage() {
+  const [destiny, setDestiny] = useState<DestinyFixture>(destinyFixture);
+
+  useEffect(() => {
+    void fetchDestiny({
+      entryPath: "lucky_roll",
+      signals: { nextSignal: "Surprise me" },
+    })
+      .then(setDestiny)
+      .catch(() => setDestiny(destinyFixture));
+  }, []);
+
   return (
     <div className="card">
       <p className="step-label">Lucky roll</p>
       <h1 className="hero-question">Your roll</h1>
       <p className="hero-sub">
-        Weighted random Destiny (deterministic ranker + archetypes) will live here. For now, enjoy a fixed stub
-        card.
+        Weighted Destiny from the deterministic ranker + archetype fixtures. Falls back to local fixture when API is
+        unavailable.
       </p>
-      <div className="destiny-preview">
-        <h3>Human Discipline Priest · Off the beaten path</h3>
-        <p>Wand rhythm, Spirit Tap, and dungeon etiquette — data-backed checklist later.</p>
-      </div>
+      <DestinyCard data={destiny} />
       <div className="flow-nav" style={{ marginTop: 20 }}>
         <Link to="/" className="btn-ghost" style={{ display: "inline-flex", alignItems: "center" }}>
           Home
