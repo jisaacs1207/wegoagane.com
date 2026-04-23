@@ -30,7 +30,6 @@ export function PlanResultStep() {
   const [note, setNote] = useState("");
   const [showRerollGate, setShowRerollGate] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [recommendAssignmentId, setRecommendAssignmentId] = useState<string | null>(null);
   const [recommendVariantId, setRecommendVariantId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,33 +38,46 @@ export function PlanResultStep() {
     const existingSession = sessionStorage.getItem("plan.sessionId") ?? undefined;
 
     const seededSession = existingSession ?? crypto.randomUUID();
-    void fetchGrowthAssignment({ sessionId: seededSession, surface: "recommendation", entryPath: "draft_a_run" })
-      .then((assignment) => {
-        setRecommendAssignmentId(assignment.assignmentId);
+    void (async () => {
+      let assignmentId: string | null = null;
+      let variantId: string | null = null;
+      try {
+        const assignment = await fetchGrowthAssignment({
+          sessionId: seededSession,
+          surface: "recommendation",
+          entryPath: "draft_a_run",
+        });
+        assignmentId = assignment.assignmentId;
+        variantId = assignment.variantId;
         setRecommendVariantId(assignment.variantId);
-      })
-      .catch(() => {});
+      } catch {
+        // Non-blocking: default recommendation path still works.
+      }
 
-    void fetchDestiny({
-      entryPath: "draft_a_run",
-      sessionId: seededSession,
-      signals: { intent, freeform, memoryHints: buildMemoryHints(), recommendVariantId: recommendVariantId ?? undefined },
-    })
-      .then((result) => {
+      try {
+        const result = await fetchDestiny({
+          entryPath: "draft_a_run",
+          sessionId: seededSession,
+          signals: { intent, freeform, memoryHints: buildMemoryHints(), recommendVariantId: variantId ?? undefined },
+        });
         setDestiny(result.output);
         setSessionId(result.sessionId);
         setDestinyId(result.destinyId);
         sessionStorage.setItem("plan.sessionId", result.sessionId);
         sessionStorage.setItem("plan.destinyId", result.destinyId);
-        if (recommendAssignmentId) {
-          void submitGrowthOutcome({ assignmentId: recommendAssignmentId, converted: true, outcome: { event: "recommend_rendered", destinyId: result.destinyId } }).catch(() => {});
+        if (assignmentId) {
+          void submitGrowthOutcome({
+            assignmentId,
+            converted: true,
+            outcome: { event: "recommend_rendered", destinyId: result.destinyId },
+          }).catch(() => {});
         }
-      })
-      .catch(() => {
+      } catch {
         setDestiny(planningDestinyFixture);
-      });
+      }
+    })();
     trackEvent(AnalyticsEvent.FlowStarted, { flow: "draft_a_run" });
-  }, [recommendAssignmentId, recommendVariantId]);
+  }, []);
 
   async function runRerollWithReason(reason: RerollReason) {
     if (!sessionId || !destinyId || isSubmitting) return;

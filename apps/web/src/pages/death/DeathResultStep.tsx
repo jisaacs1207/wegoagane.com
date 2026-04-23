@@ -38,44 +38,58 @@ export function DeathResultStep() {
   const [note, setNote] = useState("");
   const [showRerollGate, setShowRerollGate] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [recommendAssignmentId, setRecommendAssignmentId] = useState<string | null>(null);
   const [recommendVariantId, setRecommendVariantId] = useState<string | null>(null);
 
   useEffect(() => {
     const mood = sessionStorage.getItem("death.mood") ?? undefined;
     const nextSignal = sessionStorage.getItem("death.nextSignal") ?? undefined;
     const existingSession = sessionStorage.getItem("death.sessionId");
-    const sessionId = existingSession ?? crypto.randomUUID();
+    const seededSessionId = existingSession ?? crypto.randomUUID();
     if (!existingSession) {
-      sessionStorage.setItem("death.sessionId", sessionId);
+      sessionStorage.setItem("death.sessionId", seededSessionId);
     }
 
-    void fetchGrowthAssignment({ sessionId, surface: "recommendation", entryPath: "release_spirit" })
-      .then((assignment) => {
-        setRecommendAssignmentId(assignment.assignmentId);
+    void (async () => {
+      let assignmentId: string | null = null;
+      let variantId: string | null = null;
+      try {
+        const assignment = await fetchGrowthAssignment({
+          sessionId: seededSessionId,
+          surface: "recommendation",
+          entryPath: "release_spirit",
+        });
+        assignmentId = assignment.assignmentId;
+        variantId = assignment.variantId;
         setRecommendVariantId(assignment.variantId);
-      })
-      .catch(() => {});
+      } catch {
+        // Non-blocking: default recommendation path still works.
+      }
 
-    void fetchDestiny({
-      entryPath: "release_spirit",
-      sessionId,
-      signals: { mood, nextSignal, memoryHints: buildMemoryHints(), recommendVariantId: recommendVariantId ?? undefined },
-    })
-      .then((result) => {
+      try {
+        const result = await fetchDestiny({
+          entryPath: "release_spirit",
+          sessionId: seededSessionId,
+          signals: { mood, nextSignal, memoryHints: buildMemoryHints(), recommendVariantId: variantId ?? undefined },
+        });
         setDestiny(result.output);
         setSessionId(result.sessionId);
         setDestinyId(result.destinyId);
         sessionStorage.setItem("death.sessionId", result.sessionId);
         sessionStorage.setItem("death.destinyId", result.destinyId);
-        if (recommendAssignmentId) {
-          void submitGrowthOutcome({ assignmentId: recommendAssignmentId, converted: true, outcome: { event: "recommend_rendered", destinyId: result.destinyId } }).catch(() => {});
+        if (assignmentId) {
+          void submitGrowthOutcome({
+            assignmentId,
+            converted: true,
+            outcome: { event: "recommend_rendered", destinyId: result.destinyId },
+          }).catch(() => {});
         }
-      })
-      .catch(() => setDestiny(destinyFixture));
+      } catch {
+        setDestiny(destinyFixture);
+      }
+    })();
 
     void fetchMemorial({
-      sessionId,
+      sessionId: seededSessionId,
       zone: "Unknown Zone",
       cause: "Unknown Cause",
       mood,
@@ -87,7 +101,7 @@ export function DeathResultStep() {
       .then(setMemorial)
       .catch(() => setMemorial(memorialFixture));
     trackEvent(AnalyticsEvent.FlowStarted, { flow: "release_spirit" });
-  }, [recommendAssignmentId, recommendVariantId]);
+  }, []);
 
   async function runRerollWithReason(reason: RerollReason) {
     if (!sessionId || !destinyId || isSubmitting) return;
