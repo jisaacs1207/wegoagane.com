@@ -4,7 +4,7 @@ Vite + React + React Router. Entry flows: **Release Spirit**, **Draft a Run**, *
 
 **M2:** Original **class icons** (`src/icons/`), **Memorial / Destiny / share combo** card shells (`src/components/cards/`), static **`src/content/cardFixtures.ts`**. QA route: **`/design/cards`** (also linked from home).
 
-**M3-M7 foundation (branch):** result pages call `POST /api/v1/recommend` (proxy to Worker in local dev). If API is unavailable, UI falls back to local fixtures.
+**M3-M7 foundation (live):** result pages call `POST /api/v1/recommend` (proxy to Worker in local dev). If API is unavailable, UI falls back to local fixtures.
 
 ```bash
 npm install

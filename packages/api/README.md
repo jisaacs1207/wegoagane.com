@@ -41,11 +41,8 @@ npm run db:migrate:remote
 
 ## Production tie-in (real site)
 
-1. Set real IDs in `wrangler.toml`:
-   - `env.preview.d1_databases[0].database_id`
-   - `env.production.d1_databases[0].database_id`
-2. Export `CLOUDFLARE_API_TOKEN` (token with Workers/D1 edit permissions).
-3. Apply prod migrations + deploy:
+1. Export `CLOUDFLARE_API_TOKEN` (token with Workers/D1 edit permissions).
+2. Apply prod migrations + deploy:
 
 ```bash
 npm run db:migrate:production

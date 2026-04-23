@@ -174,6 +174,7 @@ If GitHub gains a new **required** job for merges, add it to ruleset **`wegoagan
 
 ```bash
 python3 scripts/ruleset_add_required_check.py "Web"
+python3 scripts/ruleset_add_required_check.py "API"
 ```
 
 Use the **exact** job name from the workflow YAML.
