@@ -3,19 +3,11 @@ import { useEffect, useState } from "react";
 import { planningDestinyFixture, type DestinyFixture } from "../../content/cardFixtures";
 import { DestinyCard } from "../../components/cards/DestinyCard";
 import {
+  createShareRun,
   fetchDestiny,
-  type PostAcceptRating,
   type RerollReason,
   submitDestinyFeedback,
 } from "../../lib/recommendClient";
-
-const postAcceptChoices: Array<{ value: PostAcceptRating; label: string }> = [
-  { value: "not_this", label: "Not this" },
-  { value: "itll_do", label: "It'll do" },
-  { value: "good_pick", label: "Good pick" },
-  { value: "this_is_it", label: "This is it" },
-  { value: "perfect", label: "Perfect" },
-];
 
 const rerollReasons: Array<{ value: RerollReason; label: string }> = [
   { value: "wrong_class", label: "Wrong class" },
@@ -33,7 +25,6 @@ export function PlanResultStep() {
   const [actionMessage, setActionMessage] = useState<string>("");
   const [note, setNote] = useState("");
   const [showRerollGate, setShowRerollGate] = useState(false);
-  const [showPostAcceptRating, setShowPostAcceptRating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -132,32 +123,13 @@ export function PlanResultStep() {
         stage: "reroll_gate",
         note: note.trim() || undefined,
       });
-      setShowPostAcceptRating(true);
+      const share = await createShareRun({ sessionId, destinyId });
       setShowRerollGate(false);
-      setActionMessage("Accepted. Optional final rating:");
+      setActionMessage("Accepted. Opening share preview...");
       setNote("");
+      navigate(`/share/${share.runId}`);
     } catch {
       setActionMessage("Could not save acceptance yet.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function submitPostAcceptRating(rating: PostAcceptRating) {
-    if (!sessionId || !destinyId || isSubmitting) return;
-    setIsSubmitting(true);
-    try {
-      await submitDestinyFeedback({
-        sessionId,
-        destinyId,
-        choice: "accept",
-        stage: "post_accept",
-        postAcceptRating: rating,
-      });
-      setActionMessage("Final rating saved.");
-      setShowPostAcceptRating(false);
-    } catch {
-      setActionMessage("Could not save final rating.");
     } finally {
       setIsSubmitting(false);
     }
@@ -222,27 +194,6 @@ export function PlanResultStep() {
                 {reason.label}
               </button>
             ))}
-          </div>
-        ) : null}
-
-        {showPostAcceptRating ? (
-          <div style={{ marginTop: 10 }}>
-            <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>
-              Post-accept rating (non-blocking):
-            </p>
-            <div className="flow-nav" style={{ marginTop: 8 }}>
-              {postAcceptChoices.map((entry) => (
-                <button
-                  key={entry.value}
-                  type="button"
-                  className="btn-ghost"
-                  disabled={isSubmitting || !destinyId}
-                  onClick={() => void submitPostAcceptRating(entry.value)}
-                >
-                  {entry.label}
-                </button>
-              ))}
-            </div>
           </div>
         ) : null}
 

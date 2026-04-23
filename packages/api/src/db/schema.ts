@@ -74,3 +74,16 @@ export const destinyFeedback = sqliteTable("destiny_feedback", {
   rerollToClassId: text("reroll_to_class_id"),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
+
+export const shareRuns = sqliteTable("share_runs", {
+  runId: text("run_id").primaryKey(),
+  sessionId: text("session_id").notNull(),
+  destinyId: text("destiny_id").notNull(),
+  memorialId: text("memorial_id"),
+  status: text("status").notNull().default("queued"),
+  r2Key: text("r2_key"),
+  publicImageUrl: text("public_image_url"),
+  error: text("error"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+});

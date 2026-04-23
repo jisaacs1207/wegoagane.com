@@ -103,6 +103,13 @@ Default share CTA for death flow is the combo. It packages loss → next intent 
 - Reuse URL for Open Graph tags + direct share
 - Cache indefinitely by runId hash; regenerate on content change
 
+**Implemented M11 runtime contract (`main`):**
+- Frontend route: `/share/:runId` (polling status UI)
+- API lifecycle: `POST /api/v1/share` + `GET /api/v1/share/:runId`
+- Image endpoint: `GET /api/v1/share/:runId/image` (R2-backed; fallback image while pending)
+- OG endpoint: `GET /api/v1/share/:runId/og` (`og:image`, `og:title`, `og:description`, `twitter:card`)
+- Current renderer writes SVG share images to R2; Browser Rendering PNG capture remains an optimization path when needed.
+
 ### 15.3 Design rules
 - Readable at mobile sizes (primary test: does level + cause read clearly at 200px wide?)
 - Strong title hierarchy

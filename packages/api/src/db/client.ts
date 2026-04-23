@@ -3,8 +3,11 @@ import { drizzle } from "drizzle-orm/d1";
 export type ApiEnv = {
   Bindings: {
     DB: D1Database;
+    SHARE_IMAGES?: R2Bucket;
     APP_ENV: string;
     SITE_ORIGIN?: string;
+    SHARE_IMAGE_BASE_URL?: string;
+    SHARE_RENDER_TIMEOUT_MS?: string;
     /** Plain var or JSON binding; compare with `isTruthyEnv` in adapter, not `=== "true"` only */
     AI_ENABLED?: string | boolean;
     AI_GATEWAY_URL?: string;

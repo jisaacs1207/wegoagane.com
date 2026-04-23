@@ -168,6 +168,11 @@ channel TEXT,
 timestamp DATETIME
 ```
 
+**M11 implementation note (current code):**
+- `share_runs` table is implemented in D1 (`run_id`, `session_id`, `destiny_id`, optional `memorial_id`, `status`, `r2_key`, `public_image_url`, `error`, timestamps).
+- Share lifecycle is served by Worker routes: `POST /api/v1/share`, `GET /api/v1/share/:runId`, `GET /api/v1/share/:runId/image`, `GET /api/v1/share/:runId/og`.
+- Frontend uses `/share/:runId` for async polling UX; image source is R2-backed endpoint with fallback during render.
+
 **`archetypes`** (KV, not D1)
 36 structured archetypes as JSON. Edge-loaded.
 

@@ -88,6 +88,24 @@ export type FeedbackSummary = {
   postAcceptRatings: Record<PostAcceptRating, number>;
 };
 
+type CreateShareRequest = {
+  sessionId: string;
+  destinyId: string;
+  memorialId?: string;
+};
+
+export type ShareRunStatus = "queued" | "rendering" | "ready" | "failed";
+
+export type ShareRunResponse = {
+  runId: string;
+  sessionId: string;
+  destinyId: string;
+  memorialId: string | null;
+  status: ShareRunStatus;
+  imageUrl: string | null;
+  error: string | null;
+};
+
 export async function fetchDestiny(input: RecommendRequest): Promise<DestinyResult> {
   const response = await fetch("/api/v1/recommend", {
     method: "POST",
@@ -154,4 +172,24 @@ export async function fetchFeedbackSummary(): Promise<FeedbackSummary> {
     throw new Error(`feedback_summary_failed:${response.status}`);
   }
   return (await response.json()) as FeedbackSummary;
+}
+
+export async function createShareRun(input: CreateShareRequest): Promise<ShareRunResponse> {
+  const response = await fetch("/api/v1/share", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    throw new Error(`share_create_failed:${response.status}`);
+  }
+  return (await response.json()) as ShareRunResponse;
+}
+
+export async function fetchShareRun(runId: string): Promise<ShareRunResponse> {
+  const response = await fetch(`/api/v1/share/${runId}`);
+  if (!response.ok) {
+    throw new Error(`share_status_failed:${response.status}`);
+  }
+  return (await response.json()) as ShareRunResponse;
 }
