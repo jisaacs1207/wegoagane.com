@@ -32,7 +32,7 @@ export const destinyFixture: DestinyFixture = {
   headline: "Orc Frost Mage",
   subline: "Safe path · First 10 Levels",
   classId: "mage",
-  tierProse: "Template tier B — validation wired in M4+",
+  tierProse: "Suggested path · template copy only",
   bullets: ["Cold snap opener", "Kite discipline", "No dungeon shortcuts until 60"],
 };
 
@@ -40,6 +40,6 @@ export const planningDestinyFixture: DestinyFixture = {
   headline: "Tauren Enhancement Shaman",
   subline: "Planning mode · next run only",
   classId: "shaman",
-  tierProse: "Template tier B — planning signals only",
+  tierProse: "Planning preview · template copy only",
   bullets: ["Windfury timing", "Totem cadence", "Melee risk budget"],
 };
