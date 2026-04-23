@@ -84,6 +84,20 @@ For a **solo** operator, **push to `main` → live on wegoagane.com** is usually
 
 Tradeoff: a bad push to `main` ships broken UI until the next fix — mitigate with **green CI before merge**, preview deploys for risky work, and one-click rollback in the Cloudflare dashboard. You do not need a manual “release day” process until the product complexity justifies it.
 
+### 17.6 Solo automation matrix (free/cheap first)
+
+Use a tiered inclusion model to keep solo overhead low:
+
+| Tier | Tools | Use when | Avoid when |
+|---|---|---|---|
+| **A — Free/native (default)** | GitHub Actions, Cloudflare Cron/Workers, PostHog free tier, local scripts | Most product workflows, checks, alerts, batch QA tasks | You need many third-party SaaS triggers with frequent schema changes |
+| **B — Cheap automation glue** | Make.com, Pipedream, Activepieces | Cross-service webhooks and non-core glue where coding/maintenance cost is higher | Core product logic, latency-sensitive flows, or compliance-sensitive transforms |
+| **C — Advanced orchestration** | Windmill/Kestra/Temporal-class tools | Multi-service long-running workflows at scale | Early-stage solo product where operational complexity outweighs value |
+
+Decision rule:
+- Code directly if a stable script/worker can be implemented and maintained in under ~60 minutes.
+- Use cheap automation only when integration complexity is the bottleneck.
+
 ---
 
 ## 19. Data model
@@ -326,6 +340,18 @@ Set two alerts at launch: (1) validation_failed spikes above 10% of generations,
   1. set `MEMORY_DEGRADE_MODE=true` (reduces effective bias scale)
   2. if still degraded, set `MEMORY_BIAS_ENABLED=false`
 
+### 21.6 AI-first prompt-pack governance (M14+)
+
+- Treat generated content/assets as draft outputs requiring gated promotion.
+- Maintain prompt packs per lane:
+  - archetype expansion prompts
+  - ceremony/copy corridor rewrite prompts
+  - share-asset visual prompts
+- Promotion checks before release:
+  - rubric pass (mechanics + tone + specificity)
+  - duplication/style lint pass
+  - human HC review spot checks
+
 ## 26. Implementation order
 
 1. App shell + routing
@@ -341,8 +367,22 @@ Set two alerts at launch: (1) validation_failed spikes above 10% of generations,
 11. Share-card generation (Browser Rendering → R2)
 12. Analytics + observability wiring
 13. Local memory tuning
-14. Content iteration based on early user data
+14. Trust content expansion wave 1 (quality-gated archetype scale)
+15. Ceremony flow + language hardening (copy corridor and placeholder cleanup)
+16. Share artifact polish + viral utility (send-worthy quality + clear share actions)
+17. Modern web hardening (a11y/performance/reliability trust-by-design pass)
+18. UAT + release readiness checklist (multi-device + failure-mode + KPI go/no-go)
 
 ### Senior-dev note on order
 Build #1-5 before touching AI. Get a working deterministic pipeline that produces a usable Destiny from pre-written templates end-to-end. *Then* plug AI in as a presentation layer. This is boring advice and it's why solo products ship.
+
+### Post-M13 roadmap principle (trust-first)
+
+After M13, sequence work by user trust risk, not by visual novelty:
+
+1. Fix correctness + content depth first.
+2. Harden ceremony language and emotional pacing second.
+3. Polish share artifact quality third (viral utility depends on trustable output).
+4. Run modern-web hardening before UAT so failures are found pre-signoff.
+5. Gate release on outcome metrics, not feature count.
 

@@ -58,3 +58,91 @@ Things that will embarrass the product if skipped:
 
 ---
 
+## 34. M14–M18 trust/ceremony quality gates
+
+Use these as hard gates before marking each milestone complete.
+
+### M14 gate — trust content expansion
+
+- [ ] Every newly added archetype passes a review rubric:
+  - [ ] class/faction/spec mechanics are correct
+  - [ ] First 10 Levels advice is actionable and HC-safe
+  - [ ] source tags exist for key claims
+  - [ ] memorial/destiny text is specific (not generic filler)
+- [ ] Validation failure rate does not regress above baseline + agreed margin.
+- [ ] Reroll rate on top intents does not spike after content merge.
+- [ ] AI-generated archetype drafts were produced through versioned prompt packs and diff-reviewed before promotion.
+
+### M15 gate — ceremony language hardening
+
+- [ ] Visible placeholder/dev/stub language removed from user-facing core flow screens.
+- [ ] Copy corridor pass complete for death/planning/reroll/post-accept/share.
+- [ ] “Subtle memory” posture preserved (no creepy explicit pattern-learning copy).
+- [ ] At least one HC player review round confirms tone quality.
+- [ ] Ceremony copy rewrites use prompt pack + banned-phrases lint pass (no generic AI-sounding filler).
+
+### M16 gate — share artifact polish
+
+- [ ] Share image readability verified at 320px and common social preview crops.
+- [ ] `/share/:runId` UX communicates queued/rendering/ready/failed states clearly.
+- [ ] Share action path is obvious and one-tap from ready state.
+- [ ] OG/Twitter tags verified on production URL samples.
+- [ ] Share-asset generations were screened for brand/style consistency and legal-risk flags before publish.
+
+### M17 gate — modern web hardening
+
+- [ ] Critical interactive controls expose accessible semantics/states (keyboard + SR).
+- [ ] Contrast and text hierarchy pass minimum readability standards on mobile.
+- [ ] Loading/error states are explicit; fallback behavior is user-comprehensible.
+- [ ] Polling/retry paths have bounded behavior and clear failure messaging.
+
+### M18 gate — UAT go/no-go
+
+- [ ] UAT matrix complete (flows + devices + failure modes) with evidence log.
+- [ ] Bug burn-down resolved for all release-blocking defects.
+- [ ] KPI go/no-go thresholds met:
+  - [ ] accept rate floor
+  - [ ] rerolls/session ceiling
+  - [ ] share completion floor
+  - [ ] validation failure ceiling
+- [ ] Final decision recorded as go/no-go with owner + date.
+- [ ] UAT evidence sheet includes test count, fail count, defect IDs, and owner signoff.
+
+---
+
+## 35. AI prompt-pack governance (solo execution)
+
+Keep prompt-driven generation fast without losing trust quality.
+
+- [ ] Maintain versioned prompt packs for:
+  - [ ] archetype draft generation
+  - [ ] ceremony/copy corridor rewrites
+  - [ ] share-asset generation prompts
+- [ ] Every generated batch stores:
+  - [ ] prompt pack version
+  - [ ] model used
+  - [ ] generation timestamp
+- [ ] Promotion checklist before merge:
+  - [ ] rubric pass (mechanics/tone/specificity)
+  - [ ] duplication/style lint pass
+  - [ ] human spot review
+- [ ] Fast rollback path exists for bad generated batches.
+
+---
+
+## 36. Asset + scraping legal-risk matrix (operational)
+
+| Area | Allowed | Caution | Avoid |
+|---|---|---|---|
+| Game-adjacent visuals | Original/licensed/generated assets with clear commercial terms | Style reference that could be confused with protected asset sets | Direct copy/redistribution of protected game assets |
+| Screenshots | Fan-policy-compatible use with required notices | Commercial use where policy scope is unclear | Use outside policy or without required notices |
+| Web data ingestion | Public factual data for internal ranking/analysis | ToS-sensitive crawling requiring case-by-case review | Auth/paywall bypass, protected creative republishing, aggressive crawling |
+
+Operational safeguards:
+- [ ] robots.txt + ToS review logged before ingestion jobs run
+- [ ] conservative rate limit/backoff defaults set
+- [ ] no protected creative content republished from scraped sources
+- [ ] high-risk sources require explicit manual approval before use
+
+---
+
