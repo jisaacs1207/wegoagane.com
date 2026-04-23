@@ -1,6 +1,6 @@
 # Build status & iteration contract
 
-**Last updated:** 2026-04-23 (M11 share image + OG pipeline shipped)
+**Last updated:** 2026-04-23 (M12 analytics + observability shipped)
 
 ---
 
@@ -8,10 +8,10 @@
 
 | Field | Value |
 |--------|--------|
-| **Current milestone** | **M12 (next)** — analytics + observability |
+| **Current milestone** | **M13 (next)** — local memory + polish |
 | **Blocked by** | — |
-| **Last build iteration** | **M11 shipped:** async share lifecycle on API (`POST /api/v1/share`, `GET /api/v1/share/:runId`, `GET /api/v1/share/:runId/image`, `GET /api/v1/share/:runId/og`) with `share_runs` persistence + R2-backed share images and fallback image while rendering; accept flow now triggers share-run creation and routes to `/share/:runId`; share page polls status and supports post-accept non-blocking rating. |
-| **Next “request to move forward” criteria** | Start **M12** instrumentation: wire `share_started`, `share_ready`, `share_failed`, `share_viewed`, and post-accept rating events to analytics/observability; add alerting for share render failure spikes and p95 render latency. Keep Web/API CI green and migration drift clean. |
+| **Last build iteration** | **M12 shipped:** production PostHog integration on API + web with event taxonomy for generation, feedback, reroll/accept flow, and share lifecycle; API runtime analytics config endpoint (`/api/v1/analytics/config`); share observability endpoint (`/api/v1/share/summary/health`) with failed rate and p95 latency; deploy guard wiring for PostHog vars/secrets; production rollout and live smoke validation. |
+| **Next “request to move forward” criteria** | Start **M13** local-memory tuning: persist user preference bias signals and reuse them to steer recommendation defaults, then validate impact vs acceptance/reroll metrics. Keep Web/API CI green and analytics event flow healthy. |
 
 ---
 
@@ -61,7 +61,7 @@ Aligned with [04-engineering-data-ops.md](04-engineering-data-ops.md) §26, grou
 | **M9** | Memorial pipeline | **Shipped:** template-first memorial pipeline + validator + persistence + `POST /api/v1/memorial` with AI optional enrichment and fallback | M8 | Name suggest vs optional (29.5); tone “bullshit death” (29.3) |
 | **M10** | Refinement + rating gate | **Shipped:** required reroll rating gate, reason-driven reroll/refinement behavior, and post-accept non-blocking rating capture with structured feedback telemetry | M6–M9 | — |
 | **M11** | Share images + OG | **Shipped:** async share generation lifecycle, R2 image storage + fallback image, `/share/:runId` polling UX, and OG metadata endpoint for social previews | M2, M7 | — |
-| **M12** | Analytics + observability | PostHog events per §21; validation_failed + cost alerts | M7+ | Acceptance stats on cards? (29.8) |
+| **M12** | Analytics + observability | **Shipped:** PostHog event instrumentation (API + web), runtime analytics config, and share health summary with failed-rate + p95 thresholds | M7+ | Acceptance stats on cards? (29.8) |
 | **M13** | Local memory + polish | localStorage biases; content iteration | M10–M12 | Planning “first HC” signal (29.4) |
 
 **Test notes (recurring):** phone-first flows; “just generate” death path; validator abuse cases ([06-risks-open-decisions-checklist.md](06-risks-open-decisions-checklist.md) §33); 320px share width; Lucky Roll distribution.
@@ -115,3 +115,4 @@ When the checklist is complete enough for the next milestone, update **Current m
 | 2026-04-23 | **`5255d3b` on `main`:** **`extractJsonPayload`** before parse — fixes `ai_invalid_json` when models wrap JSON in fences or lead with prose; production memorial/recommend verified **`sourceType: "ai"`** when gate + token healthy |
 | 2026-04-23 | **M10 complete:** reroll rating gate + five reason options, reason-aware reroll mutation (`wrong_class` / `wrong_energy` / `wrong_goals` / `almost_right` / `just_curious`), post-accept 5-point rating, `destiny_feedback` schema extended (`stage`, `reroll_reason`, `post_accept_rating`), and `/api/v1/feedback/summary` + `/ops/feedback` for quick ops validation |
 | 2026-04-23 | **M11 complete:** share lifecycle + persistence (`share_runs`), async API routes (`/api/v1/share*`), R2 image storage + fallback SVG, web polling UX at `/share/:runId`, and OG metadata endpoint (`/api/v1/share/:runId/og`) |
+| 2026-04-23 | **M12 complete:** PostHog US instrumentation in API + web, analytics config endpoint, deploy prechecks for PostHog vars/secrets, share health summary endpoint + operational thresholds, and production smoke verification of event flow |

@@ -73,6 +73,25 @@ When AI is disabled/unavailable/invalid, both pipelines return validated templat
 
 API responses include **`aiMeta.resolvedModelId`** when OpenRouter returns the concrete model used (Auto Router sets top-level `model` in the completion response per [OpenRouter docs](https://openrouter.ai/docs/features/model-routing)).
 
+## Analytics configuration (PostHog US)
+
+Set these Worker env values for M12 analytics:
+
+- `POSTHOG_ENABLED` (`"true"` to emit analytics; default `"false"`)
+- `POSTHOG_HOST` (`https://us.i.posthog.com`)
+- Wrangler secret: `POSTHOG_PROJECT_API_KEY` (`phc_...`)
+
+Set secret:
+
+```bash
+npx wrangler secret put POSTHOG_PROJECT_API_KEY --env production
+```
+
+Operational endpoints:
+
+- `GET /api/v1/analytics/config`
+- `GET /api/v1/share/summary/health`
+
 ### Debugging production (quick)
 
 Always inspect **`aiMeta`** (not only `output`): gate off → template path; `providerError` → upstream/model; `ai_invalid_json` after a provider change → ensure latest Worker includes **`extractJsonPayload`** (fenced JSON / prose prefix).

@@ -15,6 +15,7 @@ import {
   type RerollReason,
   submitDestinyFeedback,
 } from "../../lib/recommendClient";
+import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 
 const rerollReasons: Array<{ value: RerollReason; label: string }> = [
   { value: "wrong_class", label: "Wrong class" },
@@ -70,12 +71,19 @@ export function DeathResultStep() {
     })
       .then(setMemorial)
       .catch(() => setMemorial(memorialFixture));
+    trackEvent(AnalyticsEvent.FlowStarted, { flow: "release_spirit" });
   }, []);
 
   async function runRerollWithReason(reason: RerollReason) {
     if (!sessionId || !destinyId || isSubmitting) return;
     setIsSubmitting(true);
     setActionMessage("");
+    trackEvent(AnalyticsEvent.RerollReasonSelected, {
+      flow: "release_spirit",
+      reason,
+      destinyId,
+      sessionId,
+    });
     try {
       const mood = sessionStorage.getItem("death.mood") ?? undefined;
       const nextSignal = sessionStorage.getItem("death.nextSignal") ?? undefined;
@@ -137,6 +145,7 @@ export function DeathResultStep() {
     if (!sessionId || !destinyId || isSubmitting) return;
     setIsSubmitting(true);
     setActionMessage("");
+    trackEvent(AnalyticsEvent.AcceptClicked, { flow: "release_spirit", destinyId, sessionId });
     try {
       await submitDestinyFeedback({
         sessionId,

@@ -382,7 +382,12 @@ When you add **lint** or **test** jobs later, come back to **Settings → Rules 
 
 API foundation now lives in **`packages/api`** (Worker + D1). To tie it to the real site, route **`/api/*`** to Worker (configured in `packages/api/wrangler.toml`) and deploy with a `CLOUDFLARE_API_TOKEN`.
 
-`api-deploy.yml` uses repository secret **`CLOUDFLARE_API_TOKEN`** for production migrations + deploy. Optional repo **`vars` / `secrets`** **`API_AI_ENABLED`**, **`API_AI_GATEWAY_URL`**, **`API_AI_MODEL_DESTINY`**, **`API_AI_MODEL_MEMORIAL`**, **`API_AI_GATEWAY_TOKEN`** let the deploy workflow’s OpenRouter precheck run when `API_AI_ENABLED=true` (see [`.github/workflows/api-deploy.yml`](../.github/workflows/api-deploy.yml)). **M8–M9:** recommend + memorial are live same-origin; with **`AI_ENABLED`** truthy and **`AI_GATEWAY_TOKEN`** set, production smoke can show **`output.sourceType: "ai"`** and **`aiMeta.resolvedModelId`** populated.
+`api-deploy.yml` uses repository secret **`CLOUDFLARE_API_TOKEN`** for production migrations + deploy. Optional repo **`vars` / `secrets`** support prechecks:
+
+- OpenRouter: **`API_AI_ENABLED`**, **`API_AI_GATEWAY_URL`**, **`API_AI_MODEL_DESTINY`**, **`API_AI_MODEL_MEMORIAL`**, **`API_AI_GATEWAY_TOKEN`**
+- PostHog: **`API_POSTHOG_ENABLED`**, **`API_POSTHOG_HOST`**, **`API_POSTHOG_PROJECT_API_KEY`**
+
+When enabled, these ensure deploys fail early if required runtime values are missing (see [`.github/workflows/api-deploy.yml`](../.github/workflows/api-deploy.yml)). **M8–M12:** recommend + memorial + feedback + share are live same-origin; with AI and PostHog gates enabled, production smoke should show AI metadata (`sourceType`, `aiMeta.resolvedModelId`) while PostHog captures generation/feedback/share lifecycle events.
 
 See full runbook (including 405/route troubleshooting and **`aiMeta`** debugging): **[`docs/deploy-wegoagane-com.md`](../deploy-wegoagane-com.md)**.
 

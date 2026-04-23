@@ -1,4 +1,6 @@
 import { type Context, Hono } from "hono";
+import { captureServerEvent } from "../analytics/posthog";
+import { AnalyticsEvent } from "../analytics/events";
 import { enrichDestiny, getAiGateStatus } from "../ai/adapter";
 import { getDb, type ApiEnv } from "../db/client";
 import { destinies, questionAnswers, recommendationLogs, sessions } from "../db/schema";
@@ -14,11 +16,23 @@ export async function handleRecommend(c: Context<ApiEnv>) {
   const ranked = rankArchetypes(input);
 
   if (ranked.length === 0) {
+    c.executionCtx.waitUntil(
+      captureServerEvent(c.env, AnalyticsEvent.DestinyGenerationFailed, payload?.sessionId ?? "anonymous", {
+        reason: "no_eligible_archetypes",
+        entryPath: payload?.entryPath ?? null,
+      }),
+    );
     return c.json({ error: "no_eligible_archetypes" }, 400);
   }
 
   const top = ranked[0];
   if (!top) {
+    c.executionCtx.waitUntil(
+      captureServerEvent(c.env, AnalyticsEvent.DestinyGenerationFailed, payload?.sessionId ?? "anonymous", {
+        reason: "no_ranked_candidate",
+        entryPath: payload?.entryPath ?? null,
+      }),
+    );
     return c.json({ error: "no_ranked_candidate" }, 400);
   }
   const templateOutput = renderTemplateDestiny(top);
@@ -29,6 +43,13 @@ export async function handleRecommend(c: Context<ApiEnv>) {
       ? aiResult.validationFailures
       : validateTemplateOutput(output, input.signals.factionPreference);
   if (failures.length > 0) {
+    c.executionCtx.waitUntil(
+      captureServerEvent(c.env, AnalyticsEvent.DestinyGenerationFailed, input.sessionId ?? "anonymous", {
+        reason: "validation_failed",
+        entryPath: input.entryPath,
+        validationFailures: failures,
+      }),
+    );
     return c.json({ error: "validation_failed", failures }, 422);
   }
 
@@ -89,6 +110,18 @@ export async function handleRecommend(c: Context<ApiEnv>) {
     aiErrorType: aiResult.telemetry.providerError,
     createdAt: new Date(now),
   });
+
+  c.executionCtx.waitUntil(
+    captureServerEvent(c.env, AnalyticsEvent.DestinyGenerated, sessionId, {
+      destinyId,
+      entryPath: input.entryPath,
+      sourceType: output.sourceType,
+      fallbackUsed: aiResult.telemetry.fallbackUsed,
+      resolvedModelId: aiResult.telemetry.resolvedModelId,
+      aiErrorType: aiResult.telemetry.providerError,
+      aiLatencyMs: aiResult.telemetry.latencyMs,
+    }),
+  );
 
   return c.json({
     sessionId,

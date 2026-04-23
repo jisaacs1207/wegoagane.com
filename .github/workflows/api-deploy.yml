@@ -46,6 +46,17 @@ jobs:
             test -n "${API_AI_GATEWAY_TOKEN}" || { echo "Missing secrets.API_AI_GATEWAY_TOKEN (OpenRouter API key)"; exit 1; }
           fi
 
+      - name: Verify PostHog deploy inputs
+        env:
+          API_POSTHOG_ENABLED: ${{ vars.API_POSTHOG_ENABLED }}
+          API_POSTHOG_HOST: ${{ vars.API_POSTHOG_HOST }}
+          API_POSTHOG_PROJECT_API_KEY: ${{ secrets.API_POSTHOG_PROJECT_API_KEY }}
+        run: |
+          if [ "${API_POSTHOG_ENABLED}" = "true" ]; then
+            test -n "${API_POSTHOG_HOST}" || { echo "Missing vars.API_POSTHOG_HOST (US cloud: https://us.i.posthog.com)"; exit 1; }
+            test -n "${API_POSTHOG_PROJECT_API_KEY}" || { echo "Missing secrets.API_POSTHOG_PROJECT_API_KEY"; exit 1; }
+          fi
+
       - name: Apply production migrations
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

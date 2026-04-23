@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { destinyFixture, memorialFixture } from "../content/cardFixtures";
 import { ShareComboLayout } from "../components/cards/ShareComboLayout";
@@ -8,6 +8,7 @@ import {
   type PostAcceptRating,
   type ShareRunResponse,
 } from "../lib/recommendClient";
+import { AnalyticsEvent, trackEvent } from "../lib/analytics";
 
 const postAcceptChoices: Array<{ value: PostAcceptRating; label: string }> = [
   { value: "not_this", label: "Not this" },
@@ -22,9 +23,11 @@ export function SharePlaceholderPage() {
   const [share, setShare] = useState<ShareRunResponse | null>(null);
   const [ratingMessage, setRatingMessage] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const lastStatusRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!runId) return;
+    trackEvent(AnalyticsEvent.ShareViewed, { runId });
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
 
@@ -33,6 +36,15 @@ export function SharePlaceholderPage() {
         const result = await fetchShareRun(runId);
         if (cancelled) return;
         setShare(result);
+        if (result.status !== lastStatusRef.current) {
+          lastStatusRef.current = result.status;
+          trackEvent(AnalyticsEvent.ShareStatusChanged, {
+            runId,
+            status: result.status,
+            destinyId: result.destinyId,
+            sessionId: result.sessionId,
+          });
+        }
         if (result.status === "queued" || result.status === "rendering") {
           timer = setTimeout(() => {
             void tick();
@@ -65,6 +77,12 @@ export function SharePlaceholderPage() {
         choice: "accept",
         stage: "post_accept",
         postAcceptRating: rating,
+      });
+      trackEvent(AnalyticsEvent.PostAcceptRatingSubmitted, {
+        runId,
+        sessionId: share.sessionId,
+        destinyId: share.destinyId,
+        rating,
       });
       setRatingMessage("Final rating saved.");
     } catch {
