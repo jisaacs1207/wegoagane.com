@@ -24,6 +24,13 @@ export async function handleAnalyticsConfig(c: Context<ApiEnv>) {
       degradeScale: Number(c.env.MEMORY_DEGRADE_SCALE ?? "0.5"),
       lookbackLimit: Number(c.env.MEMORY_LOOKBACK_LIMIT ?? "80"),
     },
+    growth: {
+      autopilotEnabled: String(c.env.GROWTH_AUTOPILOT_ENABLED ?? "false").toLowerCase() === "true",
+      hardStopEnabled: String(c.env.GROWTH_HARD_STOP_ENABLED ?? "true").toLowerCase() === "true",
+      defaultTrafficPercent: Number(c.env.GROWTH_DEFAULT_TRAFFIC_PERCENT ?? "25"),
+      defaultHoldoutPercent: Number(c.env.GROWTH_DEFAULT_HOLDOUT_PERCENT ?? "10"),
+      minSampleSize: Number(c.env.GROWTH_MIN_SAMPLE_SIZE ?? "40"),
+    },
   });
 }
 

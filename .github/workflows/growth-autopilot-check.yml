@@ -1,0 +1,16 @@
+name: growth-autopilot-check
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 * * * *"
+
+jobs:
+  growth-health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Curl growth health endpoint
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://wegoagane.com/api/v1/growth/health" > /tmp/growth-health.json
+          jq . /tmp/growth-health.json >/dev/null

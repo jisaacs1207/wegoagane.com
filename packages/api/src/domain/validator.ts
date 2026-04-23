@@ -23,6 +23,7 @@ const classValues = [
 const factionValues = ["horde", "alliance"] as const;
 const entryPathValues = ["release_spirit", "draft_a_run", "lucky_roll"] as const;
 const rerollReasonValues = ["wrong_class", "wrong_energy", "wrong_goals", "almost_right", "just_curious"] as const;
+const growthSurfaceValues = ["content", "recommendation", "ui", "share", "onboarding"] as const;
 
 export const recommendInputSchema = z.object({
   sessionId: z.string().min(1).max(80).optional(),
@@ -35,6 +36,7 @@ export const recommendInputSchema = z.object({
     factionPreference: z.enum(factionValues).optional(),
     excludedClasses: z.array(z.enum(classValues)).max(6).optional(),
     preferredClass: z.enum(classValues).optional(),
+    recommendVariantId: z.string().min(1).max(120).optional(),
     memoryHints: z
       .object({
         version: z.number().int().min(1).max(8),
@@ -45,6 +47,18 @@ export const recommendInputSchema = z.object({
       })
       .optional(),
   }),
+});
+
+export const growthAssignInputSchema = z.object({
+  sessionId: z.string().min(1).max(120),
+  entryPath: z.enum(entryPathValues).optional(),
+  surface: z.enum(growthSurfaceValues),
+});
+
+export const growthOutcomeInputSchema = z.object({
+  assignmentId: z.string().min(1).max(120),
+  converted: z.boolean().optional(),
+  outcome: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const memorialInputSchema = z.object({

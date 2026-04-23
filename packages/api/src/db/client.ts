@@ -18,6 +18,12 @@ export type ApiEnv = {
     MEMORY_DEGRADE_MODE?: string | boolean;
     MEMORY_DEGRADE_SCALE?: string;
     MEMORY_LOOKBACK_LIMIT?: string;
+    GROWTH_AUTOPILOT_ENABLED?: string | boolean;
+    GROWTH_HARD_STOP_ENABLED?: string | boolean;
+    GROWTH_DEFAULT_TRAFFIC_PERCENT?: string;
+    GROWTH_DEFAULT_HOLDOUT_PERCENT?: string;
+    GROWTH_MIN_SAMPLE_SIZE?: string;
+    GROWTH_CONTROL_TOKEN?: string;
     /** Plain var or JSON binding; compare with `isTruthyEnv` in adapter, not `=== "true"` only */
     AI_ENABLED?: string | boolean;
     AI_GATEWAY_URL?: string;

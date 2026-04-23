@@ -5,7 +5,9 @@ import { DestinyCard } from "../../components/cards/DestinyCard";
 import {
   createShareRun,
   fetchDestiny,
+  fetchGrowthAssignment,
   type RerollReason,
+  submitGrowthOutcome,
   submitDestinyFeedback,
 } from "../../lib/recommendClient";
 import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
@@ -28,16 +30,26 @@ export function PlanResultStep() {
   const [note, setNote] = useState("");
   const [showRerollGate, setShowRerollGate] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [recommendAssignmentId, setRecommendAssignmentId] = useState<string | null>(null);
+  const [recommendVariantId, setRecommendVariantId] = useState<string | null>(null);
 
   useEffect(() => {
     const intent = sessionStorage.getItem("plan.intent") ?? undefined;
     const freeform = sessionStorage.getItem("plan.freeform") ?? undefined;
     const existingSession = sessionStorage.getItem("plan.sessionId") ?? undefined;
 
+    const seededSession = existingSession ?? crypto.randomUUID();
+    void fetchGrowthAssignment({ sessionId: seededSession, surface: "recommendation", entryPath: "draft_a_run" })
+      .then((assignment) => {
+        setRecommendAssignmentId(assignment.assignmentId);
+        setRecommendVariantId(assignment.variantId);
+      })
+      .catch(() => {});
+
     void fetchDestiny({
       entryPath: "draft_a_run",
-      sessionId: existingSession,
-      signals: { intent, freeform, memoryHints: buildMemoryHints() },
+      sessionId: seededSession,
+      signals: { intent, freeform, memoryHints: buildMemoryHints(), recommendVariantId: recommendVariantId ?? undefined },
     })
       .then((result) => {
         setDestiny(result.output);
@@ -45,12 +57,15 @@ export function PlanResultStep() {
         setDestinyId(result.destinyId);
         sessionStorage.setItem("plan.sessionId", result.sessionId);
         sessionStorage.setItem("plan.destinyId", result.destinyId);
+        if (recommendAssignmentId) {
+          void submitGrowthOutcome({ assignmentId: recommendAssignmentId, converted: true, outcome: { event: "recommend_rendered", destinyId: result.destinyId } }).catch(() => {});
+        }
       })
       .catch(() => {
         setDestiny(planningDestinyFixture);
       });
     trackEvent(AnalyticsEvent.FlowStarted, { flow: "draft_a_run" });
-  }, []);
+  }, [recommendAssignmentId, recommendVariantId]);
 
   async function runRerollWithReason(reason: RerollReason) {
     if (!sessionId || !destinyId || isSubmitting) return;
@@ -93,6 +108,7 @@ export function PlanResultStep() {
           intent,
           freeform,
           memoryHints: buildMemoryHints(),
+          recommendVariantId: recommendVariantId ?? undefined,
           excludedClasses:
             reason === "wrong_class" || reason === "just_curious" ? [destiny.classId] : undefined,
           preferredClass: reason === "wrong_energy" || reason === "almost_right" ? destiny.classId : undefined,

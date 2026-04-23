@@ -5,6 +5,10 @@ const base = process.argv[2] ?? "https://wegoagane.com";
 const healthUrl = `${base}/api/health`;
 const recommendUrl = `${base}/api/v1/recommend`;
 const memorialUrl = `${base}/api/v1/memorial`;
+const growthHealthUrl = `${base}/api/v1/growth/health`;
+const analyticsConfigUrl = `${base}/api/v1/analytics/config`;
+const growthTickProbeUrl = `${base}/api/v1/growth/tick?authProbe=true`;
+const growthToken = process.env.GROWTH_CONTROL_TOKEN ?? "";
 
 const body = {
   entryPath: "draft_a_run",
@@ -60,11 +64,49 @@ async function run() {
     throw new Error("Memorial response missing memorialId/output");
   }
 
+  const growthHealth = await fetch(growthHealthUrl);
+  if (!growthHealth.ok) {
+    throw new Error(`Growth health failed (${growthHealth.status}) ${growthHealthUrl}`);
+  }
+  const growthHealthPayload = await growthHealth.json();
+  if (typeof growthHealthPayload?.experimentsRunning !== "number") {
+    throw new Error("Growth health missing experimentsRunning");
+  }
+
+  const analyticsConfig = await fetch(analyticsConfigUrl);
+  if (!analyticsConfig.ok) {
+    throw new Error(`Analytics config failed (${analyticsConfig.status}) ${analyticsConfigUrl}`);
+  }
+  const analyticsPayload = await analyticsConfig.json();
+  if (!analyticsPayload?.growth || typeof analyticsPayload.growth.autopilotEnabled !== "boolean") {
+    throw new Error("Analytics config missing growth block");
+  }
+
+  const tickDenied = await fetch(growthTickProbeUrl, { method: "POST" });
+  if (tickDenied.status !== 403) {
+    throw new Error(`Growth tick auth expected 403 without token, got ${tickDenied.status}`);
+  }
+
+  if (growthToken) {
+    const tickAllowed = await fetch(growthTickProbeUrl, {
+      method: "POST",
+      headers: { "x-growth-control-token": growthToken },
+    });
+    if (!tickAllowed.ok) {
+      const text = await tickAllowed.text();
+      throw new Error(`Growth tick auth with token failed (${tickAllowed.status}): ${text}`);
+    }
+  } else {
+    console.warn("GROWTH_CONTROL_TOKEN not set; skipped authenticated growth tick probe");
+  }
+
   console.log("Smoke OK");
   console.log(`sessionId=${payload.sessionId}`);
   console.log(`destinyId=${payload.destinyId}`);
   console.log(`memorialId=${memorialPayload.memorialId}`);
   console.log(`selectedArchetype=${payload.selectedArchetype}`);
+  console.log(`growthExperimentsRunning=${growthHealthPayload.experimentsRunning}`);
+  console.log(`growthAutopilotEnabled=${analyticsPayload.growth.autopilotEnabled}`);
 }
 
 run().catch((err) => {

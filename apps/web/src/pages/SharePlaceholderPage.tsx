@@ -3,7 +3,9 @@ import { useParams, Link } from "react-router-dom";
 import { destinyFixture, memorialFixture } from "../content/cardFixtures";
 import { ShareComboLayout } from "../components/cards/ShareComboLayout";
 import {
+  fetchGrowthAssignment,
   fetchShareRun,
+  submitGrowthOutcome,
   submitDestinyFeedback,
   type PostAcceptRating,
   type ShareRunResponse,
@@ -24,11 +26,21 @@ export function SharePlaceholderPage() {
   const [share, setShare] = useState<ShareRunResponse | null>(null);
   const [ratingMessage, setRatingMessage] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sharePrefix, setSharePrefix] = useState<string>("Run share");
   const lastStatusRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!runId) return;
     trackEvent(AnalyticsEvent.ShareViewed, { runId });
+    const sessionId = sessionStorage.getItem("session.id") ?? crypto.randomUUID();
+    sessionStorage.setItem("session.id", sessionId);
+    let assignmentId: string | null = null;
+    void fetchGrowthAssignment({ sessionId, surface: "share" })
+      .then((assignment) => {
+        assignmentId = assignment.assignmentId;
+        if (assignment.payload?.sharePromptPrefix) setSharePrefix(assignment.payload.sharePromptPrefix);
+      })
+      .catch(() => {});
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
 
@@ -50,6 +62,9 @@ export function SharePlaceholderPage() {
           timer = setTimeout(() => {
             void tick();
           }, 1500);
+        }
+        if (assignmentId && result.status === "ready") {
+          void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "share_ready", runId } }).catch(() => {});
         }
       } catch {
         if (!cancelled) {
@@ -116,7 +131,7 @@ export function SharePlaceholderPage() {
     <div>
       <div className="card">
         <p className="step-label">Share</p>
-        <h1 className="hero-question">Run share</h1>
+        <h1 className="hero-question">{sharePrefix}</h1>
         <p className="hero-sub">
           Run id <strong>{runId}</strong> — status: <strong>{share?.status ?? "loading"}</strong>.
         </p>

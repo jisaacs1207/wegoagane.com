@@ -13,6 +13,13 @@
 | **Last build iteration** | **M13 shipped:** hybrid memory path (browser `localStorage` + API-derived session history) now biases deterministic ranking with configurable weights/clamps, balanced rollout defaults, degrade-mode controls, memory observability (`/api/v1/analytics/memory-health`), and deploy guard wiring for memory vars. |
 | **Next “request to move forward” criteria** | Start **M14** with trust-first expansion: ship additional archetypes only if each passes quality gate (mechanical correctness, First-10 quality, source-tag completeness, non-generic language) and validation/acceptance metrics remain healthy; run AI-first sprint mode (1-2 day build + 3-7 day validation soak). |
 
+### Autonomous growth engine baseline (implemented)
+
+- Variant lifecycle persistence added for candidate variants, experiment assignment, decisions, and growth run logs.
+- Full-auto loop endpoints added (`generate`, `assign`, `outcome`, `promote`, `health`, `tick`) with cron trigger orchestration.
+- UI/recommendation/share surfaces now consume assignment payloads with safe fallback behavior.
+- Operator control surface available at `/ops/growth` and API health endpoint `GET /api/v1/growth/health`.
+
 ---
 
 ## Recent engineering decisions (record)
@@ -151,3 +158,4 @@ When the checklist is complete enough for the next milestone, update **Current m
 | 2026-04-23 | **M12 complete:** PostHog US instrumentation in API + web, analytics config endpoint, deploy prechecks for PostHog vars/secrets, share health summary endpoint + operational thresholds, and production smoke verification of event flow |
 | 2026-04-23 | **M13 complete:** browser memory profile (`localStorage`) + memory hints in recommend requests, API history-derived memory features from `destiny_feedback` + `recommendation_logs`, weighted/clamped hybrid memory ranker, and memory degradation runbook (`reduce weights` then `disable`) with `/api/v1/analytics/memory-health` |
 | 2026-04-23 | Reassessed **M14–M18** to trust-first sequencing (content trust → ceremony language → share polish → modern web hardening → UAT) with explicit blockers and AI-first sprint cadence (1-2 day build + validation soak) |
+| 2026-04-23 | **Autonomous growth engine shipped + verified in production:** growth schema/routes/ops UI/smoke checks deployed; control-token auth validated (`403` unauth / `200` auth), manual tick seeded first active experiment (`experimentsRunning=1`, `variantsTotal=2`), and migration-drift follow-up resolved via Drizzle metadata reconciliation (`0006` no-op + snapshot/journal). |

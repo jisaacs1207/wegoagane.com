@@ -416,6 +416,110 @@ These are release discipline checks layered on top of existing M11–M13 runbook
 - If a workflow can be built and kept stable in under ~60 minutes of code, code it directly.
 - If integration churn is high (many SaaS connectors, auth tokens, schema drift), use cheap automation glue.
 
+## Autonomous growth engine runtime (full-auto)
+
+- Worker cron trigger (`*/20 * * * *`) now drives autonomous growth cycles through `POST /api/v1/growth/tick`.
+- New growth endpoints:
+  - `POST /api/v1/growth/generate`
+  - `POST /api/v1/growth/assign`
+  - `POST /api/v1/growth/outcome`
+  - `POST /api/v1/growth/promote`
+  - `GET /api/v1/growth/health`
+- New runtime vars:
+  - `GROWTH_AUTOPILOT_ENABLED`
+  - `GROWTH_HARD_STOP_ENABLED`
+  - `GROWTH_DEFAULT_TRAFFIC_PERCENT`
+  - `GROWTH_DEFAULT_HOLDOUT_PERCENT`
+  - `GROWTH_MIN_SAMPLE_SIZE`
+  - `GROWTH_CONTROL_TOKEN` (secret; required for control endpoints in production)
+- GitHub automation: `.github/workflows/growth-autopilot-check.yml` polls `GET /api/v1/growth/health` hourly as a lightweight availability guard.
+
+Hardening in this baseline:
+- Promotion now requires threshold pass and significance-aware accept-rate comparison against baseline promoted variant.
+- Guardrail checks block unknown/scraped asset provenance and missing license tags for community-licensed sources.
+- UI copy experiments are applied through a local accessibility-safe sanitizer and default fallback path.
+
+### Autonomous growth rollout record (2026-04-23)
+
+This is the exact implementation + rollout sequence used in production.
+
+1. Ship code + migration artifacts:
+   - Growth runtime routes (`/api/v1/growth/*`)
+   - Data model migration (`0005_elite_growth_engine.sql`)
+   - Drizzle metadata reconciliation migration (`0006_*` no-op SQL + snapshot/journal update)
+2. Set production control secret in Cloudflare Worker:
+   - `GROWTH_CONTROL_TOKEN`
+3. Set matching GitHub Actions secret:
+   - `API_GROWTH_CONTROL_TOKEN` (must equal Cloudflare token value)
+4. Set GitHub Actions vars for growth deploy prechecks:
+   - `API_GROWTH_AUTOPILOT_ENABLED`
+   - `API_GROWTH_HARD_STOP_ENABLED`
+   - `API_GROWTH_DEFAULT_TRAFFIC_PERCENT`
+   - `API_GROWTH_DEFAULT_HOLDOUT_PERCENT`
+   - `API_GROWTH_MIN_SAMPLE_SIZE`
+5. Run API production migration + deploy from `packages/api`:
+   - `npm run db:migrate:production`
+   - `npm run deploy:production`
+6. Run smoke with token:
+   - `GROWTH_CONTROL_TOKEN=... npm run smoke:growth:production`
+7. Verify growth health:
+   - `curl -sS https://wegoagane.com/api/v1/growth/health | jq`
+8. Optional manual seed tick:
+   - `curl -sS -X POST "https://wegoagane.com/api/v1/growth/tick" -H "x-growth-control-token: ..."`
+
+Rollout result:
+- Growth health moved from `experimentsRunning=0, variantsTotal=0` to active state after manual tick:
+  - `experimentsRunning=1`
+  - `variantsTotal=2`
+  - decisions: `hold` / `under_sampled` (expected at low sample size)
+
+### Rollout gotchas encountered (and fixes)
+
+- **Wrong directory for npm commands** (`ENOENT` root `package.json`):
+  - This repo has no root package manifest. Run API scripts from `packages/api`, or use root with `--prefix packages/api` (never both together).
+- **Double-prefix path error** (`packages/api/packages/api/package.json`):
+  - Caused by running `--prefix packages/api` while already inside `packages/api`.
+- **Preview deploy route collision**:
+  - `wrangler deploy --env preview` attempted to claim production routes because `routes` are top-level in `wrangler.toml`.
+  - For the current release we skipped preview Worker and shipped production-only.
+- **Smoke 404 on growth health before deploy**:
+  - `GET /api/v1/growth/health` returned 404 until latest Worker deploy was applied.
+- **CI migration drift after manual migration**:
+  - `db:generate` produced `0006` because manual `0005` lacked matching Drizzle metadata snapshot.
+  - Resolved by committing `0006` metadata files and making `0006` SQL intentionally no-op.
+
+### Growth control token rotation (quick runbook)
+
+1. Generate a new strong token locally (for example: `openssl rand -hex 32`).
+2. Set it as Cloudflare secret:
+   - `npx wrangler secret put GROWTH_CONTROL_TOKEN --env preview`
+   - `npx wrangler secret put GROWTH_CONTROL_TOKEN --env production`
+3. Redeploy API worker to ensure scheduled and control paths pick up the new secret.
+4. Validate:
+   - unauthenticated `POST /api/v1/growth/tick` returns `403` in production
+   - authenticated request with header `x-growth-control-token` returns `200`
+5. If needed, revoke old automation tokens that referenced the previous value.
+
+### Final production release checklist (growth + core)
+
+- API safety:
+  - `API_GROWTH_CONTROL_TOKEN` present in GitHub secrets and `GROWTH_CONTROL_TOKEN` set in Cloudflare.
+  - `POST /api/v1/growth/tick` returns `403` without token and `200` with `x-growth-control-token`.
+  - `GET /api/v1/growth/health` returns healthy JSON payload.
+- Data readiness:
+  - Run `npm run db:migrate:production --prefix packages/api`.
+  - Confirm new growth tables exist and are writable.
+- Runtime:
+  - Cron trigger enabled (`*/20 * * * *`) and `GROWTH_AUTOPILOT_ENABLED=true` only when ready.
+  - `GROWTH_HARD_STOP_ENABLED=true` in production.
+- Quality gates:
+  - API: `npm run typecheck --prefix packages/api` and `npm run test --prefix packages/api`.
+  - Web: `npm run build --prefix apps/web`.
+  - Smoke: `GROWTH_CONTROL_TOKEN=... npm run smoke:growth:production --prefix packages/api` (verifies growth auth deny/allow + growth health + analytics growth config).
+- Post-release observation window (first 24h):
+  - Check PostHog for `growth_assignment_served`, `growth_decision_made`, `growth_hard_stop_triggered`.
+  - Verify no unexpected spike in rerolls or validation failures.
+
 ---
 
 ## Asset and data ingestion risk matrix

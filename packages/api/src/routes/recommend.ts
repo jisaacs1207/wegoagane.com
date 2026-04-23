@@ -209,6 +209,7 @@ export async function handleRecommend(c: Context<ApiEnv>) {
     aiInputTokens: aiResult.telemetry.inputTokens,
     aiOutputTokens: aiResult.telemetry.outputTokens,
     aiErrorType: aiResult.telemetry.providerError,
+    growthVariantId: input.signals.recommendVariantId ?? null,
     createdAt: new Date(now),
   });
 
@@ -230,6 +231,7 @@ export async function handleRecommend(c: Context<ApiEnv>) {
       memoryAverageAppliedBias: ranking.memoryMeta.averageAppliedBias,
       memoryClampHits: ranking.memoryMeta.clampHits,
       selectedMemoryBias: top.memoryBiasApplied ?? 0,
+      growthVariantId: input.signals.recommendVariantId ?? null,
     }),
   );
 

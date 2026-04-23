@@ -1,0 +1,4 @@
+-- No-op migration.
+-- This file intentionally preserves Drizzle migration metadata ordering after
+-- introducing manual migration 0005. The schema changes were already applied
+-- in 0005_elite_growth_engine.sql.
