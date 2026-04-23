@@ -2,16 +2,16 @@ name = "wegoagane-api"
 main = "src/index.ts"
 compatibility_date = "2026-04-23"
 
-# Workers Logs (see https://developers.cloudflare.com/workers/observability/logs/workers-logs/)
-[observability]
-enabled = true
-head_sampling_rate = 1
-
 # Route API traffic on the live domain through this Worker.
 routes = [
   { pattern = "wegoagane.com/api/*", zone_name = "wegoagane.com" },
   { pattern = "www.wegoagane.com/api/*", zone_name = "wegoagane.com" }
 ]
+
+# Workers Logs (see https://developers.cloudflare.com/workers/observability/logs/workers-logs/)
+[observability]
+enabled = true
+head_sampling_rate = 1
 
 [vars]
 APP_ENV = "dev"
