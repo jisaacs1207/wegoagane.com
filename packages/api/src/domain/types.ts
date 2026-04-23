@@ -77,3 +77,14 @@ export type MemorialOutput = {
 };
 
 export type AiErrorType = "ai_timeout" | "ai_invalid_json" | "ai_provider_error";
+
+export type FeedbackChoice = "accept" | "almost_right" | "miss";
+
+export type DestinyFeedbackInput = {
+  sessionId: string;
+  destinyId: string;
+  choice: FeedbackChoice;
+  note?: string;
+  rerollFromClassId?: ClassId;
+  rerollToClassId?: ClassId;
+};
