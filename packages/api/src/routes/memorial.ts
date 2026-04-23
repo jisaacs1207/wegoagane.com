@@ -78,6 +78,7 @@ export async function handleMemorial(c: Context<ApiEnv>) {
       gate: getAiGateStatus(c.env),
       providerError: aiResult.telemetry.providerError,
       modelId: aiResult.telemetry.modelId,
+      resolvedModelId: aiResult.telemetry.resolvedModelId,
       latencyMs: aiResult.telemetry.latencyMs,
       retries: aiResult.telemetry.retries,
     },

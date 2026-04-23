@@ -53,10 +53,10 @@ Set these in Worker env vars when enabling AI enrichment:
 
 - `AI_ENABLED` (`"true"` to enable, default `"false"`)
 - `AI_GATEWAY_URL` (default: `https://openrouter.ai/api/v1/chat/completions`)
-- `AI_MODEL_DESTINY` (OpenRouter model id, e.g. `openai/gpt-4.1-mini`)
-- `AI_MODEL_MEMORIAL` (OpenRouter model id, e.g. `anthropic/claude-3.5-sonnet`)
+- `AI_MODEL_DESTINY` (default **`openrouter/auto`** — [Auto Router](https://openrouter.ai/docs/features/model-routing); or a pinned `provider/model`)
+- `AI_MODEL_MEMORIAL` (same; defaults to `openrouter/auto` in `wrangler.toml`)
 - `AI_APP_TITLE` (sent as `X-OpenRouter-Title`)
-- `AI_PROVIDER_SORT` (`latency`, `price`, or `throughput`)
+- `AI_PROVIDER_SORT` (`latency`, `price`, or `throughput` — **ignored when** `model` **is** `openrouter/auto` so routing is not constrained)
 
 Set `AI_GATEWAY_TOKEN` as a Wrangler secret (not in `wrangler.toml`):
 
@@ -71,6 +71,8 @@ Runtime request headers now include OpenRouter attribution defaults:
 
 When AI is disabled/unavailable/invalid, both pipelines return validated template output.
 
+API responses include **`aiMeta.resolvedModelId`** when OpenRouter returns the concrete model used (Auto Router sets top-level `model` in the completion response per [OpenRouter docs](https://openrouter.ai/docs/features/model-routing)).
+
 ## Model bakeoff (optimize destiny vs memorial)
 
 Run a quick benchmark against your gateway/model candidates using the same adapter + validator path used in runtime:
@@ -78,8 +80,8 @@ Run a quick benchmark against your gateway/model candidates using the same adapt
 ```bash
 AI_GATEWAY_URL="https://openrouter.ai/api/v1/chat/completions" \
 AI_GATEWAY_TOKEN="..." \
-DESTINY_MODELS="openai/gpt-4.1-mini,anthropic/claude-3.5-haiku" \
-MEMORIAL_MODELS="anthropic/claude-3.5-sonnet,openai/gpt-4.1-mini" \
+DESTINY_MODELS="openrouter/auto,openai/gpt-4.1-mini" \
+MEMORIAL_MODELS="openrouter/auto,anthropic/claude-sonnet-4.5" \
 BAKEOFF_RUNS=6 \
 npm run eval:models
 ```

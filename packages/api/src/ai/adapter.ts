@@ -25,10 +25,13 @@ export function getAiGateStatus(env: ApiEnv["Bindings"]) {
   };
 }
 
+const OPENROUTER_AUTO = "openrouter/auto";
+
 function baseTelemetry(modelId: string | null, enabled: boolean): AiTelemetry {
   return {
     enabled,
     modelId,
+    resolvedModelId: null,
     latencyMs: null,
     retries: 0,
     fallbackUsed: false,
@@ -64,7 +67,8 @@ async function callGateway(
         model,
         response_format: { type: "json_object" },
         messages: [{ role: "user", content: prompt }],
-        ...(env.AI_PROVIDER_SORT
+        // Auto Router picks its own provider; `provider.sort` can fight routing.
+        ...(env.AI_PROVIDER_SORT && model !== OPENROUTER_AUTO
           ? {
               provider: {
                 sort: env.AI_PROVIDER_SORT,
@@ -77,6 +81,7 @@ async function callGateway(
     const latencyMs = Date.now() - start;
     if (!response.ok) return { ok: false as const, error: "ai_provider_error" as const, latencyMs };
     const payload = (await response.json()) as {
+      model?: string;
       choices?: Array<{ message?: { content?: string } }>;
       usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
@@ -88,6 +93,7 @@ async function callGateway(
       latencyMs,
       inputTokens: payload.usage?.prompt_tokens ?? null,
       outputTokens: payload.usage?.completion_tokens ?? null,
+      resolvedModel: typeof payload.model === "string" ? payload.model : undefined,
     };
   } catch {
     return {
@@ -105,7 +111,7 @@ export async function enrichDestiny(
   input: RecommendInput,
   template: DestinyOutput,
 ): Promise<DestinyAiResult> {
-  const model = env.AI_MODEL_DESTINY ?? "gpt-4.1-mini";
+  const model = env.AI_MODEL_DESTINY ?? OPENROUTER_AUTO;
   const enabled = isAiEnabled(env);
   const telemetry = baseTelemetry(model, enabled);
 
@@ -137,6 +143,7 @@ export async function enrichDestiny(
 
     telemetry.inputTokens = result.inputTokens;
     telemetry.outputTokens = result.outputTokens;
+    telemetry.resolvedModelId = result.resolvedModel ?? null;
     let parsed: DestinyOutput;
     try {
       parsed = JSON.parse(result.content) as DestinyOutput;
@@ -167,7 +174,7 @@ export async function enrichMemorial(
   env: ApiEnv["Bindings"],
   template: MemorialOutput,
 ): Promise<MemorialAiResult> {
-  const model = env.AI_MODEL_MEMORIAL ?? env.AI_MODEL_DESTINY ?? "gpt-4.1-mini";
+  const model = env.AI_MODEL_MEMORIAL ?? env.AI_MODEL_DESTINY ?? OPENROUTER_AUTO;
   const enabled = isAiEnabled(env);
   const telemetry = baseTelemetry(model, enabled);
   const fallback = (): MemorialAiResult => ({
@@ -194,6 +201,7 @@ export async function enrichMemorial(
     }
     telemetry.inputTokens = result.inputTokens;
     telemetry.outputTokens = result.outputTokens;
+    telemetry.resolvedModelId = result.resolvedModel ?? null;
     let parsed: MemorialOutput;
     try {
       parsed = JSON.parse(result.content) as MemorialOutput;
