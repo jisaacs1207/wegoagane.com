@@ -2,7 +2,17 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { ApiEnv } from "../db/client";
 import type { DestinyOutput } from "../domain/types";
-import { enrichDestiny } from "./adapter";
+import { enrichDestiny, isTruthyEnv } from "./adapter";
+
+test("isTruthyEnv accepts common Cloudflare / dashboard shapes", () => {
+  assert.equal(isTruthyEnv("true"), true);
+  assert.equal(isTruthyEnv("TRUE"), true);
+  assert.equal(isTruthyEnv(true), true);
+  assert.equal(isTruthyEnv("1"), true);
+  assert.equal(isTruthyEnv("false"), false);
+  assert.equal(isTruthyEnv(false), false);
+  assert.equal(isTruthyEnv(""), false);
+});
 
 test("enrichDestiny falls back to template when AI is disabled", async () => {
   const env = {

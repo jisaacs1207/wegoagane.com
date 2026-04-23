@@ -5,7 +5,8 @@ export type ApiEnv = {
     DB: D1Database;
     APP_ENV: string;
     SITE_ORIGIN?: string;
-    AI_ENABLED?: string;
+    /** Plain var or JSON binding; compare with `isTruthyEnv` in adapter, not `=== "true"` only */
+    AI_ENABLED?: string | boolean;
     AI_GATEWAY_URL?: string;
     AI_GATEWAY_TOKEN?: string;
     AI_MODEL_DESTINY?: string;

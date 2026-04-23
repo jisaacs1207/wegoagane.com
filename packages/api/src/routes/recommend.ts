@@ -1,5 +1,5 @@
 import { type Context, Hono } from "hono";
-import { enrichDestiny } from "../ai/adapter";
+import { enrichDestiny, getAiGateStatus } from "../ai/adapter";
 import { getDb, type ApiEnv } from "../db/client";
 import { destinies, questionAnswers, recommendationLogs, sessions } from "../db/schema";
 import { rankArchetypes } from "../domain/ranker";
@@ -100,6 +100,13 @@ export async function handleRecommend(c: Context<ApiEnv>) {
     sourceType: output.sourceType,
     fallbackUsed: aiResult.telemetry.fallbackUsed,
     validationFailures: failures,
+    aiMeta: {
+      gate: getAiGateStatus(c.env),
+      providerError: aiResult.telemetry.providerError,
+      modelId: aiResult.telemetry.modelId,
+      latencyMs: aiResult.telemetry.latencyMs,
+      retries: aiResult.telemetry.retries,
+    },
     output,
   });
 }

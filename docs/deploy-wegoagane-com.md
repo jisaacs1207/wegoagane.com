@@ -174,6 +174,10 @@ node packages/api/scripts/smoke.mjs https://wegoagane.com
 
 If this returns HTTP `405` on `POST /api/v1/recommend`, `/api/*` is still handled by Pages/another rule, not the Worker route.
 
+**Wrangler vs dashboard:** `wrangler deploy` applies `[env.production.vars]` from `packages/api/wrangler.toml`. A deploy can **overwrite** Worker variables you set only in the Cloudflare UI. Keep `AI_ENABLED` and other non-secrets in `wrangler.toml` in sync with what you want in production, and use **Secrets** for `AI_GATEWAY_TOKEN` only.
+
+Responses from `POST /api/v1/recommend` and `POST /api/v1/memorial` include **`aiMeta`** (`gate`, `providerError`, `modelId`, …) so you can see whether the AI gate is open (`gate.ready`) and why OpenRouter fell back (`providerError`) without guessing.
+
 ### OpenRouter notes (current API)
 
 - Chat completion endpoint: `POST https://openrouter.ai/api/v1/chat/completions`
