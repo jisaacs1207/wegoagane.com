@@ -39,7 +39,12 @@ export function DeathResultStep() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingDestiny, setIsLoadingDestiny] = useState(true);
   const [loadError, setLoadError] = useState<string>("");
+  const [loadingPhase, setLoadingPhase] = useState("Reading your final combat log...");
   const [recommendVariantId, setRecommendVariantId] = useState<string | null>(null);
+
+  async function wait(ms: number) {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  }
 
   useEffect(() => {
     const mood = sessionStorage.getItem("death.mood") ?? undefined;
@@ -64,13 +69,31 @@ export function DeathResultStep() {
     void (async () => {
       setIsLoadingDestiny(true);
       setLoadError("");
+      setLoadingPhase("Reading your final combat log...");
+      const phaseTimer1 = setTimeout(() => setLoadingPhase("Consulting the spirit healers..."), 900);
+      const phaseTimer2 = setTimeout(() => setLoadingPhase("Drafting a safer next path..."), 1800);
+      const phaseTimer3 = setTimeout(() => setLoadingPhase("Binding your next oath to parchment..."), 3000);
       try {
-        const result = await fetchDestiny({
-          entryPath: "release_spirit",
-          sessionId: seededSessionId,
-          // Never block initial card render on experiment assignment latency.
-          signals: { mood, nextSignal, memoryHints: buildMemoryHints() },
-        });
+        const startedAt = Date.now();
+        let result: Awaited<ReturnType<typeof fetchDestiny>> | null = null;
+        while (!result && Date.now() - startedAt < 12000) {
+          try {
+            result = await fetchDestiny({
+              entryPath: "release_spirit",
+              sessionId: seededSessionId,
+              // Never block initial card render on experiment assignment latency.
+              signals: { mood, nextSignal, memoryHints: buildMemoryHints() },
+            });
+          } catch {
+            await wait(1200);
+          }
+        }
+        if (!result) {
+          setDestiny(null);
+          setLoadError("The spirit healers are still scrying your path. Hold steady while we finish the ritual.");
+          return;
+        }
+
         setDestiny(result.output);
         setSessionId(result.sessionId);
         setDestinyId(result.destinyId);
@@ -88,8 +111,11 @@ export function DeathResultStep() {
           .catch(() => {});
       } catch {
         setDestiny(null);
-        setLoadError("Could not generate a destiny yet. Try again in a moment.");
+        setLoadError("The spirit archives are delayed. We are still forging your next destiny.");
       } finally {
+        clearTimeout(phaseTimer1);
+        clearTimeout(phaseTimer2);
+        clearTimeout(phaseTimer3);
         setIsLoadingDestiny(false);
       }
     })();
@@ -234,9 +260,12 @@ export function DeathResultStep() {
           <div className="card">
             <p className="step-label">Release spirit</p>
             <h1 className="hero-question">Forging your next destiny...</h1>
-            <p className="hero-sub">
-              {isLoadingDestiny ? "Reading your last run and preparing your next card." : loadError}
-            </p>
+            <div className="forge-status-row">
+              <span className="forge-spinner" aria-hidden="true" />
+              <p className="hero-sub" style={{ margin: 0 }}>
+                {isLoadingDestiny ? loadingPhase : loadError}
+              </p>
+            </div>
           </div>
         )}
       </div>
