@@ -16,6 +16,7 @@ export function DeathResultStep() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [destinyId, setDestinyId] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string>("");
+  const [note, setNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -76,18 +77,25 @@ export function DeathResultStep() {
           sessionId,
           destinyId,
           choice,
+          note: note.trim() || undefined,
           rerollFromClassId: destiny.classId,
           rerollToClassId: reroll.output.classId,
         });
+        if (reroll.output.classId === destiny.classId) {
+          setActionMessage("Logged as almost right. No alternative class passed filters, so class stayed the same.");
+        } else {
+          setActionMessage("Logged as almost right. Rerolled to a different class.");
+        }
         setDestiny(reroll.output);
         setDestinyId(reroll.destinyId);
         sessionStorage.setItem("death.destinyId", reroll.destinyId);
-        setActionMessage("Logged as almost right. Rerolled to a different class.");
+        setNote("");
         return;
       }
 
-      await submitDestinyFeedback({ sessionId, destinyId, choice });
+      await submitDestinyFeedback({ sessionId, destinyId, choice, note: note.trim() || undefined });
       setActionMessage(choice === "accept" ? "Saved: accepted." : "Saved: miss.");
+      setNote("");
     } catch {
       setActionMessage("Could not save this rating yet.");
     } finally {
@@ -107,6 +115,28 @@ export function DeathResultStep() {
           <strong>narrow side-by-side layout</strong> on{" "}
           <Link to="/design/cards">card shells</Link> — polish, imagery, and real copy ship in later milestones.
         </p>
+        <label style={{ marginTop: 10, display: "block", fontSize: 12, color: "var(--ts)" }}>
+          Optional note
+          <textarea
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            maxLength={240}
+            placeholder="What made this right, almost right, or wrong?"
+            style={{
+              marginTop: 6,
+              width: "100%",
+              minHeight: 72,
+              resize: "vertical",
+              borderRadius: 10,
+              border: "1px solid var(--line)",
+              background: "var(--card)",
+              color: "var(--text)",
+              padding: 10,
+              fontSize: 13,
+              fontFamily: "inherit",
+            }}
+          />
+        </label>
         <div className="flow-nav" style={{ marginTop: 12 }}>
           <button type="button" className="btn-primary" disabled={isSubmitting || !destinyId} onClick={() => void rateAndMaybeReroll("accept")}>
             Accept this fate

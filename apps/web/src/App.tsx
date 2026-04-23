@@ -6,6 +6,7 @@ import { LuckyRollPage } from "./pages/LuckyRollPage";
 import { PlanFlowPage } from "./pages/PlanFlowPage";
 import { DesignCardsPage } from "./pages/DesignCardsPage";
 import { SharePlaceholderPage } from "./pages/SharePlaceholderPage";
+import { FeedbackSummaryPage } from "./pages/FeedbackSummaryPage";
 
 export function App() {
   return (
@@ -17,6 +18,7 @@ export function App() {
         <Route path="/lucky-roll" element={<LuckyRollPage />} />
         <Route path="/share/:runId" element={<SharePlaceholderPage />} />
         <Route path="/design/cards" element={<DesignCardsPage />} />
+        <Route path="/ops/feedback" element={<FeedbackSummaryPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppShell>

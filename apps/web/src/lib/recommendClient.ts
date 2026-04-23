@@ -70,6 +70,16 @@ type FeedbackRequest = {
   rerollToClassId?: ClassId;
 };
 
+export type FeedbackSummary = {
+  total: number;
+  rerollsFromAlmostRight: number;
+  counts: {
+    accept: number;
+    almostRight: number;
+    miss: number;
+  };
+};
+
 export async function fetchDestiny(input: RecommendRequest): Promise<DestinyResult> {
   const response = await fetch("/api/v1/recommend", {
     method: "POST",
@@ -128,4 +138,12 @@ export async function submitDestinyFeedback(input: FeedbackRequest): Promise<voi
   if (!response.ok) {
     throw new Error(`feedback_failed:${response.status}`);
   }
+}
+
+export async function fetchFeedbackSummary(): Promise<FeedbackSummary> {
+  const response = await fetch("/api/v1/feedback/summary");
+  if (!response.ok) {
+    throw new Error(`feedback_summary_failed:${response.status}`);
+  }
+  return (await response.json()) as FeedbackSummary;
 }

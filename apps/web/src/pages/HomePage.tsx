@@ -25,6 +25,10 @@ export function HomePage() {
           <Link to="/design/cards" style={{ color: "var(--ts)" }}>
             M2 card shells & icons (dev)
           </Link>
+          {" · "}
+          <Link to="/ops/feedback" style={{ color: "var(--ts)" }}>
+            M10 feedback snapshot (dev)
+          </Link>
         </p>
       </div>
     </div>
