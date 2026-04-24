@@ -2,29 +2,17 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { fetchGrowthAssignment, submitGrowthOutcome } from "../lib/recommendClient";
 
-function sanitizeUiExperiment(payload: {
-  headline?: string;
-  subline?: string;
-  ctaPrimary?: string;
-  ctaSecondary?: string;
-}) {
+function sanitizeUiExperiment(payload: { headline?: string; subline?: string }) {
   const headline = payload.headline?.trim();
   const subline = payload.subline?.trim();
-  const ctaPrimary = payload.ctaPrimary?.trim();
-  const ctaSecondary = payload.ctaSecondary?.trim();
   const safe =
-    (!headline || headline.length <= 64) &&
-    (!subline || subline.length <= 120) &&
-    (!ctaPrimary || (ctaPrimary.length <= 22 && ctaPrimary === ctaPrimary.replace(/[^\w\s'-]/g, ""))) &&
-    (!ctaSecondary || (ctaSecondary.length <= 22 && ctaSecondary === ctaSecondary.replace(/[^\w\s'-]/g, "")));
-  return safe ? { headline, subline, ctaPrimary, ctaSecondary } : null;
+    (!headline || headline.length <= 64) && (!subline || subline.length <= 120);
+  return safe ? { headline, subline } : null;
 }
 
 export function HomePage() {
   const [heroQuestion, setHeroQuestion] = useState("Choose a path");
   const [heroSub, setHeroSub] = useState("Each route is skippable where it matters — this is a living build.");
-  const [primaryCta, setPrimaryCta] = useState("Release Spirit");
-  const [secondaryCta, setSecondaryCta] = useState("Draft a Run");
   const [assignmentId, setAssignmentId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -38,14 +26,11 @@ export function HomePage() {
         const safePayload = sanitizeUiExperiment({
           headline: assignment.payload?.headline,
           subline: assignment.payload?.subline,
-          ctaPrimary: assignment.payload?.ctaPrimary,
-          ctaSecondary: assignment.payload?.ctaSecondary,
         });
         if (!safePayload) return;
         if (safePayload.headline) setHeroQuestion(safePayload.headline);
         if (safePayload.subline) setHeroSub(safePayload.subline);
-        if (safePayload.ctaPrimary) setPrimaryCta(safePayload.ctaPrimary);
-        if (safePayload.ctaSecondary) setSecondaryCta(safePayload.ctaSecondary);
+        // Entry row titles stay fixed per route so sublines never mismatch (growth CTAs are optional copy experiments only).
       })
       .catch(() => {
         // Keep baseline copy if assignment fails.
@@ -71,7 +56,7 @@ export function HomePage() {
               void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_release_spirit" } }).catch(() => {});
             }}
           >
-            <span className="entry-btn-title">{primaryCta}</span>
+            <span className="entry-btn-title">Release Spirit</span>
             <span className="entry-btn-desc">I just died — memorial + next Destiny</span>
           </Link>
           <Link
@@ -82,7 +67,7 @@ export function HomePage() {
               void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_draft_run" } }).catch(() => {});
             }}
           >
-            <span className="entry-btn-title">{secondaryCta}</span>
+            <span className="entry-btn-title">Draft a Run</span>
             <span className="entry-btn-desc">I&apos;m planning — next Destiny only</span>
           </Link>
           <Link
@@ -93,7 +78,7 @@ export function HomePage() {
               void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_lucky_roll" } }).catch(() => {});
             }}
           >
-            <span className="entry-btn-title">Lucky Roll</span>
+            <span className="entry-btn-title">Lucky roll</span>
             <span className="entry-btn-desc">Surprise me with a full Destiny card</span>
           </Link>
         </div>
