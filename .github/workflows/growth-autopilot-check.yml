@@ -10,7 +10,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Curl growth health endpoint
+        env:
+          GROWTH_HEALTH_URL: ${{ vars.GROWTH_HEALTH_URL }}
+          REPO_SLUG: ${{ github.repository }}
         run: |
           set -euo pipefail
-          curl -fsSL "https://wegoagane.com/api/v1/growth/health" > /tmp/growth-health.json
+          URL="${GROWTH_HEALTH_URL:-https://wegoagane.com/api/v1/growth/health}"
+          UA="wegoagane-growth-autopilot-check/1 (+https://github.com/${REPO_SLUG})"
+          ok=0
+          for i in 1 2 3; do
+            if curl -fsSL \
+              --connect-timeout 15 \
+              --max-time 60 \
+              -H "Accept: application/json" \
+              -H "User-Agent: ${UA}" \
+              "${URL}" > /tmp/growth-health.json; then
+              ok=1
+              break
+            fi
+            echo "Attempt ${i}/3 failed for URL=${URL} (curl exit $?)." >&2
+            if [ "${i}" -lt 3 ]; then
+              sleep 15
+            fi
+          done
+          if [ "${ok}" -ne 1 ]; then
+            echo "Growth health check failed after 3 attempts." >&2
+            echo "If this is HTTP 403 only from GitHub Actions, the Worker is still public — edge rules on wegoagane.com often block datacenter IPs." >&2
+            echo "Set repo Actions variable GROWTH_HEALTH_URL to your Worker workers.dev URL (same path /api/v1/growth/health), or add a Cloudflare WAF skip for this path + User-Agent (see docs/deploy-wegoagane-com.md)." >&2
+            exit 1
+          fi
           jq . /tmp/growth-health.json >/dev/null
+          jq -e 'type == "object" and (.experimentsRunning | type == "number")' /tmp/growth-health.json >/dev/null
