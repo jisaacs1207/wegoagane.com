@@ -379,11 +379,33 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
     }
   }
 
+  function resetJourneyFilters() {
+    try {
+      sessionStorage.removeItem(storageKey);
+      sessionStorage.removeItem(depthStorageKey(storageKey));
+      sessionStorage.removeItem(`${storageKey}.powerCurve`);
+    } catch {
+      /* ignore */
+    }
+    setValue({});
+    setDepth("balanced");
+    setStep("depth");
+    setVector("survivability");
+    setQuestionIndex(0);
+    setCorePreset("balanced");
+    setPowerCurve(null);
+  }
+
   return (
     <div className="build-intent card" style={{ marginTop: 12 }}>
       <p className="step-label" style={{ marginBottom: 8 }}>
         Build journey
       </p>
+      <div className="flow-nav" style={{ marginTop: -4, marginBottom: 8 }}>
+        <button type="button" className="btn-ghost" onClick={resetJourneyFilters}>
+          Start fresh filters
+        </button>
+      </div>
       <p className="hero-sub" style={{ marginTop: 0, marginBottom: 10, fontSize: 12 }}>
         Choose depth, pick one priority vector, answer two quick questions, then generate.
       </p>
@@ -572,7 +594,7 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
           {activeIds.length ? (
             <div style={{ marginBottom: 12 }}>
               <p className="step-label" style={{ marginBottom: 6 }}>
-                Selected filters
+                Selected filters for this run
               </p>
               <div className="chip-row">
                 {activeIds.map((id) => (

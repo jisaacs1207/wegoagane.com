@@ -48,39 +48,47 @@ async function deriveServerMemory(
     return { classAffinity: {}, rerollReasonCounts: {}, recentArchetypeKeys: [], confidence: 0, sampleSize: 0 };
   }
 
-  const rows = await db
-    .prepare(
-      `SELECT
-        d.choice AS choice,
-        d.reroll_reason AS reroll_reason,
-        COALESCE(d.reroll_from_class_id, t.class_id) AS class_id
-       FROM destiny_feedback d
-       LEFT JOIN destinies t ON t.id = d.destiny_id
-       WHERE d.session_id = ?1
-       ORDER BY d.created_at DESC
-       LIMIT ?2`,
-    )
-    .bind(sessionId, lookbackLimit)
-    .all<{ choice: "accept" | "almost_right" | "miss"; reroll_reason: string | null; class_id: string | null }>();
-  const confidenceRow = await db
-    .prepare(
-      `SELECT AVG(l.confidence_score) AS avg_confidence
-       FROM recommendation_logs l
-       INNER JOIN destinies d ON d.id = l.destiny_id
-       WHERE d.session_id = ?1`,
-    )
-    .bind(sessionId)
-    .first<{ avg_confidence: number | null }>();
-  const recentArchetypes = await db
-    .prepare(
-      `SELECT archetype_key
-       FROM destinies
-       WHERE session_id = ?1
-       ORDER BY created_at DESC
-       LIMIT 6`,
-    )
-    .bind(sessionId)
-    .all<{ archetype_key: string | null }>();
+  let rows: { results?: Array<{ choice: "accept" | "almost_right" | "miss"; reroll_reason: string | null; class_id: string | null }> };
+  let confidenceRow: { avg_confidence: number | null } | null = null;
+  let recentArchetypes: { results?: Array<{ archetype_key: string | null }> };
+  try {
+    rows = await db
+      .prepare(
+        `SELECT
+          d.choice AS choice,
+          d.reroll_reason AS reroll_reason,
+          COALESCE(d.reroll_from_class_id, t.class_id) AS class_id
+         FROM destiny_feedback d
+         LEFT JOIN destinies t ON t.id = d.destiny_id
+         WHERE d.session_id = ?1
+         ORDER BY d.created_at DESC
+         LIMIT ?2`,
+      )
+      .bind(sessionId, lookbackLimit)
+      .all<{ choice: "accept" | "almost_right" | "miss"; reroll_reason: string | null; class_id: string | null }>();
+    confidenceRow = await db
+      .prepare(
+        `SELECT AVG(l.confidence_score) AS avg_confidence
+         FROM recommendation_logs l
+         INNER JOIN destinies d ON d.id = l.destiny_id
+         WHERE d.session_id = ?1`,
+      )
+      .bind(sessionId)
+      .first<{ avg_confidence: number | null }>();
+    recentArchetypes = await db
+      .prepare(
+        `SELECT archetype_key
+         FROM destinies
+         WHERE session_id = ?1
+         ORDER BY created_at DESC
+         LIMIT 6`,
+      )
+      .bind(sessionId)
+      .all<{ archetype_key: string | null }>();
+  } catch {
+    // Keep recommendations flowing even if memory tables/columns drift temporarily.
+    return { classAffinity: {}, rerollReasonCounts: {}, recentArchetypeKeys: [], confidence: 0, sampleSize: 0 };
+  }
 
   const counts: Record<string, { accept: number; almostRight: number; miss: number }> = {};
   const rerollReasonCounts: Record<string, number> = {};
@@ -256,53 +264,62 @@ export async function handleRecommend(c: Context<ApiEnv>) {
       sourceType: output.sourceType,
     });
 
-    const buildPlanId = crypto.randomUUID();
-    const rulesetPin = (c.env.RULESET_PIN ?? "classic-era-hc-2026-04").slice(0, 120);
-    await db.insert(buildPlans).values({
-      id: buildPlanId,
-      destinyId,
-      sessionId,
-      status: "queued",
-      publishTier: "draft",
-      rulesetPin,
-      signalsJson: JSON.stringify(input),
-      payloadJson: null,
-      error: null,
-      createdAt: new Date(now),
-      updatedAt: new Date(now),
-    });
-
-    c.executionCtx.waitUntil(
-      enqueueBuildPlanGeneration(
-        c.env,
-        buildPlanId,
+    let buildPlanId: string | undefined;
+    try {
+      buildPlanId = crypto.randomUUID();
+      const rulesetPin = (c.env.RULESET_PIN ?? "classic-era-hc-2026-04").slice(0, 120);
+      await db.insert(buildPlans).values({
+        id: buildPlanId,
         destinyId,
         sessionId,
-        top.archetype.key,
-        JSON.stringify(output),
-        input,
-      ),
-    );
+        status: "queued",
+        publishTier: "draft",
+        rulesetPin,
+        signalsJson: JSON.stringify(input),
+        payloadJson: null,
+        error: null,
+        createdAt: new Date(now),
+        updatedAt: new Date(now),
+      });
+
+      c.executionCtx.waitUntil(
+        enqueueBuildPlanGeneration(
+          c.env,
+          buildPlanId,
+          destinyId,
+          sessionId,
+          top.archetype.key,
+          JSON.stringify(output),
+          input,
+        ),
+      );
+    } catch {
+      buildPlanId = undefined;
+    }
 
     const confidenceScore = Math.min(1, Math.max(0.1, top.score / 10));
-    await db.insert(recommendationLogs).values({
-      destinyId,
-      selectedArchetype: top.archetype.key,
-      rankingScore: top.score,
-      confidenceScore,
-      reasonsJson: JSON.stringify(top.reasons),
-      validationFailures: failures.length,
-      sourceType: output.sourceType,
-      fallbackUsed: aiResult.telemetry.fallbackUsed,
-      aiModelId: aiResult.telemetry.resolvedModelId ?? aiResult.telemetry.modelId,
-      aiLatencyMs: aiResult.telemetry.latencyMs,
-      aiRetries: aiResult.telemetry.retries,
-      aiInputTokens: aiResult.telemetry.inputTokens,
-      aiOutputTokens: aiResult.telemetry.outputTokens,
-      aiErrorType: aiResult.telemetry.providerError,
-      growthVariantId: input.signals.recommendVariantId ?? null,
-      createdAt: new Date(now),
-    });
+    try {
+      await db.insert(recommendationLogs).values({
+        destinyId,
+        selectedArchetype: top.archetype.key,
+        rankingScore: top.score,
+        confidenceScore,
+        reasonsJson: JSON.stringify(top.reasons),
+        validationFailures: failures.length,
+        sourceType: output.sourceType,
+        fallbackUsed: aiResult.telemetry.fallbackUsed,
+        aiModelId: aiResult.telemetry.resolvedModelId ?? aiResult.telemetry.modelId,
+        aiLatencyMs: aiResult.telemetry.latencyMs,
+        aiRetries: aiResult.telemetry.retries,
+        aiInputTokens: aiResult.telemetry.inputTokens,
+        aiOutputTokens: aiResult.telemetry.outputTokens,
+        aiErrorType: aiResult.telemetry.providerError,
+        growthVariantId: input.signals.recommendVariantId ?? null,
+        createdAt: new Date(now),
+      });
+    } catch {
+      /* non-fatal analytics/logging write */
+    }
 
     c.executionCtx.waitUntil(
       captureServerEvent(c.env, AnalyticsEvent.DestinyGenerated, sessionId, {
