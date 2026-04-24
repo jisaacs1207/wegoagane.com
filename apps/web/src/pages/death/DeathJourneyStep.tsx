@@ -7,6 +7,26 @@ import { fetchDestiny, fetchGrowthAssignment, submitGrowthOutcome } from "../../
 import { buildMemoryHints } from "../../lib/memoryProfile";
 import { writeStoredDestiny } from "../../lib/flowDestinyState";
 
+function buildDeathContextFreeform() {
+  const zone = sessionStorage.getItem("death.detail.zone")?.trim();
+  const cause = sessionStorage.getItem("death.detail.cause")?.trim();
+  const level = sessionStorage.getItem("death.detail.level")?.trim();
+  const note = sessionStorage.getItem("death.detail.note")?.trim();
+  const bits = [zone ? `Zone: ${zone}` : "", cause ? `Cause: ${cause}` : "", level ? `Level: ${level}` : "", note ? `Note: ${note}` : ""].filter(Boolean);
+  return bits.length ? bits.join(" | ") : undefined;
+}
+
+function deriveSignalBias(mood?: string, nextSignal?: string): BuildIntentSignals {
+  const base: BuildIntentSignals = {};
+  if (mood === "Bullshit death" || mood === "First time") base.statPhilosophy = ["stamina_forward", "balanced"];
+  if (mood === "Long time coming") base.buildVectors = ["hybrid", "group_ok"];
+  if (nextSignal === "Safer") base.buildVectors = [...(base.buildVectors ?? []), "tank", "solo"];
+  if (nextSignal === "Faster") base.statPhilosophy = ["agility_forward", ...(base.statPhilosophy ?? [])];
+  if (nextSignal === "Different") base.raceMode = "surprise";
+  if (nextSignal === "No pet class") base.buildVectors = [...(base.buildVectors ?? []), "melee"];
+  return base;
+}
+
 export function DeathJourneyStep() {
   const navigate = useNavigate();
   const [isGenerating, setIsGenerating] = useState(false);
@@ -17,6 +37,8 @@ export function DeathJourneyStep() {
     sessionStorage.setItem("death.sessionId", sessionId);
     const mood = sessionStorage.getItem("death.mood") ?? undefined;
     const nextSignal = sessionStorage.getItem("death.nextSignal") ?? undefined;
+    const detailFreeform = buildDeathContextFreeform();
+    const promptBias = deriveSignalBias(mood, nextSignal);
 
     setIsGenerating(true);
     setError("");
@@ -33,8 +55,10 @@ export function DeathJourneyStep() {
         signals: {
           mood: augmentMoodWithPower(mood, "death.buildIntent"),
           nextSignal,
+          freeform: detailFreeform,
           memoryHints: buildMemoryHints(),
           recommendVariantId: assignment?.variantId ?? undefined,
+          ...promptBias,
           ...signals,
         },
       });

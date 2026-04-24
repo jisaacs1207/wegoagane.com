@@ -17,6 +17,26 @@ import { buildMemoryHints, rememberAccept, rememberReroll } from "../../lib/memo
 import { readStoredDestiny } from "../../lib/flowDestinyState";
 import { augmentMoodWithPower } from "../../lib/journeySignalsExtras";
 
+function buildDeathContextFreeform() {
+  const zone = sessionStorage.getItem("death.detail.zone")?.trim();
+  const cause = sessionStorage.getItem("death.detail.cause")?.trim();
+  const level = sessionStorage.getItem("death.detail.level")?.trim();
+  const note = sessionStorage.getItem("death.detail.note")?.trim();
+  const bits = [zone ? `Zone: ${zone}` : "", cause ? `Cause: ${cause}` : "", level ? `Level: ${level}` : "", note ? `Note: ${note}` : ""].filter(Boolean);
+  return bits.length ? bits.join(" | ") : undefined;
+}
+
+function deriveSignalBias(mood?: string, nextSignal?: string) {
+  const base: Record<string, unknown> = {};
+  if (mood === "Bullshit death" || mood === "First time") base.statPhilosophy = ["stamina_forward", "balanced"];
+  if (mood === "Long time coming") base.buildVectors = ["hybrid", "group_ok"];
+  if (nextSignal === "Safer") base.buildVectors = [...((base.buildVectors as string[] | undefined) ?? []), "tank", "solo"];
+  if (nextSignal === "Faster") base.statPhilosophy = ["agility_forward", ...((base.statPhilosophy as string[] | undefined) ?? [])];
+  if (nextSignal === "Different") base.raceMode = "surprise";
+  if (nextSignal === "No pet class") base.buildVectors = [...((base.buildVectors as string[] | undefined) ?? []), "melee"];
+  return base;
+}
+
 const rerollReasons: Array<{ value: RerollReason; label: string }> = [
   { value: "wrong_class", label: "Wrong class" },
   { value: "wrong_energy", label: "Wrong energy" },
@@ -91,6 +111,8 @@ export function DeathResultStep() {
     try {
       const mood = sessionStorage.getItem("death.mood") ?? undefined;
       const nextSignal = sessionStorage.getItem("death.nextSignal") ?? undefined;
+      const detailFreeform = buildDeathContextFreeform();
+      const promptBias = deriveSignalBias(mood, nextSignal);
 
       if (reason === "wrong_goals") {
         rememberReroll(reason, destiny.classId);
@@ -118,8 +140,10 @@ export function DeathResultStep() {
         signals: {
           mood: augmentMoodWithPower(mood, "death.buildIntent"),
           nextSignal,
+          freeform: detailFreeform,
           memoryHints: buildMemoryHints(),
           recommendVariantId: recommendVariantId ?? undefined,
+          ...promptBias,
           ...readBuildIntent("death.buildIntent"),
           excludedClasses:
             reason === "wrong_class" || reason === "just_curious" ? [destiny.classId] : undefined,
@@ -239,150 +263,154 @@ export function DeathResultStep() {
           <div className="result-page-grid">
             <div className="result-page-grid__main">
               <DestinyCard data={destiny} intentSignals={readBuildIntent("death.buildIntent")} />
-            <div className="card" style={{ marginTop: 12 }}>
-              <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Was this close to what you wanted?</p>
-              <div className="flow-nav" style={{ marginTop: 10 }}>
-                <button
-                  type="button"
-                  className={`btn-ghost ${feedbackChoice === "closer" ? "chip-btn--on" : ""}`}
-                  onClick={() => {
-                    setFeedbackChoice("closer");
-                    trackEvent(AnalyticsEvent.IntentFeedbackSubmitted, {
-                      flow: "release_spirit",
-                      destinyId,
-                      feedback: "closer",
-                    });
-                  }}
-                >
-                  Closer than expected
-                </button>
-                <button
-                  type="button"
-                  className={`btn-ghost ${feedbackChoice === "off" ? "chip-btn--on" : ""}`}
-                  onClick={() => setFeedbackChoice("off")}
-                >
-                  Still off target
-                </button>
-              </div>
-              {feedbackChoice === "off" ? (
-                <div className="chip-row" style={{ marginTop: 10 }}>
-                  {["Too risky", "Wrong fantasy", "Wrong pace", "Wrong role"].map((reason) => (
-                    <button
-                      key={reason}
-                      type="button"
-                      className={`chip-btn ${feedbackReason === reason ? "chip-btn--on" : ""}`}
-                      onClick={() => {
-                        setFeedbackReason(reason);
-                        trackEvent(AnalyticsEvent.IntentFeedbackSubmitted, {
-                          flow: "release_spirit",
-                          destinyId,
-                          feedback: "off_target",
-                          reason,
-                        });
-                      }}
-                    >
-                      {reason}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
             </div>
-            {destinyId ? (
-              <div className="flow-nav" style={{ marginTop: 12 }}>
+            <aside className="result-page-grid__side">
+              <div className="card">
+                <p style={{ margin: 0, fontSize: 13, color: "var(--ts)", lineHeight: 1.45 }}>
+                  Memorials now live on the committed build URL after you mark a death. Share exports still use the{" "}
+                  <Link to="/design/cards">card shells</Link> reference layout.
+                </p>
+                <label style={{ marginTop: 10, display: "block", fontSize: 12, color: "var(--ts)" }}>
+                  Optional note
+                  <textarea
+                    value={note}
+                    onChange={(event) => setNote(event.target.value)}
+                    maxLength={240}
+                    placeholder="What made this right, almost right, or wrong?"
+                    style={{
+                      marginTop: 6,
+                      width: "100%",
+                      minHeight: 72,
+                      resize: "vertical",
+                      borderRadius: 10,
+                      border: "1px solid var(--line)",
+                      background: "var(--card)",
+                      color: "var(--text)",
+                      padding: 10,
+                      fontSize: 13,
+                      fontFamily: "inherit",
+                    }}
+                  />
+                </label>
+                <div className="flow-nav" style={{ marginTop: 12 }}>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={isSubmitting || !destinyId}
+                    onClick={() => void acceptAndOpenPostRating()}
+                  >
+                    Accept this fate
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    disabled={isSubmitting || !destinyId}
+                    onClick={() => setShowRerollGate((prev) => !prev)}
+                  >
+                    Reroll (rating gate)
+                  </button>
+                </div>
+                {showRerollGate ? (
+                  <div className="flow-nav flow-nav--wrap" style={{ marginTop: 10 }}>
+                    {rerollReasons.map((reason) => (
+                      <button
+                        key={reason.value}
+                        type="button"
+                        className="btn-ghost"
+                        disabled={isSubmitting || !destinyId}
+                        onClick={() => void runRerollWithReason(reason.value)}
+                      >
+                        {reason.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                {actionMessage ? (
+                  <p style={{ marginTop: 10, marginBottom: 0, fontSize: 12, color: "var(--ts)" }}>{actionMessage}</p>
+                ) : null}
+              </div>
+
+              <div className="card" style={{ marginTop: 12 }}>
+                <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Was this close to what you wanted?</p>
+                <div className="flow-nav" style={{ marginTop: 10 }}>
+                  <button
+                    type="button"
+                    className={`btn-ghost ${feedbackChoice === "closer" ? "chip-btn--on" : ""}`}
+                    onClick={() => {
+                      setFeedbackChoice("closer");
+                      trackEvent(AnalyticsEvent.IntentFeedbackSubmitted, {
+                        flow: "release_spirit",
+                        destinyId,
+                        feedback: "closer",
+                      });
+                    }}
+                  >
+                    Closer than expected
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn-ghost ${feedbackChoice === "off" ? "chip-btn--on" : ""}`}
+                    onClick={() => setFeedbackChoice("off")}
+                  >
+                    Still off target
+                  </button>
+                </div>
+                {feedbackChoice === "off" ? (
+                  <div className="chip-row" style={{ marginTop: 10 }}>
+                    {["Too risky", "Wrong fantasy", "Wrong pace", "Wrong role"].map((reason) => (
+                      <button
+                        key={reason}
+                        type="button"
+                        className={`chip-btn ${feedbackReason === reason ? "chip-btn--on" : ""}`}
+                        onClick={() => {
+                          setFeedbackReason(reason);
+                          trackEvent(AnalyticsEvent.IntentFeedbackSubmitted, {
+                            flow: "release_spirit",
+                            destinyId,
+                            feedback: "off_target",
+                            reason,
+                          });
+                        }}
+                      >
+                        {reason}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="card" style={{ marginTop: 12 }}>
+                <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Name this build before commit</p>
+                <input
+                  value={commitName}
+                  onChange={(event) => setCommitName(event.target.value)}
+                  placeholder="Custom build name"
+                  style={{ marginTop: 8, width: "100%" }}
+                />
+                {nameSuggestions.length > 0 ? (
+                  <div className="chip-row" style={{ marginTop: 8 }}>
+                    {nameSuggestions.map((name) => (
+                      <button key={name} type="button" className="chip-btn" onClick={() => setCommitName(name)}>
+                        {name}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                <div className="flow-nav" style={{ marginTop: 10 }}>
+                  <button type="button" className="btn-primary" disabled={isSubmitting} onClick={() => void commitBuild()}>
+                    Commit build URL
+                  </button>
+                </div>
+              </div>
+
+              <div className="flow-nav flow-nav--wrap" style={{ marginTop: 12 }}>
                 <Link to="/release-spirit/journey" className="btn-ghost">
                   Retool journey
                 </Link>
+                <Link to="/" className="btn-ghost" style={{ display: "inline-flex", alignItems: "center" }}>
+                  Home
+                </Link>
               </div>
-            ) : null}
-            <div className="card" style={{ marginTop: 12 }}>
-              <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Name this build before commit</p>
-              <input
-                value={commitName}
-                onChange={(event) => setCommitName(event.target.value)}
-                placeholder="Custom build name"
-                style={{ marginTop: 8, width: "100%" }}
-              />
-              {nameSuggestions.length > 0 ? (
-                <div className="chip-row" style={{ marginTop: 8 }}>
-                  {nameSuggestions.map((name) => (
-                    <button key={name} type="button" className="chip-btn" onClick={() => setCommitName(name)}>
-                      {name}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-              <div className="flow-nav" style={{ marginTop: 10 }}>
-                <button type="button" className="btn-primary" disabled={isSubmitting} onClick={() => void commitBuild()}>
-                  Commit build URL
-                </button>
-              </div>
-            </div>
-            </div>
-            <aside className="result-page-grid__side">
-          <div className="card">
-        <p style={{ margin: 0, fontSize: 13, color: "var(--ts)", lineHeight: 1.45 }}>
-          Memorials now live on the committed build URL after you mark a death. Share exports still use the{" "}
-          <Link to="/design/cards">card shells</Link> reference layout.
-        </p>
-        <label style={{ marginTop: 10, display: "block", fontSize: 12, color: "var(--ts)" }}>
-          Optional note
-          <textarea
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            maxLength={240}
-            placeholder="What made this right, almost right, or wrong?"
-            style={{
-              marginTop: 6,
-              width: "100%",
-              minHeight: 72,
-              resize: "vertical",
-              borderRadius: 10,
-              border: "1px solid var(--line)",
-              background: "var(--card)",
-              color: "var(--text)",
-              padding: 10,
-              fontSize: 13,
-              fontFamily: "inherit",
-            }}
-          />
-        </label>
-        <div className="flow-nav" style={{ marginTop: 12 }}>
-          <button type="button" className="btn-primary" disabled={isSubmitting || !destinyId} onClick={() => void acceptAndOpenPostRating()}>
-            Accept this fate
-          </button>
-          <button
-            type="button"
-            className="btn-ghost"
-            disabled={isSubmitting || !destinyId}
-            onClick={() => setShowRerollGate((prev) => !prev)}
-          >
-            Reroll (rating gate)
-          </button>
-        </div>
-        {showRerollGate ? (
-          <div className="flow-nav" style={{ marginTop: 10 }}>
-            {rerollReasons.map((reason) => (
-              <button
-                key={reason.value}
-                type="button"
-                className="btn-ghost"
-                disabled={isSubmitting || !destinyId}
-                onClick={() => void runRerollWithReason(reason.value)}
-              >
-                {reason.label}
-              </button>
-            ))}
-          </div>
-        ) : null}
-        {actionMessage ? (
-          <p style={{ marginTop: 10, marginBottom: 0, fontSize: 12, color: "var(--ts)" }}>{actionMessage}</p>
-        ) : null}
-        <div className="flow-nav" style={{ marginTop: 18 }}>
-          <Link to="/" className="btn-ghost" style={{ display: "inline-flex", alignItems: "center" }}>
-            Home
-          </Link>
-        </div>
-      </div>
             </aside>
           </div>
         </>

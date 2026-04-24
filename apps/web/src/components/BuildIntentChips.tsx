@@ -9,9 +9,8 @@ import {
   type CorePreset,
   type IntentDepth,
 } from "./intent/intentOptions";
-import { CLASS_ASSET_URLS, type JourneyVectorKey } from "../content/identityAssets";
+import { type JourneyVectorKey, VECTOR_JOURNEY_URLS, wowPackUrl } from "../content/identityAssets";
 import { IdentityPortrait } from "./IdentityPortrait";
-import type { ClassId } from "../icons/types";
 import { readPowerCurve, type PowerCurveId } from "../lib/journeySignalsExtras";
 
 type Props = {
@@ -23,22 +22,22 @@ type Props = {
 type JourneyStep = "depth" | "vector" | "question" | "review";
 type VectorKey = JourneyVectorKey;
 
-const VECTOR_CLASS_GLIMPSE: Record<VectorKey, ClassId[]> = {
-  profession: ["hunter", "rogue", "shaman"],
-  playstyle: ["priest", "warrior", "mage"],
-  class_fantasy: ["paladin", "druid", "warlock"],
-  combat_style: ["warrior", "rogue", "hunter"],
-  survivability: ["warrior", "paladin", "priest"],
-  surprise: ["druid", "mage", "warlock"],
+const VECTOR_ICON_GLIMPSE: Record<VectorKey, string[]> = {
+  profession: [VECTOR_JOURNEY_URLS.profession, wowPackUrl("Trade", "herbalism.png"), wowPackUrl("Trade", "fishing.png")],
+  playstyle: [VECTOR_JOURNEY_URLS.playstyle, wowPackUrl("Abilities", "ShieldReflection.png"), wowPackUrl("Spells", "BurningSpeed.png")],
+  class_fantasy: [VECTOR_JOURNEY_URLS.class_fantasy, wowPackUrl("Spells", "StarFall.png"), wowPackUrl("Spells", "ShadowFlame.png")],
+  combat_style: [VECTOR_JOURNEY_URLS.combat_style, wowPackUrl("Abilities", "AimedShot.png"), wowPackUrl("Abilities", "ShieldBash.png")],
+  survivability: [VECTOR_JOURNEY_URLS.survivability, wowPackUrl("Abilities", "HealingInstincts.png"), wowPackUrl("Abilities", "WaterShield.png")],
+  surprise: [VECTOR_JOURNEY_URLS.surprise, wowPackUrl("Miscellaneous", "Dice_02.png"), wowPackUrl("Miscellaneous", "QuestionMark.png")],
 };
 
 const VECTOR_ROWS: Array<{ id: VectorKey; title: string; blurb: string }> = [
-  { id: "profession", title: "Profession-first", blurb: "Gold, consumables, and profession pairs lead the run." },
-  { id: "playstyle", title: "Playstyle", blurb: "Risk, pulls, and how you want the world to feel." },
-  { id: "class_fantasy", title: "Class fantasy", blurb: "Holy, nature, fel, or steel — tone before specifics." },
-  { id: "combat_style", title: "Combat style", blurb: "Melee, ranged, or hybrid pacing." },
-  { id: "survivability", title: "Survivability", blurb: "How hard you want the survival lane to bite." },
-  { id: "surprise", title: "Surprise me", blurb: "Let the engine bias toward novelty within HC guardrails." },
+  { id: "profession", title: "Profession-first", blurb: "Economy, crafting, and utility loops lead the plan." },
+  { id: "playstyle", title: "Playstyle", blurb: "Pacing, risk comfort, and pull rhythm." },
+  { id: "class_fantasy", title: "Class fantasy", blurb: "Tone and archetype identity before specifics." },
+  { id: "combat_style", title: "Combat style", blurb: "Range, control profile, and engagement shape." },
+  { id: "survivability", title: "Survivability", blurb: "Recovery tools and wipe-avoidance bias." },
+  { id: "surprise", title: "Surprise me", blurb: "Novel picks inside hardcore-safe boundaries." },
 ];
 
 const POWER_CURVE_OPTIONS: Array<{ id: PowerCurveId; label: string }> = [
@@ -468,7 +467,7 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
       {step === "vector" ? (
         <>
           <p className="hero-sub" style={{ marginTop: 0, marginBottom: 10, fontSize: 12 }}>
-            What is your build entrance vector? Each tile previews three class crests from the texture pack.
+            What is your build entrance vector?
           </p>
           <div className="journey-vector-grid">
             {VECTOR_ROWS.map((row) => (
@@ -482,13 +481,13 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
                 }}
               >
                 <div className="journey-vector-tile__icons" aria-hidden>
-                  {VECTOR_CLASS_GLIMPSE[row.id].map((cid) => (
+                  {VECTOR_ICON_GLIMPSE[row.id].map((src, i) => (
                     <IdentityPortrait
-                      key={cid}
-                      src={CLASS_ASSET_URLS[cid]}
+                      key={`${row.id}-${i}`}
+                      src={src}
                       alt=""
                       className="journey-vector-tile__classimg"
-                      title={cid}
+                      title={row.title}
                     />
                   ))}
                 </div>

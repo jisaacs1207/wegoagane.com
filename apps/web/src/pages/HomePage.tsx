@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { IdentityPortrait } from "../components/IdentityPortrait";
+import { wowPackUrl } from "../content/identityAssets";
 import { fetchGrowthAssignment, submitGrowthOutcome } from "../lib/recommendClient";
 
 function sanitizeUiExperiment(payload: { headline?: string; subline?: string }) {
@@ -56,12 +58,17 @@ export function HomePage() {
               void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_release_spirit" } }).catch(() => {});
             }}
           >
+            <span className="entry-icon-row">
+              <IdentityPortrait src={wowPackUrl("Miscellaneous", "Tournaments_banner_Scourge.png")} alt="" className="entry-icon" />
+              <IdentityPortrait src={wowPackUrl("Spells", "HellifrePVPThrallmarFavor.png")} alt="" className="entry-icon" />
+              <IdentityPortrait src={wowPackUrl("Abilities", "ShieldWall.png")} alt="" className="entry-icon" />
+            </span>
             <span className="entry-btn-title">Release Spirit</span>
-            <span className="entry-btn-desc">I just died — memorial + next run in one guided journey</span>
+            <span className="entry-btn-desc">I died — capture what happened, then tune the next run with intent.</span>
             <span className="entry-pill-row">
-              <span className="entry-pill">Memorial</span>
-              <span className="entry-pill">Faction identity</span>
-              <span className="entry-pill">Retool loop</span>
+              <span className="entry-pill">Process the death</span>
+              <span className="entry-pill">Set next priority</span>
+              <span className="entry-pill">Retool + commit</span>
             </span>
           </Link>
           <Link
@@ -72,12 +79,17 @@ export function HomePage() {
               void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_draft_run" } }).catch(() => {});
             }}
           >
+            <span className="entry-icon-row">
+              <IdentityPortrait src={wowPackUrl("Trade", "engineering.png")} alt="" className="entry-icon" />
+              <IdentityPortrait src={wowPackUrl("Trade", "herbalism.png")} alt="" className="entry-icon" />
+              <IdentityPortrait src={wowPackUrl("Abilities", "SwordandBoard.png")} alt="" className="entry-icon" />
+            </span>
             <span className="entry-btn-title">Draft a Run</span>
-            <span className="entry-btn-desc">I&apos;m planning — build path first, then generate</span>
+            <span className="entry-btn-desc">I&apos;m planning — set constraints first, then generate against them.</span>
             <span className="entry-pill-row">
-              <span className="entry-pill">Vector-first</span>
-              <span className="entry-pill">5-question cap</span>
-              <span className="entry-pill">Commit URL</span>
+              <span className="entry-pill">Intent first</span>
+              <span className="entry-pill">Priority switching</span>
+              <span className="entry-pill">Commit artifact</span>
             </span>
           </Link>
           <Link
@@ -88,12 +100,17 @@ export function HomePage() {
               void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_lucky_roll" } }).catch(() => {});
             }}
           >
+            <span className="entry-icon-row">
+              <IdentityPortrait src={wowPackUrl("Miscellaneous", "Dice_01.png")} alt="" className="entry-icon" />
+              <IdentityPortrait src={wowPackUrl("Spells", "StarFire.png")} alt="" className="entry-icon" />
+              <IdentityPortrait src={wowPackUrl("Abilities", "BloodFrenzy.png")} alt="" className="entry-icon" />
+            </span>
             <span className="entry-btn-title">Lucky roll</span>
-            <span className="entry-btn-desc">Surprise me — fast path, final generate step</span>
+            <span className="entry-btn-desc">Surprise me — shortest ritual with controlled chaos.</span>
             <span className="entry-pill-row">
-              <span className="entry-pill">Fast ceremony</span>
-              <span className="entry-pill">Class fantasy</span>
-              <span className="entry-pill">Shareable artifact</span>
+              <span className="entry-pill">Fastest path</span>
+              <span className="entry-pill">Power curve aware</span>
+              <span className="entry-pill">Commit-ready</span>
             </span>
           </Link>
         </div>
