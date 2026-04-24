@@ -40,7 +40,7 @@ export function DeathResultStep() {
   const [note, setNote] = useState("");
   const [showRerollGate, setShowRerollGate] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoadingDestiny, setIsLoadingDestiny] = useState(true);
+  const [isLoadingDestiny, setIsLoadingDestiny] = useState(false);
   const [loadError, setLoadError] = useState<string>("");
   const [loadingPhase, setLoadingPhase] = useState("Reading your final combat log...");
   const [recommendVariantId, setRecommendVariantId] = useState<string | null>(null);
@@ -334,7 +334,7 @@ export function DeathResultStep() {
             <div className="forge-status-row">
               <span className="forge-spinner" aria-hidden="true" />
               <p className="hero-sub" style={{ margin: 0 }}>
-                {isLoadingDestiny ? loadingPhase : loadError}
+                {isLoadingDestiny ? loadingPhase : loadError || "Set your journey above, then generate your next destiny."}
               </p>
             </div>
           </div>
