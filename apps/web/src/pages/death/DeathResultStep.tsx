@@ -16,6 +16,8 @@ import {
   submitGrowthOutcome,
   submitDestinyFeedback,
 } from "../../lib/recommendClient";
+import { BuildIntentChips } from "../../components/BuildIntentChips";
+import { readBuildIntent } from "../../lib/readBuildIntent";
 import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 import { buildMemoryHints, rememberAccept, rememberReroll } from "../../lib/memoryProfile";
 
@@ -82,7 +84,7 @@ export function DeathResultStep() {
               entryPath: "release_spirit",
               sessionId: seededSessionId,
               // Never block initial card render on experiment assignment latency.
-              signals: { mood, nextSignal, memoryHints: buildMemoryHints() },
+              signals: { mood, nextSignal, memoryHints: buildMemoryHints(), ...readBuildIntent("death.buildIntent") },
             });
           } catch {
             await wait(1200);
@@ -177,6 +179,7 @@ export function DeathResultStep() {
           nextSignal,
           memoryHints: buildMemoryHints(),
           recommendVariantId: recommendVariantId ?? undefined,
+          ...readBuildIntent("death.buildIntent"),
           excludedClasses:
             reason === "wrong_class" || reason === "just_curious" ? [destiny.classId] : undefined,
           preferredClass: reason === "wrong_energy" || reason === "almost_right" ? destiny.classId : undefined,
@@ -253,9 +256,19 @@ export function DeathResultStep() {
   return (
     <div>
       <MemorialCard data={memorial} />
+      <BuildIntentChips storageKey="death.buildIntent" />
       <div style={{ marginTop: 14 }}>
         {destiny ? (
-          <DestinyCard data={destiny} />
+          <>
+            <DestinyCard data={destiny} />
+            {destinyId ? (
+              <div className="flow-nav" style={{ marginTop: 12 }}>
+                <Link to={`/build/${destinyId}`} className="btn-ghost">
+                  Open HC build sheet
+                </Link>
+              </div>
+            ) : null}
+          </>
         ) : (
           <div className="card">
             <p className="step-label">Release spirit</p>

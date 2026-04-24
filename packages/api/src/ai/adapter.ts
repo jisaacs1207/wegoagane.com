@@ -122,6 +122,16 @@ async function callGateway(
   }
 }
 
+/** Exposed for multi-step flows (e.g. HC build plan) with custom timeouts. */
+export async function callAiGateway(
+  env: ApiEnv["Bindings"],
+  model: string,
+  prompt: string,
+  timeoutMs = 90_000,
+) {
+  return callGateway(env, model, prompt, timeoutMs);
+}
+
 export async function enrichDestiny(
   env: ApiEnv["Bindings"],
   input: RecommendInput,

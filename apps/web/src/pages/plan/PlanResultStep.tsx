@@ -10,6 +10,8 @@ import {
   submitGrowthOutcome,
   submitDestinyFeedback,
 } from "../../lib/recommendClient";
+import { BuildIntentChips } from "../../components/BuildIntentChips";
+import { readBuildIntent } from "../../lib/readBuildIntent";
 import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 import { buildMemoryHints, rememberAccept, rememberReroll } from "../../lib/memoryProfile";
 
@@ -72,7 +74,7 @@ export function PlanResultStep() {
               entryPath: "draft_a_run",
               sessionId: seededSession,
               // Never block initial card render on experiment assignment latency.
-              signals: { intent, freeform, memoryHints: buildMemoryHints() },
+              signals: { intent, freeform, memoryHints: buildMemoryHints(), ...readBuildIntent("plan.buildIntent") },
             });
           } catch {
             await wait(1200);
@@ -154,6 +156,7 @@ export function PlanResultStep() {
           freeform,
           memoryHints: buildMemoryHints(),
           recommendVariantId: recommendVariantId ?? undefined,
+          ...readBuildIntent("plan.buildIntent"),
           excludedClasses:
             reason === "wrong_class" || reason === "just_curious" ? [destiny.classId] : undefined,
           preferredClass: reason === "wrong_energy" || reason === "almost_right" ? destiny.classId : undefined,
@@ -230,8 +233,18 @@ export function PlanResultStep() {
 
   return (
     <div>
+      <BuildIntentChips storageKey="plan.buildIntent" />
       {destiny ? (
-        <DestinyCard data={destiny} />
+        <>
+          <DestinyCard data={destiny} />
+          {destinyId ? (
+            <div className="flow-nav" style={{ marginTop: 12 }}>
+              <Link to={`/build/${destinyId}`} className="btn-ghost">
+                Open HC build sheet
+              </Link>
+            </div>
+          ) : null}
+        </>
       ) : (
         <div className="card">
           <p className="step-label">Draft a run</p>

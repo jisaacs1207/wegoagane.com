@@ -25,6 +25,55 @@ const entryPathValues = ["release_spirit", "draft_a_run", "lucky_roll"] as const
 const rerollReasonValues = ["wrong_class", "wrong_energy", "wrong_goals", "almost_right", "just_curious"] as const;
 const growthSurfaceValues = ["content", "recommendation", "ui", "share", "onboarding"] as const;
 
+const statPhilosophyValues = [
+  "stamina_forward",
+  "strength_forward",
+  "agility_forward",
+  "intellect_forward",
+  "spirit_forward",
+  "balanced",
+  "meme_glass",
+] as const;
+
+const professionIntentValues = [
+  "engineering_outs",
+  "alchemy_consumables",
+  "herbalism_alchemy_pair",
+  "mining_engineering_pair",
+  "dual_gathering_bootstrap",
+  "skinning_mining_early",
+  "leatherworker_hunter_synergy",
+  "tailoring_bags_arcane",
+  "enchanter_disenchant_route",
+  "blacksmith_weaponsmith_fantasy",
+  "first_aid_mandatory_mindset",
+  "cooking_high_value",
+  "fishing_supports_cooking",
+  "fishing_optional",
+  "early_gathering_then_pivot_engineering",
+  "auction_house_play",
+] as const;
+
+const buildVectorValues = [
+  "tank",
+  "heal",
+  "hybrid",
+  "pet",
+  "melee",
+  "ranged",
+  "caster",
+  "mana",
+  "rage",
+  "energy",
+  "holy",
+  "demonic",
+  "nature",
+  "solo",
+  "group_ok",
+] as const;
+
+const raceModeValues = ["user_pick", "signal_inferred", "optimize_theme", "surprise"] as const;
+
 export const recommendInputSchema = z.object({
   sessionId: z.string().min(1).max(80).optional(),
   entryPath: z.enum(entryPathValues),
@@ -37,6 +86,11 @@ export const recommendInputSchema = z.object({
     excludedClasses: z.array(z.enum(classValues)).max(6).optional(),
     preferredClass: z.enum(classValues).optional(),
     recommendVariantId: z.string().min(1).max(120).optional(),
+    statPhilosophy: z.array(z.enum(statPhilosophyValues)).max(8).optional(),
+    professionIntents: z.array(z.enum(professionIntentValues)).max(12).optional(),
+    buildVectors: z.array(z.enum(buildVectorValues)).max(16).optional(),
+    raceMode: z.enum(raceModeValues).optional(),
+    pickedRace: z.string().min(2).max(24).optional(),
     memoryHints: z
       .object({
         version: z.number().int().min(1).max(8),

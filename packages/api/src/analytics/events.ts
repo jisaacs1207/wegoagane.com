@@ -15,6 +15,9 @@ export const AnalyticsEvent = {
   GrowthAssignmentServed: "growth_assignment_served",
   GrowthDecisionMade: "growth_decision_made",
   GrowthHardStopTriggered: "growth_hard_stop_triggered",
+  BuildPlanStarted: "build_plan_started",
+  BuildPlanReady: "build_plan_ready",
+  BuildPlanFailed: "build_plan_failed",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvent)[keyof typeof AnalyticsEvent];
