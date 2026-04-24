@@ -92,6 +92,8 @@ routes = [
   { pattern = "wegoagane.com/api/*", zone_name = "wegoagane.com" },
   { pattern = "www.wegoagane.com/api/*", zone_name = "wegoagane.com" }
 ]
+# Without this, deploys that only set zonal routes often disable *.workers.dev; CI/ops then get 404 + "error code: 1042" on the dev hostname.
+workers_dev = true
 
 [env.production.observability]
 enabled = true

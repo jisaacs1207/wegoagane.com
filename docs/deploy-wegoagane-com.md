@@ -433,6 +433,7 @@ These are release discipline checks layered on top of existing M11–M13 runbook
   - `GROWTH_MIN_SAMPLE_SIZE`
   - `GROWTH_CONTROL_TOKEN` (secret; required for control endpoints in production)
 - GitHub automation: `.github/workflows/growth-autopilot-check.yml` polls `GET /api/v1/growth/health` hourly as a lightweight availability guard.
+  - If that workflow fails with **403 from Actions only** while `curl` from your laptop succeeds, the Worker route is still unauthenticated; **Cloudflare** (Bot Fight, managed rules, IP access) is likely blocking GitHub-hosted runner egress. Mitigations: set Actions variable **`GROWTH_HEALTH_URL`** to your production Worker **`workers.dev`** URL with the same path (`https://wegoagane-api-production.<account>.workers.dev/api/v1/growth/health`), or add a **WAF custom rule** to allow or skip `/api/v1/growth/health` for requests whose `User-Agent` contains `wegoagane-growth-autopilot-check`. If `workers.dev` returns **404** and body `error code: 1042`, the dev hostname was not wired to the worker: this repo sets **`workers_dev = true`** under `[env.production]` in `packages/api/wrangler.toml`; redeploy production, then curl again. Use **`npx wrangler`** from `packages/api` if `wrangler` is not on your PATH.
 
 Hardening in this baseline:
 - Promotion now requires threshold pass and significance-aware accept-rate comparison against baseline promoted variant.
