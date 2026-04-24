@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { DestinyCard } from "../../components/cards/DestinyCard";
 import type { DestinyFixture } from "../../content/cardFixtures";
 import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
+import { commitJourneyBuild, fetchNameCandidates } from "../../lib/recommendClient";
 import { readStoredDestiny } from "../../lib/flowDestinyState";
 
 export function LuckyResultStep() {
@@ -10,12 +11,17 @@ export function LuckyResultStep() {
   const [destinyId, setDestinyId] = useState<string | null>(null);
   const [feedbackChoice, setFeedbackChoice] = useState<"closer" | "off" | null>(null);
   const [feedbackReason, setFeedbackReason] = useState<string>("");
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [commitName, setCommitName] = useState("");
+  const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
+  const [commitMessage, setCommitMessage] = useState("");
 
   useEffect(() => {
     const stored = readStoredDestiny("lucky");
     if (stored) {
       setDestiny(stored.output);
       setDestinyId(stored.destinyId);
+      setSessionId(stored.sessionId);
     }
   }, []);
 
@@ -23,6 +29,31 @@ export function LuckyResultStep() {
     if (!destinyId) return;
     trackEvent(AnalyticsEvent.IntentFeedbackPromptShown, { flow: "lucky_roll", destinyId });
   }, [destinyId]);
+
+  useEffect(() => {
+    void fetchNameCandidates({ limit: 6 })
+      .then((res) => setNameSuggestions(res.names.map((row) => row.name)))
+      .catch(() => setNameSuggestions([]));
+  }, []);
+
+  async function commitBuild() {
+    if (!sessionId || !destinyId) return;
+    try {
+      const committed = await commitJourneyBuild({
+        sessionId,
+        destinyId,
+        commitName: commitName.trim() || undefined,
+      });
+      trackEvent(AnalyticsEvent.CommitCompleted, {
+        flow: "lucky_roll",
+        destinyId,
+        slug: committed.slug,
+      });
+      window.location.assign(committed.path);
+    } catch {
+      setCommitMessage("Could not commit this build yet.");
+    }
+  }
 
   if (!destiny) {
     return (
@@ -92,6 +123,30 @@ export function LuckyResultStep() {
             ))}
           </div>
         ) : null}
+      </div>
+      <div className="card" style={{ marginTop: 12 }}>
+        <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Name this build before commit</p>
+        <input
+          value={commitName}
+          onChange={(event) => setCommitName(event.target.value)}
+          placeholder="Custom build name"
+          style={{ marginTop: 8, width: "100%" }}
+        />
+        {nameSuggestions.length > 0 ? (
+          <div className="chip-row" style={{ marginTop: 8 }}>
+            {nameSuggestions.map((name) => (
+              <button key={name} type="button" className="chip-btn" onClick={() => setCommitName(name)}>
+                {name}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        <div className="flow-nav" style={{ marginTop: 10 }}>
+          <button type="button" className="btn-primary" onClick={() => void commitBuild()}>
+            Commit build URL
+          </button>
+        </div>
+        {commitMessage ? <p style={{ marginBottom: 0 }}>{commitMessage}</p> : null}
       </div>
       <div className="flow-nav" style={{ marginTop: 16 }}>
         <Link to={`/build/${destinyId}`} className="btn-primary">

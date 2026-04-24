@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" role="img" aria-label="Survivability">
+  <rect width="40" height="40" rx="8" fill="#1a1612"/>
+  <path fill="none" stroke="#1a78c2" stroke-width="2" d="M20 11l9 5v9c0 6-9 9-9 9s-9-3-9-9v-9z"/>
+  <path fill="#1a78c2" opacity="0.25" d="M20 15v10l6-3v-6z"/>
+</svg>

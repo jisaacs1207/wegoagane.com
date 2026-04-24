@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" role="img" aria-label="Profession slot">
+  <rect width="40" height="40" rx="8" fill="#1a1612"/>
+  <path fill="none" stroke="#8a6f3a" stroke-width="1.6" d="M14 28h12M20 12v10"/>
+  <path fill="#5a4a2a" d="M12 28h16v4H12z" opacity="0.9"/>
+</svg>

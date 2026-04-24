@@ -15,12 +15,20 @@ export const AnalyticsEvent = {
   BuildRetoolClicked: "build_retool_clicked",
   MemorialCreateClicked: "memorial_create_clicked",
   MemorialCreateResult: "memorial_create_result",
+  MemorialSubmitted: "memorial_submitted",
+  RetoolStarted: "retool_started",
   RerollReasonSelected: "reroll_reason_selected",
   AcceptClicked: "accept_clicked",
   PostAcceptRatingSubmitted: "post_accept_rating_submitted",
   ShareViewed: "share_viewed",
   ShareStatusChanged: "share_status_changed",
   MemoryProfileUpdated: "memory_profile_updated",
+  VectorSelected: "vector_selected",
+  QuestionAnswered: "question_answered",
+  GenerateClicked: "generate_clicked",
+  RefineClicked: "refine_clicked",
+  CommitClicked: "commit_clicked",
+  CommitCompleted: "commit_completed",
 } as const;
 
 export async function initAnalytics() {

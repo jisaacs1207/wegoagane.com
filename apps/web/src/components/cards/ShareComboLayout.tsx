@@ -21,7 +21,7 @@ export function ShareComboLayout({ memorial, destiny }: Props) {
       </div>
       <div className="share-combo__grid">
         <div className="share-combo__panel">
-          <MemorialCard data={memorial} compact />
+          <MemorialCard data={memorial} compact linkedClassId={destiny.classId} linkedHeadline={destiny.headline} />
         </div>
         <div className="share-combo__bridge" aria-hidden="true">
           +

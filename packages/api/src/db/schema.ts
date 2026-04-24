@@ -196,3 +196,66 @@ export const characterNameCandidates = sqliteTable("character_name_candidates", 
   moderated: integer("moderated", { mode: "boolean" }).notNull().default(false),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
+
+export const buildRunsDraft = sqliteTable("build_runs_draft", {
+  id: text("id").primaryKey(),
+  sessionId: text("session_id").notNull(),
+  entryPath: text("entry_path").notNull(),
+  vector: text("vector"),
+  depth: text("depth"),
+  answersJson: text("answers_json").notNull().default("{}"),
+  signalsJson: text("signals_json").notNull().default("{}"),
+  questionCount: integer("question_count").notNull().default(0),
+  status: text("status").notNull().default("active"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+export const buildCommits = sqliteTable("build_commits", {
+  id: text("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  sessionId: text("session_id").notNull(),
+  destinyId: text("destiny_id").notNull(),
+  buildPlanId: text("build_plan_id"),
+  commitName: text("commit_name"),
+  payloadJson: text("payload_json").notNull(),
+  cardJson: text("card_json"),
+  sourceType: text("source_type").notNull().default("hybrid"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+export const buildCommitFeedback = sqliteTable("build_commit_feedback", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  buildCommitId: text("build_commit_id").notNull(),
+  sessionId: text("session_id"),
+  rating: text("rating"),
+  note: text("note"),
+  action: text("action"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+export const memorialRuns = sqliteTable("memorial_runs", {
+  id: text("id").primaryKey(),
+  buildCommitId: text("build_commit_id").notNull(),
+  sessionId: text("session_id").notNull(),
+  level: integer("level"),
+  zone: text("zone").notNull(),
+  cause: text("cause").notNull(),
+  killer: text("killer"),
+  note: text("note"),
+  rating: text("rating"),
+  memorialId: text("memorial_id"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+export const nameSuggestions = sqliteTable("name_suggestions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  signature: text("signature").notNull(),
+  name: text("name").notNull(),
+  lane: text("lane").notNull(),
+  source: text("source").notNull().default("ai"),
+  qualityScore: real("quality_score").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+});

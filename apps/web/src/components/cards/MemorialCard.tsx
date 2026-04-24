@@ -1,11 +1,17 @@
 import { useId } from "react";
 import type { MemorialFixture } from "../../content/cardFixtures";
+import { CLASS_ASSET_URLS, FACTION_ASSET_URLS, RACE_ASSET_URLS, inferRaceFromHeadline } from "../../content/identityAssets";
+import type { ClassId } from "../../icons/types";
+import { IdentityPortrait } from "../IdentityPortrait";
 import { MemorialMarkIcon } from "../../icons/MemorialMarkIcon";
 
 type Props = {
   data: MemorialFixture;
   /** Tighter padding for share combo column */
   compact?: boolean;
+  /** When shown beside a destiny, link class / race portraits into the memorial strip. */
+  linkedClassId?: ClassId;
+  linkedHeadline?: string;
 };
 
 const factionLabel: Record<MemorialFixture["faction"], string> = {
@@ -14,9 +20,10 @@ const factionLabel: Record<MemorialFixture["faction"], string> = {
   neutral: "Neutral",
 };
 
-export function MemorialCard({ data, compact }: Props) {
+export function MemorialCard({ data, compact, linkedClassId, linkedHeadline }: Props) {
   const epitaphId = useId();
   const fc = `memorial-card__faction memorial-card__faction--${data.faction}`;
+  const raceId = linkedHeadline ? inferRaceFromHeadline(linkedHeadline) : null;
 
   return (
     <article
@@ -29,6 +36,19 @@ export function MemorialCard({ data, compact }: Props) {
           <MemorialMarkIcon />
         </span>
         <span className={fc}>{factionLabel[data.faction]}</span>
+      </div>
+      <div className="memorial-card__portrait-row">
+        <IdentityPortrait src={FACTION_ASSET_URLS[data.faction]} alt={`${data.faction} crest`} className="memorial-card__portrait" />
+        {linkedClassId ? (
+          <IdentityPortrait src={CLASS_ASSET_URLS[linkedClassId]} alt={`${linkedClassId} crest`} className="memorial-card__portrait" />
+        ) : null}
+        {raceId ? (
+          <IdentityPortrait
+            src={RACE_ASSET_URLS[raceId]}
+            alt={`${raceId.replace("_", " ")} rune`}
+            className="memorial-card__portrait"
+          />
+        ) : null}
       </div>
       <p className="memorial-card__facts">
         <strong>{data.characterName}</strong> · Level {data.level ?? "?"} · {data.location} · {data.cause}

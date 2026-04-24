@@ -6,6 +6,7 @@ import { handleCreateShare, handleGetShare, handleGetShareImage, handleGetShareO
 import { handleAnalyticsConfig, handleMemoryHealth } from "./routes/analytics";
 import { growthRouter } from "./routes/growth";
 import { buildRouter } from "./routes/build";
+import { journeyRouter } from "./routes/journey";
 import type { ApiEnv } from "./db/client";
 
 const app = new Hono<ApiEnv>();
@@ -36,6 +37,13 @@ app.get("/", (c) =>
       "POST /v1/build",
       "GET /v1/build/names",
       "GET /v1/build/:destinyId",
+      "POST /v1/journey/start",
+      "POST /v1/journey/answer",
+      "GET /v1/journey/next-question",
+      "POST /v1/journey/refine",
+      "POST /v1/journey/commit",
+      "GET /v1/journey/commit/:slug",
+      "POST /v1/journey/commit/:slug/memorial",
     ],
   }),
 );
@@ -54,6 +62,7 @@ app.get("/v1/analytics/config", handleAnalyticsConfig);
 app.get("/v1/analytics/memory-health", handleMemoryHealth);
 app.route("/v1/growth", growthRouter);
 app.route("/v1/build", buildRouter);
+app.route("/v1/journey", journeyRouter);
 
 // Same handlers under /api/* for live domain Worker Route patterns.
 app.get("/api/health", (c) => c.json({ ok: true, ts: Date.now() }));
@@ -70,6 +79,7 @@ app.get("/api/v1/analytics/config", handleAnalyticsConfig);
 app.get("/api/v1/analytics/memory-health", handleMemoryHealth);
 app.route("/api/v1/growth", growthRouter);
 app.route("/api/v1/build", buildRouter);
+app.route("/api/v1/journey", journeyRouter);
 
 export default {
   fetch: app.fetch,

@@ -3,8 +3,10 @@ import { useEffect, useState } from "react";
 import { type DestinyFixture } from "../../content/cardFixtures";
 import { DestinyCard } from "../../components/cards/DestinyCard";
 import {
+  commitJourneyBuild,
   createShareRun,
   fetchDestiny,
+  fetchNameCandidates,
   fetchGrowthAssignment,
   type RerollReason,
   submitDestinyFeedback,
@@ -35,6 +37,8 @@ export function PlanResultStep() {
   const [recommendVariantId, setRecommendVariantId] = useState<string | null>(null);
   const [feedbackChoice, setFeedbackChoice] = useState<"closer" | "off" | null>(null);
   const [feedbackReason, setFeedbackReason] = useState<string>("");
+  const [commitName, setCommitName] = useState("");
+  const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
 
   useEffect(() => {
     const stored = readStoredDestiny("plan");
@@ -63,6 +67,12 @@ export function PlanResultStep() {
     setFeedbackChoice(null);
     setFeedbackReason("");
   }, [destinyId]);
+
+  useEffect(() => {
+    void fetchNameCandidates({ limit: 6 })
+      .then((res) => setNameSuggestions(res.names.map((row) => row.name)))
+      .catch(() => setNameSuggestions([]));
+  }, []);
 
   async function runRerollWithReason(reason: RerollReason) {
     if (!sessionId || !destinyId || !destiny || isSubmitting) return;
@@ -186,6 +196,30 @@ export function PlanResultStep() {
     }
   }
 
+  async function commitBuild() {
+    if (!sessionId || !destinyId || isSubmitting) return;
+    setIsSubmitting(true);
+    setActionMessage("");
+    trackEvent(AnalyticsEvent.CommitClicked, { flow: "draft_a_run", destinyId });
+    try {
+      const committed = await commitJourneyBuild({
+        sessionId,
+        destinyId,
+        commitName: commitName.trim() || undefined,
+      });
+      trackEvent(AnalyticsEvent.CommitCompleted, {
+        flow: "draft_a_run",
+        destinyId,
+        slug: committed.slug,
+      });
+      navigate(committed.path);
+    } catch {
+      setActionMessage("Could not commit this build yet.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <div>
       {!destiny || !sessionId || !destinyId ? (
@@ -263,6 +297,29 @@ export function PlanResultStep() {
               </Link>
             </div>
           ) : null}
+          <div className="card" style={{ marginTop: 12 }}>
+            <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Name this build before commit</p>
+            <input
+              value={commitName}
+              onChange={(event) => setCommitName(event.target.value)}
+              placeholder="Custom build name"
+              style={{ marginTop: 8, width: "100%" }}
+            />
+            {nameSuggestions.length > 0 ? (
+              <div className="chip-row" style={{ marginTop: 8 }}>
+                {nameSuggestions.map((name) => (
+                  <button key={name} type="button" className="chip-btn" onClick={() => setCommitName(name)}>
+                    {name}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            <div className="flow-nav" style={{ marginTop: 10 }}>
+              <button type="button" className="btn-primary" disabled={isSubmitting} onClick={() => void commitBuild()}>
+                Commit build URL
+              </button>
+            </div>
+          </div>
           <p style={{ marginTop: 14, fontSize: 13, color: "var(--ts)" }}>
         Planning mode skips memorial chrome — only the next Destiny card is shown here.
       </p>
