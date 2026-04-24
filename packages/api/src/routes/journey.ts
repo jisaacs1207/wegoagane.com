@@ -225,8 +225,14 @@ journeyRouter.post("/commit", async (c) => {
   }
   const id = crypto.randomUUID();
   const now = new Date();
+  let destinyPayload: unknown = null;
+  try {
+    destinyPayload = JSON.parse(destiny.contentJson) as unknown;
+  } catch {
+    return c.json({ error: "invalid_destiny_payload" }, 500);
+  }
   const payload = {
-    destiny: JSON.parse(destiny.contentJson),
+    destiny: destinyPayload,
     plan: planPayload,
     buildPlanId: plan?.id ?? null,
   };

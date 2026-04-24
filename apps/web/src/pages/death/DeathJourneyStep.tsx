@@ -13,7 +13,7 @@ function buildDeathContextFreeform() {
   const level = sessionStorage.getItem("death.detail.level")?.trim();
   const note = sessionStorage.getItem("death.detail.note")?.trim();
   const bits = [zone ? `Zone: ${zone}` : "", cause ? `Cause: ${cause}` : "", level ? `Level: ${level}` : "", note ? `Note: ${note}` : ""].filter(Boolean);
-  return bits.length ? bits.join(" | ") : undefined;
+  return bits.length ? bits.join(" | ").slice(0, 240) : undefined;
 }
 
 function deriveSignalBias(mood?: string, nextSignal?: string): BuildIntentSignals {
@@ -22,8 +22,8 @@ function deriveSignalBias(mood?: string, nextSignal?: string): BuildIntentSignal
   if (mood === "Long time coming") base.buildVectors = ["hybrid", "group_ok"];
   if (nextSignal === "Safer") base.buildVectors = [...(base.buildVectors ?? []), "tank", "solo"];
   if (nextSignal === "Faster") base.statPhilosophy = ["agility_forward", ...(base.statPhilosophy ?? [])];
-  if (nextSignal === "Different") base.raceMode = "surprise";
-  if (nextSignal === "No pet class") base.buildVectors = [...(base.buildVectors ?? []), "melee"];
+  if (nextSignal === "Different" || nextSignal === "Different playstyle") base.raceMode = "surprise";
+  if (nextSignal === "No pet class" || nextSignal === "No pet classes") base.buildVectors = [...(base.buildVectors ?? []), "melee"];
   return base;
 }
 
@@ -76,8 +76,13 @@ export function DeathJourneyStep() {
         }).catch(() => {});
       }
       navigate("/release-spirit/result");
-    } catch {
-      setError("Generation failed. Adjust your path or try again.");
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "";
+      if (msg.includes("recommend_failed:400")) {
+        setError("Generation failed due to invalid input. Shorten optional detail text and try again.");
+      } else {
+        setError("Generation failed. Adjust your path or try again.");
+      }
     } finally {
       setIsGenerating(false);
     }

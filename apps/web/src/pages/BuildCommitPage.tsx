@@ -70,9 +70,10 @@ export function BuildCommitPage() {
     setMessage("");
     trackEvent(AnalyticsEvent.MemorialCreateClicked, { slug });
     try {
+      const parsedLevel = Number(level);
       await submitBuildCommitMemorial(slug, {
         sessionId: activeRecord.sessionId,
-        level: level ? Number(level) : undefined,
+        level: level && Number.isFinite(parsedLevel) ? parsedLevel : undefined,
         zone: zone.trim(),
         cause: cause.trim(),
         killer: killer.trim() || undefined,
@@ -184,7 +185,7 @@ export function BuildCommitPage() {
       <div className="card" style={{ marginTop: 12 }}>
         <p style={{ marginTop: 0 }}>Mark character dead</p>
         <div className="chip-row">
-          <input value={level} onChange={(e) => setLevel(e.target.value)} placeholder="Level" />
+          <input value={level} onChange={(e) => setLevel(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))} placeholder="Level" />
           <input value={zone} onChange={(e) => setZone(e.target.value)} placeholder="Zone" />
           <input value={cause} onChange={(e) => setCause(e.target.value)} placeholder="Cause of death" />
           <input value={killer} onChange={(e) => setKiller(e.target.value)} placeholder="Killed by (optional)" />

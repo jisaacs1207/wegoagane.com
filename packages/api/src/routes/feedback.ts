@@ -8,8 +8,18 @@ import { validateDestinyFeedbackInput } from "../domain/validator";
 export const feedbackRouter = new Hono<ApiEnv>();
 
 export async function handleFeedback(c: Context<ApiEnv>) {
-  const payload = await c.req.json();
-  const input = validateDestinyFeedbackInput(payload);
+  let payload: unknown;
+  try {
+    payload = await c.req.json();
+  } catch {
+    return c.json({ error: "invalid_json" }, 400);
+  }
+  let input;
+  try {
+    input = validateDestinyFeedbackInput(payload);
+  } catch {
+    return c.json({ error: "invalid_input" }, 400);
+  }
   const db = getDb(c.env.DB);
 
   await db.insert(destinyFeedback).values({

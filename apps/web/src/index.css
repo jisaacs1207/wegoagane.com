@@ -250,6 +250,8 @@ a:hover {
   display: flex;
   gap: 6px;
   margin-bottom: 10px;
+  position: relative;
+  min-height: 26px;
 }
 
 .entry-icon {
@@ -258,6 +260,62 @@ a:hover {
   border-radius: 5px;
   border: 1px solid #4f4334;
   object-fit: cover;
+}
+
+.entry-icon-row--overlap .entry-icon {
+  margin-right: -6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+}
+
+.entry-icon-row--overlap .entry-icon:nth-child(1) {
+  transform: rotate(-7deg);
+}
+
+.entry-icon-row--overlap .entry-icon:nth-child(2) {
+  transform: translateY(-2px);
+}
+
+.entry-icon-row--overlap .entry-icon:nth-child(3) {
+  transform: rotate(8deg);
+}
+
+.entry-icon-row--lead .entry-icon:nth-child(1) {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+}
+
+.entry-icon-row--lead .entry-icon:nth-child(2),
+.entry-icon-row--lead .entry-icon:nth-child(3) {
+  width: 19px;
+  height: 19px;
+  margin-top: 6px;
+}
+
+.entry-icon-row--stacked {
+  width: 34px;
+}
+
+.entry-icon-row--stacked .entry-icon {
+  position: absolute;
+  left: 0;
+}
+
+.entry-icon-row--stacked .entry-icon:nth-child(1) {
+  top: 0;
+  z-index: 3;
+}
+
+.entry-icon-row--stacked .entry-icon:nth-child(2) {
+  top: 7px;
+  left: 8px;
+  z-index: 2;
+}
+
+.entry-icon-row--stacked .entry-icon:nth-child(3) {
+  top: 14px;
+  left: 16px;
+  z-index: 1;
 }
 
 .entry-btn-desc {
@@ -882,6 +940,33 @@ textarea::placeholder {
 .journey-vector-tile__icons {
   display: flex;
   gap: 4px;
+  min-height: 30px;
+  align-items: center;
+}
+
+.journey-vector-tile__icons--overlap .journey-vector-tile__classimg {
+  margin-right: -7px;
+}
+
+.journey-vector-tile__icons--overlap .journey-vector-tile__classimg:nth-child(2) {
+  transform: translateY(-3px);
+}
+
+.journey-vector-tile__icons--lead .journey-vector-tile__classimg:first-child {
+  width: 32px;
+  height: 32px;
+}
+
+.journey-vector-tile__icons--arc .journey-vector-tile__classimg:nth-child(1) {
+  transform: translateY(2px);
+}
+
+.journey-vector-tile__icons--arc .journey-vector-tile__classimg:nth-child(2) {
+  transform: translateY(-3px);
+}
+
+.journey-vector-tile__icons--arc .journey-vector-tile__classimg:nth-child(3) {
+  transform: translateY(1px);
 }
 
 .journey-vector-tile__classimg {

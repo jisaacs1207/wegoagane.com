@@ -255,7 +255,7 @@ export function PlanResultStep() {
           <h1 className="hero-question">Journey required</h1>
           <p className="hero-sub">{loadError || "Complete your build journey first."}</p>
           <div className="flow-nav" style={{ marginTop: 12 }}>
-            <Link to="/draft-a-run/journey" className="btn-primary">
+            <Link to="/draft-a-run/intent" className="btn-primary">
               Go to journey
             </Link>
             <Link to="/" className="btn-ghost">
@@ -270,7 +270,7 @@ export function PlanResultStep() {
             className="card icon-motif-card"
             style={{ marginTop: 12, ["--motif-url" as string]: `url(${wowPackUrl("Trade", "engineering.png")})` }}
           >
-            <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Was this close to what you wanted?</p>
+            <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>How close is this to what you wanted?</p>
             <div className="flow-nav" style={{ marginTop: 10 }}>
               <button
                 type="button"
@@ -284,14 +284,14 @@ export function PlanResultStep() {
                   });
                 }}
               >
-                Closer than expected
+                Pretty close
               </button>
               <button
                 type="button"
                 className={`btn-ghost ${feedbackChoice === "off" ? "chip-btn--on" : ""}`}
                 onClick={() => setFeedbackChoice("off")}
               >
-                Still off target
+                Off target
               </button>
             </div>
             {feedbackChoice === "off" ? (
@@ -320,7 +320,7 @@ export function PlanResultStep() {
           {destinyId ? (
             <div className="flow-nav" style={{ marginTop: 12 }}>
               <Link to="/draft-a-run/intent" className="btn-ghost">
-                Retool journey
+                Adjust journey
               </Link>
             </div>
           ) : null}
@@ -329,6 +329,7 @@ export function PlanResultStep() {
             <input
               value={commitName}
               onChange={(event) => setCommitName(event.target.value)}
+              maxLength={80}
               placeholder="Custom build name"
               style={{ marginTop: 8, width: "100%" }}
             />
@@ -382,7 +383,7 @@ export function PlanResultStep() {
                 Reroll names
               </button>
               <button type="button" className="btn-primary" disabled={isSubmitting} onClick={() => void commitBuild()}>
-                Commit build URL
+                Create build link
               </button>
             </div>
           </div>

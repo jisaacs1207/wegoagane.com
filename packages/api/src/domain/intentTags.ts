@@ -19,8 +19,9 @@ export function inferTagsFromFreeText(input: RecommendInput): string[] {
   if (text.includes("solo")) tags.add("solo");
   if (text.includes("social") || text.includes("group")) tags.add("group_ok");
   if (text.includes("different") || text.includes("new")) tags.add("off_beaten");
-  if (text.includes("pet")) tags.add("pet");
-  if (text.includes("no pet")) tags.add("no_pet");
+  const hasNoPet = text.includes("no pet") || text.includes("no pets") || text.includes("no pet class");
+  if (hasNoPet) tags.add("no_pet");
+  if (text.includes("pet") && !hasNoPet) tags.add("pet");
   if (text.includes("profession") || text.includes("engineering") || text.includes("alchemy")) tags.add("steady");
   if (text.includes("surprise")) tags.add("just_fun");
   if (text.includes("bullshit")) tags.add("safe");

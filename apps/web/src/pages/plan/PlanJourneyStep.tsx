@@ -27,7 +27,6 @@ export function PlanJourneyStep() {
       let seedFaction: "horde" | "alliance" | undefined;
       const seedDestinyId = sessionStorage.getItem("plan.seedDestinyId");
       if (seedDestinyId) {
-        sessionStorage.removeItem("plan.seedDestinyId");
         try {
           const prior = await fetchBuildCommit(seedDestinyId);
           const d = prior.payload?.destiny;
@@ -36,6 +35,7 @@ export function PlanJourneyStep() {
             const fac = inferFactionFromRace(inferRaceFromHeadline(d.headline));
             if (fac === "horde" || fac === "alliance") seedFaction = fac;
           }
+          sessionStorage.removeItem("plan.seedDestinyId");
         } catch {
           /* prior row missing or offline */
         }
@@ -74,8 +74,13 @@ export function PlanJourneyStep() {
         }).catch(() => {});
       }
       navigate("/draft-a-run/result");
-    } catch {
-      setError("Generation failed. Adjust your path or try again.");
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "";
+      if (msg.includes("recommend_failed:400")) {
+        setError("Generation failed due to invalid input. Adjust constraints and try again.");
+      } else {
+        setError("Generation failed. Adjust your path or try again.");
+      }
     } finally {
       setIsGenerating(false);
     }

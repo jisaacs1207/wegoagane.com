@@ -40,6 +40,15 @@ const VECTOR_ROWS: Array<{ id: VectorKey; title: string; blurb: string }> = [
   { id: "surprise", title: "Surprise me", blurb: "Novel picks inside hardcore-safe boundaries." },
 ];
 
+const VECTOR_ICON_LAYOUT: Record<VectorKey, "lead" | "overlap" | "arc"> = {
+  profession: "lead",
+  playstyle: "arc",
+  class_fantasy: "arc",
+  combat_style: "overlap",
+  survivability: "lead",
+  surprise: "overlap",
+};
+
 const POWER_CURVE_OPTIONS: Array<{ id: PowerCurveId; label: string }> = [
   { id: "early", label: "Early power" },
   { id: "mid", label: "Mid climb" },
@@ -234,14 +243,14 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
       },
       {
         id: "fantasy_weapon",
-        prompt: "Weapon identity lean?",
-        answers: ["Two-hander fantasy", "Dual wield", "Caster focus", "Flexible"],
+        prompt: "Weapon style preference?",
+        answers: ["Two-hander", "Dual wield", "Caster focus", "Flexible"],
         apply: (a) =>
           ({
             ...value,
             buildVectors: toggleList(
               value.buildVectors,
-              a === "Two-hander fantasy" ? "melee" : a === "Dual wield" ? "melee" : a === "Caster focus" ? "caster" : "hybrid",
+              a === "Two-hander" ? "melee" : a === "Dual wield" ? "melee" : a === "Caster focus" ? "caster" : "hybrid",
               6,
             ) as BuildIntentSignals["buildVectors"],
           }),
@@ -264,14 +273,14 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
       },
       {
         id: "combat_ctrl",
-        prompt: "Control vs throughput?",
-        answers: ["High control", "Balanced", "Throughput", "Chaos ok"],
+        prompt: "More control or more damage pace?",
+        answers: ["High control", "Balanced", "Higher damage pace", "Unpredictable is fine"],
         apply: (a) =>
           ({
             ...value,
             buildVectors: toggleList(
               value.buildVectors,
-              a === "High control" ? "tank" : a === "Balanced" ? "hybrid" : a === "Throughput" ? "rage" : "melee",
+              a === "High control" ? "tank" : a === "Balanced" ? "hybrid" : a === "Higher damage pace" ? "rage" : "melee",
               6,
             ) as BuildIntentSignals["buildVectors"],
           }),
@@ -311,8 +320,8 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
       {
         id: "surprise_mode",
         prompt: "How wild should the surprise be?",
-        answers: ["Stable surprise", "Balanced surprise", "Spicy surprise", "Maximum chaos"],
-        apply: (a) => ({ ...value, raceMode: a === "Maximum chaos" ? "surprise" : "signal_inferred" }),
+        answers: ["Low variance", "Balanced", "High variance", "Full wildcard"],
+        apply: (a) => ({ ...value, raceMode: a === "Full wildcard" ? "surprise" : "signal_inferred" }),
       },
       {
         id: "surprise_class",
@@ -376,7 +385,7 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
         Build journey
       </p>
       <p className="hero-sub" style={{ marginTop: 0, marginBottom: 10, fontSize: 12 }}>
-        Pick depth and route, tune one vector at a time, then generate when you are ready.
+        Choose depth, pick one priority vector, answer two quick questions, then generate.
       </p>
       <p className="hero-sub" style={{ marginTop: 0, marginBottom: 12, fontSize: 12 }}>
         Step {step === "depth" ? "1" : step === "vector" ? "2" : step === "question" ? "3" : "4"} of 4
@@ -454,11 +463,11 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
           <div className="flow-nav">
             {depth === "quick" ? (
               <button type="button" className="btn-primary" onClick={() => setStep("review")}>
-                Continue to generation
+                Review filters
               </button>
             ) : (
               <button type="button" className="btn-primary" onClick={() => setStep("vector")}>
-                Continue to vector
+                Choose priority
               </button>
             )}
           </div>
@@ -467,7 +476,7 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
       {step === "vector" ? (
         <>
           <p className="hero-sub" style={{ marginTop: 0, marginBottom: 10, fontSize: 12 }}>
-            What is your build entrance vector?
+            What should lead this build?
           </p>
           <div className="journey-vector-grid">
             {VECTOR_ROWS.map((row) => (
@@ -480,7 +489,7 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
                   trackEvent(AnalyticsEvent.VectorSelected, { ...eventContext, vector: row.id });
                 }}
               >
-                <div className="journey-vector-tile__icons" aria-hidden>
+                <div className={`journey-vector-tile__icons journey-vector-tile__icons--${VECTOR_ICON_LAYOUT[row.id]}`} aria-hidden>
                   {VECTOR_ICON_GLIMPSE[row.id].map((src, i) => (
                     <IdentityPortrait
                       key={`${row.id}-${i}`}
@@ -550,10 +559,10 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
                 setStep("vector");
               }}
             >
-              Different priority
+              Pick a different priority
             </button>
             <button type="button" className="btn-primary" onClick={() => setStep("review")}>
-              Generate now
+              Skip to review
             </button>
           </div>
         </>
@@ -563,7 +572,7 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
           {activeIds.length ? (
             <div style={{ marginBottom: 12 }}>
               <p className="step-label" style={{ marginBottom: 6 }}>
-                Final selected filters
+                Selected filters
               </p>
               <div className="chip-row">
                 {activeIds.map((id) => (
@@ -575,7 +584,7 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
             </div>
           ) : (
             <p className="hero-sub" style={{ marginTop: 0, marginBottom: 12, fontSize: 12 }}>
-              No advanced filters selected. We will generate from your core path.
+              No extra filters selected. We&apos;ll generate from your core preferences.
             </p>
           )}
           <div className="flow-nav">
