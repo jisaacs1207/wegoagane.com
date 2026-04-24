@@ -171,3 +171,28 @@ export const growthRuns = sqliteTable("growth_runs", {
   finishedAt: integer("finished_at", { mode: "timestamp_ms" }),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
+
+export const buildPlans = sqliteTable("build_plans", {
+  id: text("id").primaryKey(),
+  destinyId: text("destiny_id").notNull().unique(),
+  sessionId: text("session_id").notNull(),
+  status: text("status").notNull().default("queued"),
+  publishTier: text("publish_tier").notNull().default("draft"),
+  rulesetPin: text("ruleset_pin").notNull(),
+  signalsJson: text("signals_json"),
+  payloadJson: text("payload_json"),
+  error: text("error"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+export const characterNameCandidates = sqliteTable("character_name_candidates", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  lane: text("lane").notNull(),
+  genderLean: text("gender_lean"),
+  name: text("name").notNull(),
+  source: text("source").notNull(),
+  qualityScore: real("quality_score").notNull().default(0),
+  moderated: integer("moderated", { mode: "boolean" }).notNull().default(false),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+});

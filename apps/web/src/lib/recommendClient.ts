@@ -1,5 +1,6 @@
 import type { ClassId } from "../icons/types";
 import type { DestinyFixture, MemorialFixture } from "../content/cardFixtures";
+import type { BuildIntentSignals } from "./buildIntentTypes";
 import { buildMemoryHints, clearMemoryProfile } from "./memoryProfile";
 
 type EntryPath = "release_spirit" | "draft_a_run" | "lucky_roll";
@@ -14,7 +15,7 @@ export type MemoryHints = {
   updatedAt?: number;
 };
 
-type RecommendRequest = {
+export type RecommendRequest = {
   sessionId?: string;
   entryPath: EntryPath;
   signals: {
@@ -26,12 +27,15 @@ type RecommendRequest = {
     preferredClass?: ClassId;
     memoryHints?: MemoryHints;
     recommendVariantId?: string;
-  };
+  } & BuildIntentSignals;
 };
 
 type RecommendResponse = {
   sessionId: string;
   destinyId: string;
+  buildPlanId?: string;
+  buildSheetPath?: string;
+  viabilityNotes?: string[];
   sourceType: "template" | "ai";
   fallbackUsed: boolean;
   output: {
@@ -68,9 +72,28 @@ type MemorialResponse = {
 export type DestinyResult = {
   sessionId: string;
   destinyId: string;
+  buildPlanId?: string;
+  buildSheetPath?: string;
+  viabilityNotes?: string[];
   sourceType: "template" | "ai";
   fallbackUsed: boolean;
   output: DestinyFixture;
+};
+
+export type BuildPlanResponse = {
+  buildPlanId: string;
+  destinyId: string;
+  sessionId: string;
+  status: string;
+  publishTier: string;
+  plan: unknown;
+  error: string | null;
+};
+
+export type NameCandidateRow = {
+  lane: string;
+  genderLean: string | null;
+  name: string;
 };
 
 type FeedbackChoice = "accept" | "almost_right" | "miss";
@@ -163,6 +186,9 @@ function destinyResultFromJson(data: RecommendResponse): DestinyResult {
   return {
     sessionId: data.sessionId,
     destinyId: data.destinyId,
+    buildPlanId: data.buildPlanId,
+    buildSheetPath: data.buildSheetPath,
+    viabilityNotes: data.viabilityNotes,
     sourceType: data.sourceType,
     fallbackUsed: data.fallbackUsed,
     output: {
@@ -307,4 +333,44 @@ export async function submitGrowthOutcome(input: {
   if (!response.ok) {
     throw new Error(`growth_outcome_failed:${response.status}`);
   }
+}
+
+export async function fetchBuildPlan(destinyId: string): Promise<BuildPlanResponse> {
+  const response = await fetch(`/api/v1/build/${encodeURIComponent(destinyId)}`);
+  if (!response.ok) {
+    throw new Error(`build_fetch_failed:${response.status}`);
+  }
+  return (await response.json()) as BuildPlanResponse;
+}
+
+export async function requestBuildPlan(input: {
+  destinyId: string;
+  sessionId: string;
+  recommendInput?: RecommendRequest;
+}): Promise<BuildPlanResponse> {
+  const response = await fetch("/api/v1/build", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok && response.status !== 201 && response.status !== 202) {
+    throw new Error(`build_post_failed:${response.status}`);
+  }
+  return (await response.json()) as BuildPlanResponse;
+}
+
+export async function fetchNameCandidates(params?: {
+  lane?: string;
+  genderLean?: string;
+  limit?: number;
+}): Promise<{ names: NameCandidateRow[] }> {
+  const q = new URLSearchParams();
+  if (params?.lane) q.set("lane", params.lane);
+  if (params?.genderLean) q.set("genderLean", params.genderLean);
+  if (params?.limit) q.set("limit", String(params.limit));
+  const response = await fetch(`/api/v1/build/names?${q.toString()}`);
+  if (!response.ok) {
+    throw new Error(`names_fetch_failed:${response.status}`);
+  }
+  return (await response.json()) as { names: NameCandidateRow[] };
 }

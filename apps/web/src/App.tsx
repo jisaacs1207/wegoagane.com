@@ -8,6 +8,7 @@ import { DesignCardsPage } from "./pages/DesignCardsPage";
 import { SharePlaceholderPage } from "./pages/SharePlaceholderPage";
 import { FeedbackSummaryPage } from "./pages/FeedbackSummaryPage";
 import { GrowthOpsPage } from "./pages/GrowthOpsPage";
+import { BuildPlanPage } from "./pages/BuildPlanPage";
 
 export function App() {
   return (
@@ -17,6 +18,7 @@ export function App() {
         <Route path="/release-spirit/*" element={<DeathFlowPage />} />
         <Route path="/draft-a-run/*" element={<PlanFlowPage />} />
         <Route path="/lucky-roll" element={<LuckyRollPage />} />
+        <Route path="/build/:destinyId" element={<BuildPlanPage />} />
         <Route path="/share/:runId" element={<SharePlaceholderPage />} />
         <Route path="/design/cards" element={<DesignCardsPage />} />
         <Route path="/ops/feedback" element={<FeedbackSummaryPage />} />

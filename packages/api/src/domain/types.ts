@@ -12,6 +12,55 @@ export type ClassId =
 export type Faction = "horde" | "alliance";
 export type Tier = "safe" | "off_beaten" | "high_risk" | "just_fun";
 
+/** Stat / gearing philosophy tags for viability + ranker hints */
+export type StatPhilosophyTag =
+  | "stamina_forward"
+  | "strength_forward"
+  | "agility_forward"
+  | "intellect_forward"
+  | "spirit_forward"
+  | "balanced"
+  | "meme_glass";
+
+/** Profession / economy intent (Classic HC–aware) */
+export type ProfessionIntentTag =
+  | "engineering_outs"
+  | "alchemy_consumables"
+  | "herbalism_alchemy_pair"
+  | "mining_engineering_pair"
+  | "dual_gathering_bootstrap"
+  | "skinning_mining_early"
+  | "leatherworker_hunter_synergy"
+  | "tailoring_bags_arcane"
+  | "enchanter_disenchant_route"
+  | "blacksmith_weaponsmith_fantasy"
+  | "first_aid_mandatory_mindset"
+  | "cooking_high_value"
+  | "fishing_supports_cooking"
+  | "fishing_optional"
+  | "early_gathering_then_pivot_engineering"
+  | "auction_house_play";
+
+/** Combat, resource, role, tone vectors */
+export type BuildVectorTag =
+  | "tank"
+  | "heal"
+  | "hybrid"
+  | "pet"
+  | "melee"
+  | "ranged"
+  | "caster"
+  | "mana"
+  | "rage"
+  | "energy"
+  | "holy"
+  | "demonic"
+  | "nature"
+  | "solo"
+  | "group_ok";
+
+export type RaceMode = "user_pick" | "signal_inferred" | "optimize_theme" | "surprise";
+
 export type RecommendSignals = {
   mood?: string;
   nextSignal?: string;
@@ -22,6 +71,13 @@ export type RecommendSignals = {
   preferredClass?: ClassId;
   memoryHints?: MemoryHints;
   recommendVariantId?: string;
+  /** Structured build intent (merged with inferred tags from free text) */
+  statPhilosophy?: StatPhilosophyTag[];
+  professionIntents?: ProfessionIntentTag[];
+  buildVectors?: BuildVectorTag[];
+  raceMode?: RaceMode;
+  /** When raceMode is user_pick: race id string e.g. orc, human */
+  pickedRace?: string;
 };
 
 export type RecommendInput = {

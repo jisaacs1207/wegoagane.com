@@ -5,6 +5,7 @@ import { handleFeedback, handleFeedbackSummary } from "./routes/feedback";
 import { handleCreateShare, handleGetShare, handleGetShareImage, handleGetShareOg, handleShareSummary } from "./routes/share";
 import { handleAnalyticsConfig, handleMemoryHealth } from "./routes/analytics";
 import { growthRouter } from "./routes/growth";
+import { buildRouter } from "./routes/build";
 import type { ApiEnv } from "./db/client";
 
 const app = new Hono<ApiEnv>();
@@ -32,6 +33,9 @@ app.get("/", (c) =>
       "POST /v1/growth/promote",
       "GET /v1/growth/health",
       "POST /v1/growth/tick",
+      "POST /v1/build",
+      "GET /v1/build/names",
+      "GET /v1/build/:destinyId",
     ],
   }),
 );
@@ -49,6 +53,7 @@ app.get("/v1/share/:runId/og", handleGetShareOg);
 app.get("/v1/analytics/config", handleAnalyticsConfig);
 app.get("/v1/analytics/memory-health", handleMemoryHealth);
 app.route("/v1/growth", growthRouter);
+app.route("/v1/build", buildRouter);
 
 // Same handlers under /api/* for live domain Worker Route patterns.
 app.get("/api/health", (c) => c.json({ ok: true, ts: Date.now() }));
@@ -64,6 +69,7 @@ app.get("/api/v1/share/:runId/og", handleGetShareOg);
 app.get("/api/v1/analytics/config", handleAnalyticsConfig);
 app.get("/api/v1/analytics/memory-health", handleMemoryHealth);
 app.route("/api/v1/growth", growthRouter);
+app.route("/api/v1/build", buildRouter);
 
 export default {
   fetch: app.fetch,

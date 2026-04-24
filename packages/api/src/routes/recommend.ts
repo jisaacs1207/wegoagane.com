@@ -3,11 +3,14 @@ import { captureServerEvent } from "../analytics/posthog";
 import { AnalyticsEvent } from "../analytics/events";
 import { enrichDestiny, getAiGateStatus } from "../ai/adapter";
 import { getDb, type ApiEnv } from "../db/client";
-import { destinies, questionAnswers, recommendationLogs, sessions } from "../db/schema";
+import { archetypes } from "../domain/archetypes";
+import { buildPlans, destinies, questionAnswers, recommendationLogs, sessions } from "../db/schema";
 import { rankArchetypes } from "../domain/ranker";
 import type { MemoryFeatures, MemoryRankingConfig } from "../domain/types";
 import { renderTemplateDestiny } from "../domain/template";
 import { recommendInputSchema, validateTemplateOutput } from "../domain/validator";
+import { computeViability, filterArchetypesByViability } from "../domain/viability";
+import { enqueueBuildPlanGeneration } from "./build";
 
 export const recommendRouter = new Hono<ApiEnv>();
 
@@ -127,13 +130,30 @@ export async function handleRecommend(c: Context<ApiEnv>) {
 
   const input = parsed.data;
   try {
+    const viability = computeViability(input);
+    const archetypePool = filterArchetypesByViability(archetypes, viability);
+    if (archetypePool.length === 0) {
+      c.executionCtx.waitUntil(
+        captureServerEvent(c.env, AnalyticsEvent.DestinyGenerationFailed, input.sessionId ?? "anonymous", {
+          reason: "no_viable_build",
+          entryPath: input.entryPath,
+          viabilityNotes: viability.notes,
+        }),
+      );
+      return c.json({ error: "no_viable_build", notes: viability.notes }, 400);
+    }
+
     const memoryConfig = readMemoryConfig(c);
     const serverMemory = await deriveServerMemory(c.env.DB, input.sessionId, memoryConfig.lookbackLimit);
-    const ranking = rankArchetypes(input, {
-      browserMemory: input.signals.memoryHints,
-      serverMemory,
-      config: memoryConfig,
-    });
+    const ranking = rankArchetypes(
+      input,
+      {
+        browserMemory: input.signals.memoryHints,
+        serverMemory,
+        config: memoryConfig,
+      },
+      archetypePool,
+    );
     const ranked = ranking.ranked;
 
     if (ranked.length === 0) {
@@ -190,14 +210,26 @@ export async function handleRecommend(c: Context<ApiEnv>) {
 
     const answers = Object.entries(input.signals)
       .filter(([, v]) => v !== undefined)
-      .map(([key, value]) => ({
-        sessionId,
-        questionKey: key,
-        answerValue: typeof value === "string" ? value : null,
-        freeformText: key === "freeform" && typeof value === "string" ? value : null,
-        skipped: false,
-        createdAt: new Date(now),
-      }));
+      .map(([key, value]) => {
+        if (typeof value === "string") {
+          return {
+            sessionId,
+            questionKey: key,
+            answerValue: value,
+            freeformText: key === "freeform" ? value : null,
+            skipped: false,
+            createdAt: new Date(now),
+          };
+        }
+        return {
+          sessionId,
+          questionKey: key,
+          answerValue: JSON.stringify(value),
+          freeformText: null,
+          skipped: false,
+          createdAt: new Date(now),
+        };
+      });
     if (answers.length > 0) {
       await db.insert(questionAnswers).values(answers);
     }
@@ -212,6 +244,34 @@ export async function handleRecommend(c: Context<ApiEnv>) {
       contentJson: JSON.stringify(output),
       sourceType: output.sourceType,
     });
+
+    const buildPlanId = crypto.randomUUID();
+    const rulesetPin = (c.env.RULESET_PIN ?? "classic-era-hc-2026-04").slice(0, 120);
+    await db.insert(buildPlans).values({
+      id: buildPlanId,
+      destinyId,
+      sessionId,
+      status: "queued",
+      publishTier: "draft",
+      rulesetPin,
+      signalsJson: JSON.stringify(input),
+      payloadJson: null,
+      error: null,
+      createdAt: new Date(now),
+      updatedAt: new Date(now),
+    });
+
+    c.executionCtx.waitUntil(
+      enqueueBuildPlanGeneration(
+        c.env,
+        buildPlanId,
+        destinyId,
+        sessionId,
+        top.archetype.key,
+        JSON.stringify(output),
+        input,
+      ),
+    );
 
     const confidenceScore = Math.min(1, Math.max(0.1, top.score / 10));
     await db.insert(recommendationLogs).values({
@@ -258,6 +318,9 @@ export async function handleRecommend(c: Context<ApiEnv>) {
     return c.json({
       sessionId,
       destinyId,
+      buildPlanId,
+      buildSheetPath: `/build/${destinyId}`,
+      viabilityNotes: viability.notes,
       selectedArchetype: top.archetype.key,
       score: top.score,
       confidenceScore,
