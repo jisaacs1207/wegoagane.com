@@ -5,9 +5,9 @@ export type CorePreset = "safe" | "balanced" | "bold";
 
 export const STAT_OPTIONS = [
   { id: "stamina_forward", label: "Stam first" },
-  { id: "intellect_forward", label: "Int" },
-  { id: "agility_forward", label: "Agi" },
-  { id: "strength_forward", label: "Str" },
+  { id: "intellect_forward", label: "Intellect focus" },
+  { id: "agility_forward", label: "Agility focus" },
+  { id: "strength_forward", label: "Strength focus" },
   { id: "spirit_forward", label: "Spirit" },
   { id: "balanced", label: "Balanced" },
   { id: "meme_glass", label: "Spicy / glass" },
@@ -41,7 +41,7 @@ export const VECTOR_OPTIONS = [
   { id: "ranged", label: "Ranged" },
   { id: "caster", label: "Caster" },
   { id: "heal", label: "Healing" },
-  { id: "tank", label: "Tanky" },
+  { id: "tank", label: "Tank focus" },
   { id: "mana", label: "Mana" },
   { id: "rage", label: "Rage" },
   { id: "energy", label: "Energy" },

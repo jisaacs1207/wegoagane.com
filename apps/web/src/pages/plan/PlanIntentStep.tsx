@@ -36,6 +36,10 @@ export function PlanIntentStep() {
             onClick={() => {
               setSelected(i.id);
               sessionStorage.setItem("plan.intent", i.label);
+              // Starting a new plan run should not inherit stale journey filters.
+              sessionStorage.removeItem("plan.buildIntent");
+              sessionStorage.removeItem("plan.buildIntent.depth");
+              sessionStorage.removeItem("plan.buildIntent.powerCurve");
               sessionStorage.removeItem("plan.generatedDestiny");
               sessionStorage.removeItem("plan.destinyId");
             }}
