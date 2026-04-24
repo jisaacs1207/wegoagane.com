@@ -7,7 +7,7 @@ import { destinies, questionAnswers, recommendationLogs, sessions } from "../db/
 import { rankArchetypes } from "../domain/ranker";
 import type { MemoryFeatures, MemoryRankingConfig } from "../domain/types";
 import { renderTemplateDestiny } from "../domain/template";
-import { validateRecommendInput, validateTemplateOutput } from "../domain/validator";
+import { recommendInputSchema, validateTemplateOutput } from "../domain/validator";
 
 export const recommendRouter = new Hono<ApiEnv>();
 
@@ -105,161 +105,191 @@ async function deriveServerMemory(
 }
 
 export async function handleRecommend(c: Context<ApiEnv>) {
-  const payload = await c.req.json();
-  const input = validateRecommendInput(payload);
-  const memoryConfig = readMemoryConfig(c);
-  const serverMemory = await deriveServerMemory(c.env.DB, input.sessionId, memoryConfig.lookbackLimit);
-  const ranking = rankArchetypes(input, {
-    browserMemory: input.signals.memoryHints,
-    serverMemory,
-    config: memoryConfig,
-  });
-  const ranked = ranking.ranked;
-
-  if (ranked.length === 0) {
+  let payload: unknown;
+  try {
+    payload = await c.req.json();
+  } catch {
+    return c.json({ error: "invalid_json" }, 400);
+  }
+  const parsed = recommendInputSchema.safeParse(payload);
+  if (!parsed.success) {
     c.executionCtx.waitUntil(
-      captureServerEvent(c.env, AnalyticsEvent.DestinyGenerationFailed, payload?.sessionId ?? "anonymous", {
-        reason: "no_eligible_archetypes",
-        entryPath: payload?.entryPath ?? null,
+      captureServerEvent(c.env, AnalyticsEvent.DestinyGenerationFailed, "anonymous", {
+        reason: "invalid_input",
+        issues: parsed.error.issues.map((issue) => ({
+          path: issue.path.join("."),
+          code: issue.code,
+        })),
       }),
     );
-    return c.json({ error: "no_eligible_archetypes" }, 400);
+    return c.json({ error: "invalid_input" }, 400);
   }
 
-  const top = ranked[0];
-  if (!top) {
-    c.executionCtx.waitUntil(
-      captureServerEvent(c.env, AnalyticsEvent.DestinyGenerationFailed, payload?.sessionId ?? "anonymous", {
-        reason: "no_ranked_candidate",
-        entryPath: payload?.entryPath ?? null,
-      }),
-    );
-    return c.json({ error: "no_ranked_candidate" }, 400);
-  }
-  const templateOutput = renderTemplateDestiny(top);
-  const aiResult = await enrichDestiny(c.env, input, templateOutput);
-  const output = aiResult.output;
-  const failures =
-    aiResult.validationFailures.length > 0
-      ? aiResult.validationFailures
-      : validateTemplateOutput(output, input.signals.factionPreference);
-  if (failures.length > 0) {
-    c.executionCtx.waitUntil(
-      captureServerEvent(c.env, AnalyticsEvent.DestinyGenerationFailed, input.sessionId ?? "anonymous", {
-        reason: "validation_failed",
+  const input = parsed.data;
+  try {
+    const memoryConfig = readMemoryConfig(c);
+    const serverMemory = await deriveServerMemory(c.env.DB, input.sessionId, memoryConfig.lookbackLimit);
+    const ranking = rankArchetypes(input, {
+      browserMemory: input.signals.memoryHints,
+      serverMemory,
+      config: memoryConfig,
+    });
+    const ranked = ranking.ranked;
+
+    if (ranked.length === 0) {
+      c.executionCtx.waitUntil(
+        captureServerEvent(c.env, AnalyticsEvent.DestinyGenerationFailed, input.sessionId ?? "anonymous", {
+          reason: "no_eligible_archetypes",
+          entryPath: input.entryPath,
+        }),
+      );
+      return c.json({ error: "no_eligible_archetypes" }, 400);
+    }
+
+    const top = ranked[0];
+    if (!top) {
+      c.executionCtx.waitUntil(
+        captureServerEvent(c.env, AnalyticsEvent.DestinyGenerationFailed, input.sessionId ?? "anonymous", {
+          reason: "no_ranked_candidate",
+          entryPath: input.entryPath,
+        }),
+      );
+      return c.json({ error: "no_ranked_candidate" }, 400);
+    }
+    const templateOutput = renderTemplateDestiny(top);
+    const aiResult = await enrichDestiny(c.env, input, templateOutput);
+    const output = aiResult.output;
+    const failures =
+      aiResult.validationFailures.length > 0
+        ? aiResult.validationFailures
+        : validateTemplateOutput(output, input.signals.factionPreference);
+    if (failures.length > 0) {
+      c.executionCtx.waitUntil(
+        captureServerEvent(c.env, AnalyticsEvent.DestinyGenerationFailed, input.sessionId ?? "anonymous", {
+          reason: "validation_failed",
+          entryPath: input.entryPath,
+          validationFailures: failures,
+        }),
+      );
+      return c.json({ error: "validation_failed", failures }, 422);
+    }
+
+    const now = Date.now();
+    const sessionId = input.sessionId ?? crypto.randomUUID();
+    const destinyId = crypto.randomUUID();
+    const db = getDb(c.env.DB);
+
+    await db
+      .insert(sessions)
+      .values({
+        id: sessionId,
+        createdAt: new Date(now),
         entryPath: input.entryPath,
-        validationFailures: failures,
-      }),
-    );
-    return c.json({ error: "validation_failed", failures }, 422);
-  }
+      })
+      .onConflictDoNothing();
 
-  const now = Date.now();
-  const sessionId = input.sessionId ?? crypto.randomUUID();
-  const destinyId = crypto.randomUUID();
-  const db = getDb(c.env.DB);
+    const answers = Object.entries(input.signals)
+      .filter(([, v]) => v !== undefined)
+      .map(([key, value]) => ({
+        sessionId,
+        questionKey: key,
+        answerValue: typeof value === "string" ? value : null,
+        freeformText: key === "freeform" && typeof value === "string" ? value : null,
+        skipped: false,
+        createdAt: new Date(now),
+      }));
+    if (answers.length > 0) {
+      await db.insert(questionAnswers).values(answers);
+    }
 
-  await db
-    .insert(sessions)
-    .values({
-      id: sessionId,
-      createdAt: new Date(now),
-      entryPath: input.entryPath,
-    })
-    .onConflictDoNothing();
-
-  const answers = Object.entries(input.signals)
-    .filter(([, v]) => v !== undefined)
-    .map(([key, value]) => ({
+    await db.insert(destinies).values({
+      id: destinyId,
       sessionId,
-      questionKey: key,
-      answerValue: typeof value === "string" ? value : null,
-      freeformText: key === "freeform" && typeof value === "string" ? value : null,
-      skipped: false,
-      createdAt: new Date(now),
-    }));
-  if (answers.length > 0) {
-    await db.insert(questionAnswers).values(answers);
-  }
+      generatedAt: new Date(now),
+      classId: output.classId,
+      archetypeKey: top.archetype.key,
+      tierProse: output.tierProse,
+      contentJson: JSON.stringify(output),
+      sourceType: output.sourceType,
+    });
 
-  await db.insert(destinies).values({
-    id: destinyId,
-    sessionId,
-    generatedAt: new Date(now),
-    classId: output.classId,
-    archetypeKey: top.archetype.key,
-    tierProse: output.tierProse,
-    contentJson: JSON.stringify(output),
-    sourceType: output.sourceType,
-  });
-
-  const confidenceScore = Math.min(1, Math.max(0.1, top.score / 10));
-  await db.insert(recommendationLogs).values({
-    destinyId,
-    selectedArchetype: top.archetype.key,
-    rankingScore: top.score,
-    confidenceScore,
-    reasonsJson: JSON.stringify(top.reasons),
-    validationFailures: failures.length,
-    sourceType: output.sourceType,
-    fallbackUsed: aiResult.telemetry.fallbackUsed,
-    aiModelId: aiResult.telemetry.resolvedModelId ?? aiResult.telemetry.modelId,
-    aiLatencyMs: aiResult.telemetry.latencyMs,
-    aiRetries: aiResult.telemetry.retries,
-    aiInputTokens: aiResult.telemetry.inputTokens,
-    aiOutputTokens: aiResult.telemetry.outputTokens,
-    aiErrorType: aiResult.telemetry.providerError,
-    growthVariantId: input.signals.recommendVariantId ?? null,
-    createdAt: new Date(now),
-  });
-
-  c.executionCtx.waitUntil(
-    captureServerEvent(c.env, AnalyticsEvent.DestinyGenerated, sessionId, {
+    const confidenceScore = Math.min(1, Math.max(0.1, top.score / 10));
+    await db.insert(recommendationLogs).values({
       destinyId,
-      entryPath: input.entryPath,
+      selectedArchetype: top.archetype.key,
+      rankingScore: top.score,
+      confidenceScore,
+      reasonsJson: JSON.stringify(top.reasons),
+      validationFailures: failures.length,
       sourceType: output.sourceType,
       fallbackUsed: aiResult.telemetry.fallbackUsed,
-      resolvedModelId: aiResult.telemetry.resolvedModelId,
-      aiErrorType: aiResult.telemetry.providerError,
+      aiModelId: aiResult.telemetry.resolvedModelId ?? aiResult.telemetry.modelId,
       aiLatencyMs: aiResult.telemetry.latencyMs,
-      memoryEnabled: ranking.memoryMeta.enabled,
-      memoryDegradeMode: ranking.memoryMeta.degradeMode,
-      memoryBrowserWeight: ranking.memoryMeta.browserWeight,
-      memoryServerWeight: ranking.memoryMeta.serverWeight,
-      memoryBrowserConfidence: ranking.memoryMeta.browserConfidence,
-      memoryServerConfidence: ranking.memoryMeta.serverConfidence,
-      memoryAverageAppliedBias: ranking.memoryMeta.averageAppliedBias,
-      memoryClampHits: ranking.memoryMeta.clampHits,
-      selectedMemoryBias: top.memoryBiasApplied ?? 0,
+      aiRetries: aiResult.telemetry.retries,
+      aiInputTokens: aiResult.telemetry.inputTokens,
+      aiOutputTokens: aiResult.telemetry.outputTokens,
+      aiErrorType: aiResult.telemetry.providerError,
       growthVariantId: input.signals.recommendVariantId ?? null,
-    }),
-  );
+      createdAt: new Date(now),
+    });
 
-  return c.json({
-    sessionId,
-    destinyId,
-    selectedArchetype: top.archetype.key,
-    score: top.score,
-    confidenceScore,
-    reasons: top.reasons,
-    sourceType: output.sourceType,
-    fallbackUsed: aiResult.telemetry.fallbackUsed,
-    validationFailures: failures,
-    aiMeta: {
-      gate: getAiGateStatus(c.env),
-      providerError: aiResult.telemetry.providerError,
-      modelId: aiResult.telemetry.modelId,
-      resolvedModelId: aiResult.telemetry.resolvedModelId,
-      latencyMs: aiResult.telemetry.latencyMs,
-      retries: aiResult.telemetry.retries,
-    },
-    memoryMeta: {
-      ...ranking.memoryMeta,
-      selectedMemoryBias: top.memoryBiasApplied ?? 0,
-      serverSampleSize: serverMemory.sampleSize,
-    },
-    output,
-  });
+    c.executionCtx.waitUntil(
+      captureServerEvent(c.env, AnalyticsEvent.DestinyGenerated, sessionId, {
+        destinyId,
+        entryPath: input.entryPath,
+        sourceType: output.sourceType,
+        fallbackUsed: aiResult.telemetry.fallbackUsed,
+        resolvedModelId: aiResult.telemetry.resolvedModelId,
+        aiErrorType: aiResult.telemetry.providerError,
+        aiLatencyMs: aiResult.telemetry.latencyMs,
+        memoryEnabled: ranking.memoryMeta.enabled,
+        memoryDegradeMode: ranking.memoryMeta.degradeMode,
+        memoryBrowserWeight: ranking.memoryMeta.browserWeight,
+        memoryServerWeight: ranking.memoryMeta.serverWeight,
+        memoryBrowserConfidence: ranking.memoryMeta.browserConfidence,
+        memoryServerConfidence: ranking.memoryMeta.serverConfidence,
+        memoryAverageAppliedBias: ranking.memoryMeta.averageAppliedBias,
+        memoryClampHits: ranking.memoryMeta.clampHits,
+        selectedMemoryBias: top.memoryBiasApplied ?? 0,
+        growthVariantId: input.signals.recommendVariantId ?? null,
+      }),
+    );
+
+    return c.json({
+      sessionId,
+      destinyId,
+      selectedArchetype: top.archetype.key,
+      score: top.score,
+      confidenceScore,
+      reasons: top.reasons,
+      sourceType: output.sourceType,
+      fallbackUsed: aiResult.telemetry.fallbackUsed,
+      validationFailures: failures,
+      aiMeta: {
+        gate: getAiGateStatus(c.env),
+        providerError: aiResult.telemetry.providerError,
+        modelId: aiResult.telemetry.modelId,
+        resolvedModelId: aiResult.telemetry.resolvedModelId,
+        latencyMs: aiResult.telemetry.latencyMs,
+        retries: aiResult.telemetry.retries,
+      },
+      memoryMeta: {
+        ...ranking.memoryMeta,
+        selectedMemoryBias: top.memoryBiasApplied ?? 0,
+        serverSampleSize: serverMemory.sampleSize,
+      },
+      output,
+    });
+  } catch (error) {
+    c.executionCtx.waitUntil(
+      captureServerEvent(c.env, AnalyticsEvent.DestinyGenerationFailed, input.sessionId ?? "anonymous", {
+        reason: "recommend_internal_error",
+        entryPath: input.entryPath,
+        message: error instanceof Error ? error.message : "unknown_error",
+      }),
+    );
+    return c.json({ error: "recommend_internal_error" }, 503);
+  }
 }
 
 recommendRouter.post("/", handleRecommend);

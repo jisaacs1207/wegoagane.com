@@ -40,8 +40,9 @@ export const recommendInputSchema = z.object({
     memoryHints: z
       .object({
         version: z.number().int().min(1).max(8),
-        classAffinity: z.record(z.enum(classValues), z.number().min(-1).max(1)).optional(),
-        rerollReasonCounts: z.record(z.enum(rerollReasonValues), z.number().int().min(0).max(1000)).optional(),
+        // Allow unknown historical keys from older browser memory snapshots.
+        classAffinity: z.record(z.string(), z.number().min(-1).max(1)).optional(),
+        rerollReasonCounts: z.record(z.string(), z.number().int().min(0).max(1000)).optional(),
         confidence: z.number().min(0).max(1).optional(),
         updatedAt: z.number().int().min(0).optional(),
       })

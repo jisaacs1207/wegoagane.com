@@ -25,6 +25,16 @@ function canUseStorage(): boolean {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 }
 
+/** Clears persisted browser memory so the next recommend request can rebuild hints from scratch. */
+export function clearMemoryProfile(): void {
+  if (!canUseStorage()) return;
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Non-blocking storage.
+  }
+}
+
 export function readMemoryProfile(): MemoryProfile {
   if (!canUseStorage()) return { ...EMPTY_PROFILE };
   try {

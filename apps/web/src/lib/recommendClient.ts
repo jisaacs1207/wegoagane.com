@@ -1,5 +1,6 @@
 import type { ClassId } from "../icons/types";
 import type { DestinyFixture, MemorialFixture } from "../content/cardFixtures";
+import { buildMemoryHints, clearMemoryProfile } from "./memoryProfile";
 
 type EntryPath = "release_spirit" | "draft_a_run" | "lucky_roll";
 
@@ -158,18 +159,7 @@ export type GrowthAssignmentResponse = {
   holdout: boolean;
 };
 
-export async function fetchDestiny(input: RecommendRequest): Promise<DestinyResult> {
-  const response = await fetch("/api/v1/recommend", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(input),
-  });
-
-  if (!response.ok) {
-    throw new Error(`recommend_failed:${response.status}`);
-  }
-
-  const data = (await response.json()) as RecommendResponse;
+function destinyResultFromJson(data: RecommendResponse): DestinyResult {
   return {
     sessionId: data.sessionId,
     destinyId: data.destinyId,
@@ -183,6 +173,40 @@ export async function fetchDestiny(input: RecommendRequest): Promise<DestinyResu
       bullets: data.output.bullets,
     },
   };
+}
+
+export async function fetchDestiny(input: RecommendRequest): Promise<DestinyResult> {
+  const post = (body: RecommendRequest) =>
+    fetch("/api/v1/recommend", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+  let response = await post(input);
+
+  if (!response.ok && response.status === 400) {
+    let errBody: { error?: string } = {};
+    try {
+      errBody = (await response.json()) as { error?: string };
+    } catch {
+      throw new Error(`recommend_failed:${response.status}`);
+    }
+    if (errBody.error === "invalid_input") {
+      clearMemoryProfile();
+      response = await post({
+        ...input,
+        signals: { ...input.signals, memoryHints: buildMemoryHints() },
+      });
+    }
+  }
+
+  if (!response.ok) {
+    throw new Error(`recommend_failed:${response.status}`);
+  }
+
+  const data = (await response.json()) as RecommendResponse;
+  return destinyResultFromJson(data);
 }
 
 export async function fetchMemorial(input: MemorialRequest): Promise<MemorialFixture> {
