@@ -218,6 +218,8 @@ a:hover {
 }
 
 .entry-btn {
+  position: relative;
+  overflow: hidden;
   display: block;
   width: 100%;
   text-align: left;
@@ -238,6 +240,50 @@ a:hover {
   text-decoration: none;
   transform: translateY(-1px);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+.entry-btn::before {
+  content: "";
+  position: absolute;
+  right: -28px;
+  top: -24px;
+  width: 138px;
+  height: 138px;
+  border-radius: 999px;
+  background-image: var(--entry-motif-url);
+  background-size: cover;
+  background-position: center;
+  opacity: 0.14;
+  filter: saturate(1.12) contrast(1.06);
+  pointer-events: none;
+}
+
+.entry-btn > * {
+  position: relative;
+  z-index: 1;
+}
+
+.entry-emblem {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #5a4b36;
+  object-fit: cover;
+  margin-bottom: 8px;
+}
+
+.entry-badges {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.entry-badge {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1px solid #4f4334;
+  object-fit: cover;
 }
 
 .entry-btn-title {
@@ -462,22 +508,30 @@ a:hover {
 .icon-motif-card {
   position: relative;
   overflow: hidden;
+  padding-right: 120px;
 }
 
 .icon-motif-card::before {
   content: "";
   position: absolute;
-  right: -26px;
-  top: -24px;
-  width: 132px;
-  height: 132px;
+  right: -34px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 118px;
+  height: 118px;
   border-radius: 999px;
-  opacity: 0.16;
+  opacity: 0.13;
   background-image: var(--motif-url);
   background-size: cover;
   background-position: center;
   filter: saturate(1.12) contrast(1.08);
   pointer-events: none;
+  z-index: 0;
+}
+
+.icon-motif-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .btn-primary {

@@ -53,7 +53,22 @@ export function DeathDetailStep() {
         />
       </div>
       <div className="flow-nav">
-        <button type="button" className="btn-ghost" onClick={() => navigate("/release-spirit/next")}>
+        <button
+          type="button"
+          className="btn-ghost"
+          onClick={() => {
+            sessionStorage.removeItem("death.detail.zone");
+            sessionStorage.removeItem("death.detail.cause");
+            sessionStorage.removeItem("death.detail.level");
+            sessionStorage.removeItem("death.detail.note");
+            sessionStorage.removeItem("death.buildIntent");
+            sessionStorage.removeItem("death.buildIntent.depth");
+            sessionStorage.removeItem("death.buildIntent.powerCurve");
+            sessionStorage.removeItem("death.generatedDestiny");
+            sessionStorage.removeItem("death.destinyId");
+            navigate("/release-spirit/next");
+          }}
+        >
           Back
         </button>
         <button type="button" className="btn-primary" onClick={() => navigate("/release-spirit/journey")}>

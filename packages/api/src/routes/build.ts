@@ -24,6 +24,9 @@ const generateNamesSchema = z.object({
   count: z.number().int().min(4).max(18).optional(),
   rerollSeed: z.string().max(80).optional(),
   currentName: z.string().max(80).optional(),
+  mode: z.enum(["default", "reflective", "high_variance", "humor"]).optional(),
+  variance: z.number().min(0).max(1).optional(),
+  context: z.string().max(600).optional(),
 });
 
 export const buildRouter = new Hono<ApiEnv>();
@@ -250,6 +253,18 @@ function fallbackGeneratedNames(seed: string, count: number): string[] {
   return out;
 }
 
+function makeHighVariance(base: string): string[] {
+  const forms = [
+    base,
+    base.replace(/a/gi, "ae"),
+    base.replace(/i/gi, "y"),
+    `X${base}`,
+    `${base}x`,
+    base.replace(/o/gi, "oa"),
+  ];
+  return forms.map((x) => titleCase(x)).filter((n) => filterValidNames([n]).length > 0);
+}
+
 export async function handlePostGenerateNames(c: Context<ApiEnv>) {
   let body: unknown;
   try {
@@ -263,25 +278,36 @@ export async function handlePostGenerateNames(c: Context<ApiEnv>) {
   const count = data.count ?? 10;
   const gate = getAiGateStatus(c.env);
   const seed = `${data.sessionId}|${data.destinyId ?? ""}|${data.style ?? "neutral"}|${data.rerollSeed ?? ""}`;
+  const mode = data.mode ?? "default";
+  const variance = Math.max(0, Math.min(1, data.variance ?? 0.35));
 
   if (!gate.ready) {
-    const fallback = fallbackGeneratedNames(seed, count);
+    const fallbackBase = fallbackGeneratedNames(seed, count);
+    const fallback = mode === "high_variance" ? Array.from(new Set(fallbackBase.flatMap((n) => makeHighVariance(n)))).slice(0, count) : fallbackBase;
     return c.json({ names: fallback.map((name) => ({ lane: data.style ?? "neutral", genderLean: null, name })), aiUsed: false });
   }
 
   const prompt = [
     "Return JSON with a single key `names` containing an array of character names.",
     "Rules: ASCII letters only, 2-12 chars, no spaces, no punctuation, no numbers.",
-    "Names should be original and avoid trademark strings.",
+    "Use World of Warcraft Classic-style fantasy naming; avoid exact known lore hero names.",
+    "Names should be original and practical for availability.",
     `Requested style lane: ${data.style ?? "neutral"}.`,
+    `Mode: ${mode}.`,
+    `Variance target (0..1): ${variance.toFixed(2)}.`,
     `Count: ${count}.`,
     `Current name to avoid repeating: ${data.currentName ?? "none"}.`,
     `Reroll seed: ${data.rerollSeed ?? "none"}.`,
+    `Context hints from player choices: ${data.context ?? "none"}.`,
+    mode === "humor"
+      ? "Humor mode: produce playful but believable in-game names inspired by class fantasy and WoW community culture."
+      : "Keep names immersive and setting-coherent.",
   ].join("\n");
 
   const ai = await callAiGateway(c.env, c.env.AI_MODEL_DESTINY ?? "openrouter/auto", prompt, 10000);
   if (!ai.ok) {
-    const fallback = fallbackGeneratedNames(seed, count);
+    const fallbackBase = fallbackGeneratedNames(seed, count);
+    const fallback = mode === "high_variance" ? Array.from(new Set(fallbackBase.flatMap((n) => makeHighVariance(n)))).slice(0, count) : fallbackBase;
     return c.json({ names: fallback.map((name) => ({ lane: data.style ?? "neutral", genderLean: null, name })), aiUsed: false });
   }
   let parsedAi: { names?: string[] } = {};
@@ -290,7 +316,9 @@ export async function handlePostGenerateNames(c: Context<ApiEnv>) {
   } catch {
     parsedAi = {};
   }
-  const unique = Array.from(new Set(filterValidNames((parsedAi.names ?? []).map((n) => titleCase(n.trim())))));
+  const aiRaw = filterValidNames((parsedAi.names ?? []).map((n) => titleCase(n.trim())));
+  const withVariance = mode === "high_variance" ? Array.from(new Set(aiRaw.flatMap((n) => makeHighVariance(n)))) : aiRaw;
+  const unique = Array.from(new Set(withVariance));
   const names = unique.slice(0, count);
   if (names.length === 0) {
     const fallback = fallbackGeneratedNames(seed, count);

@@ -53,6 +53,7 @@ export function HomePage() {
           <Link
             to="/release-spirit/mood"
             className="entry-btn"
+            style={{ ["--entry-motif-url" as string]: `url(${wowPackUrl("Spells", "HellifrePVPThrallmarFavor.png")})` }}
             onClick={() => {
               sessionStorage.removeItem("death.buildIntent");
               sessionStorage.removeItem("death.buildIntent.depth");
@@ -63,10 +64,10 @@ export function HomePage() {
               void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_release_spirit" } }).catch(() => {});
             }}
           >
-            <span className="entry-icon-row entry-icon-row--stacked">
-              <IdentityPortrait src={wowPackUrl("Miscellaneous", "Tournaments_banner_Scourge.png")} alt="" className="entry-icon" />
-              <IdentityPortrait src={wowPackUrl("Spells", "HellifrePVPThrallmarFavor.png")} alt="" className="entry-icon" />
-              <IdentityPortrait src={wowPackUrl("Abilities", "ShieldWall.png")} alt="" className="entry-icon" />
+            <IdentityPortrait src={wowPackUrl("Miscellaneous", "Tournaments_banner_Scourge.png")} alt="" className="entry-emblem" />
+            <span className="entry-badges">
+              <IdentityPortrait src={wowPackUrl("Abilities", "ShieldWall.png")} alt="" className="entry-badge" />
+              <IdentityPortrait src={wowPackUrl("Spells", "Slow.png")} alt="" className="entry-badge" />
             </span>
             <span className="entry-btn-title">Release Spirit</span>
             <span className="entry-btn-desc">I died — capture what happened, then tune the next run with intent.</span>
@@ -79,6 +80,7 @@ export function HomePage() {
           <Link
             to="/draft-a-run/intent"
             className="entry-btn"
+            style={{ ["--entry-motif-url" as string]: `url(${wowPackUrl("Trade", "engineering.png")})` }}
             onClick={() => {
               sessionStorage.removeItem("plan.buildIntent");
               sessionStorage.removeItem("plan.buildIntent.depth");
@@ -89,10 +91,10 @@ export function HomePage() {
               void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_draft_run" } }).catch(() => {});
             }}
           >
-            <span className="entry-icon-row entry-icon-row--lead">
-              <IdentityPortrait src={wowPackUrl("Trade", "engineering.png")} alt="" className="entry-icon" />
-              <IdentityPortrait src={wowPackUrl("Trade", "herbalism.png")} alt="" className="entry-icon" />
-              <IdentityPortrait src={wowPackUrl("Abilities", "SwordandBoard.png")} alt="" className="entry-icon" />
+            <IdentityPortrait src={wowPackUrl("Abilities", "SwordandBoard.png")} alt="" className="entry-emblem" />
+            <span className="entry-badges">
+              <IdentityPortrait src={wowPackUrl("Trade", "engineering.png")} alt="" className="entry-badge" />
+              <IdentityPortrait src={wowPackUrl("Trade", "herbalism.png")} alt="" className="entry-badge" />
             </span>
             <span className="entry-btn-title">Draft a Run</span>
             <span className="entry-btn-desc">I&apos;m planning — set constraints first, then generate against them.</span>
@@ -105,6 +107,7 @@ export function HomePage() {
           <Link
             to="/lucky-roll/journey"
             className="entry-btn"
+            style={{ ["--entry-motif-url" as string]: `url(${wowPackUrl("Miscellaneous", "Dice_01.png")})` }}
             onClick={() => {
               sessionStorage.removeItem("lucky.buildIntent");
               sessionStorage.removeItem("lucky.buildIntent.depth");
@@ -115,10 +118,10 @@ export function HomePage() {
               void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_lucky_roll" } }).catch(() => {});
             }}
           >
-            <span className="entry-icon-row entry-icon-row--overlap">
-              <IdentityPortrait src={wowPackUrl("Miscellaneous", "Dice_01.png")} alt="" className="entry-icon" />
-              <IdentityPortrait src={wowPackUrl("Spells", "StarFire.png")} alt="" className="entry-icon" />
-              <IdentityPortrait src={wowPackUrl("Abilities", "BloodFrenzy.png")} alt="" className="entry-icon" />
+            <IdentityPortrait src={wowPackUrl("Miscellaneous", "Dice_01.png")} alt="" className="entry-emblem" />
+            <span className="entry-badges">
+              <IdentityPortrait src={wowPackUrl("Spells", "StarFire.png")} alt="" className="entry-badge" />
+              <IdentityPortrait src={wowPackUrl("Abilities", "BloodFrenzy.png")} alt="" className="entry-badge" />
             </span>
             <span className="entry-btn-title">Lucky roll</span>
             <span className="entry-btn-desc">Surprise me — shortest ritual with controlled chaos.</span>

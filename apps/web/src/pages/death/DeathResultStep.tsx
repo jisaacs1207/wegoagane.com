@@ -65,6 +65,8 @@ export function DeathResultStep() {
   const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
   const [isLoadingNames, setIsLoadingNames] = useState(false);
   const [nameLane, setNameLane] = useState<"hc_practical" | "lore_world" | "grimdark">("hc_practical");
+  const [nameMode, setNameMode] = useState<"reflective" | "high_variance" | "humor">("reflective");
+  const [nameVariance, setNameVariance] = useState(0.6);
 
   useEffect(() => {
     const stored = readStoredDestiny("death");
@@ -104,13 +106,25 @@ export function DeathResultStep() {
     if (!sessionId || !destinyId || isLoadingNames) return;
     setIsLoadingNames(true);
     try {
+      const intent = readBuildIntent("death.buildIntent");
+      const nameContext = [
+        `class=${destiny?.classId ?? "unknown"}`,
+        `mood=${sessionStorage.getItem("death.mood") ?? "none"}`,
+        `next=${sessionStorage.getItem("death.nextSignal") ?? "none"}`,
+        `stats=${(intent.statPhilosophy ?? []).join(",") || "none"}`,
+        `professions=${(intent.professionIntents ?? []).join(",") || "none"}`,
+        `vectors=${(intent.buildVectors ?? []).join(",") || "none"}`,
+      ].join(" | ");
       const res = await generateNameCandidates({
         sessionId,
         destinyId,
-        style: nameLane,
+        style: nameMode === "humor" ? "light_humor" : nameLane,
         count: 8,
         rerollSeed: reroll ? `${Date.now()}` : undefined,
         currentName: commitName || undefined,
+        mode: nameMode,
+        variance: nameVariance,
+        context: nameContext,
       });
       setNameSuggestions(res.names.map((row) => row.name));
     } catch {
@@ -326,7 +340,7 @@ export function DeathResultStep() {
                     disabled={isSubmitting || !destinyId}
                     onClick={() => void acceptAndOpenPostRating()}
                   >
-                    Accept this fate
+                    Keep this result
                   </button>
                   <button
                     type="button"
@@ -334,7 +348,7 @@ export function DeathResultStep() {
                     disabled={isSubmitting || !destinyId}
                     onClick={() => setShowRerollGate((prev) => !prev)}
                   >
-                    Reroll (rating gate)
+                    Refine this result
                   </button>
                 </div>
                 {showRerollGate ? (
@@ -450,6 +464,28 @@ export function DeathResultStep() {
                     Grim
                   </button>
                 </div>
+                <div className="flow-nav flow-nav--wrap" style={{ marginTop: 8 }}>
+                  <button type="button" className={`btn-ghost ${nameMode === "reflective" ? "chip-btn--on" : ""}`} onClick={() => setNameMode("reflective")}>
+                    Reflect choices
+                  </button>
+                  <button type="button" className={`btn-ghost ${nameMode === "high_variance" ? "chip-btn--on" : ""}`} onClick={() => setNameMode("high_variance")}>
+                    More unique
+                  </button>
+                  <button type="button" className={`btn-ghost ${nameMode === "humor" ? "chip-btn--on" : ""}`} onClick={() => setNameMode("humor")}>
+                    Humor
+                  </button>
+                </div>
+                <label style={{ display: "block", marginTop: 8, fontSize: 12, color: "var(--ts)" }}>
+                  Name variance: {Math.round(nameVariance * 100)}%
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={Math.round(nameVariance * 100)}
+                    onChange={(e) => setNameVariance(Number(e.target.value) / 100)}
+                    style={{ width: "100%" }}
+                  />
+                </label>
                 <div className="flow-nav" style={{ marginTop: 10 }}>
                   <button
                     type="button"

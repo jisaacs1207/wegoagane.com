@@ -104,3 +104,49 @@ test("preferred class still dominates", () => {
   assert.equal(ranked[0]?.archetype.classId, "mage");
 });
 
+test("promotes non-recent alternative when scores are close", () => {
+  const input: RecommendInput = {
+    sessionId: "sess-4",
+    entryPath: "draft_a_run",
+    signals: { intent: "safe" },
+  };
+  const ranked = rankArchetypes(
+    input,
+    {
+      config: memoryConfig,
+      serverMemory: {
+        classAffinity: {},
+        rerollReasonCounts: {},
+        recentArchetypeKeys: ["a_safe", "a_safe"],
+        confidence: 0.7,
+        sampleSize: 12,
+      },
+    },
+    pool,
+  ).ranked;
+  assert.notEqual(ranked[0]?.archetype.key, "a_safe");
+});
+
+test("applies hard penalty to heavily repeated archetype", () => {
+  const input: RecommendInput = {
+    sessionId: "sess-5",
+    entryPath: "draft_a_run",
+    signals: { intent: "safe" },
+  };
+  const ranked = rankArchetypes(
+    input,
+    {
+      config: memoryConfig,
+      serverMemory: {
+        classAffinity: {},
+        rerollReasonCounts: {},
+        recentArchetypeKeys: ["a_safe", "a_safe", "a_safe"],
+        confidence: 0.6,
+        sampleSize: 9,
+      },
+    },
+    pool,
+  ).ranked;
+  assert.notEqual(ranked[0]?.archetype.key, "a_safe");
+});
+
