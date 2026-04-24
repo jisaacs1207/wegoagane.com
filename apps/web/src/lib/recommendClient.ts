@@ -23,6 +23,7 @@ export type RecommendRequest = {
     nextSignal?: string;
     intent?: string;
     freeform?: string;
+    factionPreference?: "horde" | "alliance";
     excludedClasses?: ClassId[];
     preferredClass?: ClassId;
     memoryHints?: MemoryHints;
