@@ -52,7 +52,7 @@ test("recent archetype gets a soft penalty", () => {
   const input: RecommendInput = {
     sessionId: "sess-1",
     entryPath: "draft_a_run",
-    signals: { intent: "safe" },
+    signals: { intent: "safe", factionPreference: "alliance" },
   };
   const ranked = rankArchetypes(
     input,
