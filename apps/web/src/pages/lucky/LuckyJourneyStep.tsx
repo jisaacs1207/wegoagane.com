@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { BuildIntentChips } from "../../components/BuildIntentChips";
+import { IdentityPortrait } from "../../components/IdentityPortrait";
+import { wowPackUrl } from "../../content/identityAssets";
 import type { BuildIntentSignals } from "../../lib/buildIntentTypes";
 import { augmentNextSignalWithPower } from "../../lib/journeySignalsExtras";
 import { fetchDestiny, fetchGrowthAssignment, submitGrowthOutcome } from "../../lib/recommendClient";
@@ -11,6 +13,11 @@ export function LuckyJourneyStep() {
   const navigate = useNavigate();
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    sessionStorage.removeItem("lucky.generatedDestiny");
+    sessionStorage.removeItem("lucky.destinyId");
+  }, []);
 
   async function onGenerate(signals: BuildIntentSignals) {
     const sessionId = sessionStorage.getItem("lucky.sessionId") ?? crypto.randomUUID();
@@ -62,8 +69,13 @@ export function LuckyJourneyStep() {
         <p className="step-label">Lucky roll</p>
         <h1 className="hero-question">Choose your luck profile</h1>
         <p className="hero-sub" style={{ marginBottom: 0 }}>
-          Build your path, then generate on the final step.
+          Fastest route. Set a vector and get a commit-ready run with minimal setup.
         </p>
+        <div className="entry-icon-row" style={{ marginTop: 10 }}>
+          <IdentityPortrait src={wowPackUrl("Miscellaneous", "Dice_02.png")} alt="" className="entry-icon" />
+          <IdentityPortrait src={wowPackUrl("Spells", "StarFire.png")} alt="" className="entry-icon" />
+          <IdentityPortrait src={wowPackUrl("Abilities", "BloodFrenzy.png")} alt="" className="entry-icon" />
+        </div>
       </div>
       <BuildIntentChips
         storageKey="lucky.buildIntent"

@@ -75,9 +75,12 @@ export function LuckyResultStep() {
   }
 
   return (
-    <div>
-      <DestinyCard data={destiny} intentSignals={readBuildIntent("lucky.buildIntent")} />
-      <div className="card" style={{ marginTop: 12 }}>
+    <div className="result-page-grid">
+      <div className="result-page-grid__main">
+        <DestinyCard data={destiny} intentSignals={readBuildIntent("lucky.buildIntent")} />
+      </div>
+      <aside className="result-page-grid__side">
+        <div className="card">
         <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Was this close to what you wanted?</p>
         <div className="flow-nav" style={{ marginTop: 10 }}>
           <button
@@ -124,8 +127,8 @@ export function LuckyResultStep() {
             ))}
           </div>
         ) : null}
-      </div>
-      <div className="card" style={{ marginTop: 12 }}>
+        </div>
+        <div className="card" style={{ marginTop: 12 }}>
         <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Name this build before commit</p>
         <input
           value={commitName}
@@ -148,15 +151,16 @@ export function LuckyResultStep() {
           </button>
         </div>
         {commitMessage ? <p style={{ marginBottom: 0 }}>{commitMessage}</p> : null}
-      </div>
-      <div className="flow-nav" style={{ marginTop: 16 }}>
-        <Link to="/lucky-roll/journey" className="btn-ghost">
-          Retool path
-        </Link>
-        <Link to="/" className="btn-ghost">
-          Home
-        </Link>
-      </div>
+        </div>
+        <div className="flow-nav flow-nav--wrap" style={{ marginTop: 16 }}>
+          <Link to="/lucky-roll/journey" className="btn-ghost">
+            Retool path
+          </Link>
+          <Link to="/" className="btn-ghost">
+            Home
+          </Link>
+        </div>
+      </aside>
     </div>
   );
 }
