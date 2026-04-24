@@ -61,6 +61,15 @@ function isAiEnabled(env: ApiEnv["Bindings"]) {
   return getAiGateStatus(env).ready;
 }
 
+function hashToUnit(seed: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i += 1) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return ((h >>> 0) % 100000) / 100000;
+}
+
 async function callGateway(
   env: ApiEnv["Bindings"],
   model: string,
@@ -147,8 +156,13 @@ export async function enrichDestiny(
     telemetry: { ...telemetry, fallbackUsed: true },
   });
   if (!enabled) return fallback();
+  const exploreSeed = `${input.sessionId ?? "anon"}|${input.entryPath}|${JSON.stringify(input.signals)}`;
+  const shouldExploreVariant =
+    hashToUnit(exploreSeed) < 0.35 ||
+    Boolean(input.signals.nextSignal?.toLowerCase().includes("surprise")) ||
+    Boolean(input.signals.intent?.toLowerCase().includes("new"));
 
-  const prompt = [
+  const basePrompt = [
     "Return valid JSON only with keys: headline,subline,classId,tierProse,bullets,rationale,sourceType.",
     "Keep classId unchanged and preserve deterministic selection.",
     `classId=${template.classId}, headline=${template.headline}, subline=${template.subline}`,
@@ -156,7 +170,13 @@ export async function enrichDestiny(
     `rationale=${template.rationale}`,
     `signals=${JSON.stringify(input.signals)}`,
     "sourceType must be 'ai'. bullets length must stay 3 to 6.",
-  ].join("\n");
+  ];
+  const creativePrompt = [
+    ...basePrompt,
+    "Push novelty: vary title/subline/rationale style while preserving class and safety constraints.",
+    "If template archetype feels repetitive for these signals, invent a fresh variation framing.",
+  ];
+  const prompt = (shouldExploreVariant ? creativePrompt : basePrompt).join("\n");
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const result = await callGateway(env, model, prompt);

@@ -42,7 +42,23 @@ export function DeathNextSignalStep() {
         ))}
       </div>
       <div className="flow-nav">
-        <button type="button" className="btn-ghost" onClick={() => navigate("/release-spirit/mood")}>
+        <button
+          type="button"
+          className="btn-ghost"
+          onClick={() => {
+            sessionStorage.removeItem("death.nextSignal");
+            sessionStorage.removeItem("death.detail.zone");
+            sessionStorage.removeItem("death.detail.cause");
+            sessionStorage.removeItem("death.detail.level");
+            sessionStorage.removeItem("death.detail.note");
+            sessionStorage.removeItem("death.buildIntent");
+            sessionStorage.removeItem("death.buildIntent.depth");
+            sessionStorage.removeItem("death.buildIntent.powerCurve");
+            sessionStorage.removeItem("death.generatedDestiny");
+            sessionStorage.removeItem("death.destinyId");
+            navigate("/release-spirit/mood");
+          }}
+        >
           Back
         </button>
         <button type="button" className="btn-primary" onClick={() => navigate("/release-spirit/detail")}>

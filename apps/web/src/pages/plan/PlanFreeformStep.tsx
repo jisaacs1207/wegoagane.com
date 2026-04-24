@@ -49,7 +49,19 @@ export function PlanFreeformStep() {
         }}
       />
       <div className="flow-nav">
-        <button type="button" className="btn-ghost" onClick={() => navigate("/draft-a-run/intent")}>
+        <button
+          type="button"
+          className="btn-ghost"
+          onClick={() => {
+            sessionStorage.removeItem("plan.freeform");
+            sessionStorage.removeItem("plan.buildIntent");
+            sessionStorage.removeItem("plan.buildIntent.depth");
+            sessionStorage.removeItem("plan.buildIntent.powerCurve");
+            sessionStorage.removeItem("plan.generatedDestiny");
+            sessionStorage.removeItem("plan.destinyId");
+            navigate("/draft-a-run/intent");
+          }}
+        >
           Back
         </button>
         <button type="button" className="btn-primary" onClick={() => navigate("/draft-a-run/journey")}>

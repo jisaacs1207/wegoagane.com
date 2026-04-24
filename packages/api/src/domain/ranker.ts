@@ -92,12 +92,20 @@ export function rankArchetypes(
     if (!factionPreference) return true;
     return a.faction === "either" || a.faction === factionPreference;
   });
+  const recentCounts = new Map<string, number>();
+  for (const key of memory.serverMemory?.recentArchetypeKeys ?? []) {
+    recentCounts.set(key, (recentCounts.get(key) ?? 0) + 1);
+  }
 
   const preferredClass = input.signals.preferredClass;
   const recencyPenalty = new Map<string, number>();
+  const classByKey = new Map(filtered.map((a) => [a.key, a.classId]));
+  const recentClassCount = new Map<Archetype["classId"], number>();
   for (const [idx, key] of (memory.serverMemory?.recentArchetypeKeys ?? []).entries()) {
-    // Newest key gets strongest soft penalty to reduce same-archetype loops.
-    recencyPenalty.set(key, Number((Math.max(0.15, 0.75 - idx * 0.12)).toFixed(3)));
+    // Newest key gets a strong soft penalty to reduce same-archetype loops.
+    recencyPenalty.set(key, Number((Math.max(0.5, 2.2 - idx * 0.35)).toFixed(3)));
+    const classId = classByKey.get(key);
+    if (classId) recentClassCount.set(classId, (recentClassCount.get(classId) ?? 0) + 1);
   }
   const tieBreakBucket = Math.floor(Date.now() / (1000 * 60 * 30));
   const tieSeedPrefix = [
@@ -128,6 +136,17 @@ export function rankArchetypes(
       scored.score -= recentPenalty;
       scored.reasons.push(`recent_penalty:-${recentPenalty.toFixed(2)}`);
     }
+    if (!preferredClass && filtered.length > 1 && (recentCounts.get(a.key) ?? 0) >= 2) {
+      scored.score -= 5;
+      scored.reasons.push("repeat_archetype_hard_penalty");
+    }
+    if (!preferredClass) {
+      const classRepeatPenalty = (recentClassCount.get(a.classId) ?? 0) * 0.45;
+      if (classRepeatPenalty > 0) {
+        scored.score -= classRepeatPenalty;
+        scored.reasons.push(`class_repeat_penalty:-${classRepeatPenalty.toFixed(2)}`);
+      }
+    }
     // Tiny deterministic jitter breaks score ties without violating viability constraints.
     const tiebreak = (hashToUnit(`${tieSeedPrefix}|${a.key}`) - 0.5) * 0.22;
     scored.score += tiebreak;
@@ -135,6 +154,17 @@ export function rankArchetypes(
     return scored;
   });
   ranked.sort((a, b) => b.score - a.score);
+  if (!preferredClass && ranked.length > 1) {
+    const top = ranked[0];
+    const alt = ranked.find((r, i) => i > 0 && (r.score >= (top?.score ?? 0) - 1.75) && !recencyPenalty.has(r.archetype.key));
+    if (top && alt && recencyPenalty.has(top.archetype.key)) {
+      const topIdx = ranked.indexOf(top);
+      const altIdx = ranked.indexOf(alt);
+      ranked[topIdx] = alt;
+      ranked[altIdx] = top;
+      ranked[topIdx]?.reasons.push("diversity_promote");
+    }
+  }
   return {
     ranked,
     memoryMeta: {

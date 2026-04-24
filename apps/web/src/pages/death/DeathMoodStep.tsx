@@ -34,6 +34,14 @@ export function DeathMoodStep() {
             onClick={() => {
               setSelected(m.id);
               sessionStorage.setItem("death.mood", m.label);
+              sessionStorage.removeItem("death.nextSignal");
+              sessionStorage.removeItem("death.detail.zone");
+              sessionStorage.removeItem("death.detail.cause");
+              sessionStorage.removeItem("death.detail.level");
+              sessionStorage.removeItem("death.detail.note");
+              sessionStorage.removeItem("death.buildIntent");
+              sessionStorage.removeItem("death.buildIntent.depth");
+              sessionStorage.removeItem("death.buildIntent.powerCurve");
               sessionStorage.removeItem("death.generatedDestiny");
               sessionStorage.removeItem("death.destinyId");
             }}

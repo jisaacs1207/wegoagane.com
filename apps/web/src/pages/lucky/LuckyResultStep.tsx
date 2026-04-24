@@ -19,6 +19,8 @@ export function LuckyResultStep() {
   const [commitMessage, setCommitMessage] = useState("");
   const [isLoadingNames, setIsLoadingNames] = useState(false);
   const [nameLane, setNameLane] = useState<"neutral" | "light_humor" | "lore_world">("neutral");
+  const [nameMode, setNameMode] = useState<"reflective" | "high_variance" | "humor">("reflective");
+  const [nameVariance, setNameVariance] = useState(0.65);
 
   useEffect(() => {
     const stored = readStoredDestiny("lucky");
@@ -46,13 +48,24 @@ export function LuckyResultStep() {
     if (!sessionId || !destinyId || isLoadingNames) return;
     setIsLoadingNames(true);
     try {
+      const intent = readBuildIntent("lucky.buildIntent");
+      const nameContext = [
+        `class=${destiny?.classId ?? "unknown"}`,
+        "path=lucky_roll",
+        `stats=${(intent.statPhilosophy ?? []).join(",") || "none"}`,
+        `professions=${(intent.professionIntents ?? []).join(",") || "none"}`,
+        `vectors=${(intent.buildVectors ?? []).join(",") || "none"}`,
+      ].join(" | ");
       const res = await generateNameCandidates({
         sessionId,
         destinyId,
-        style: nameLane,
+        style: nameMode === "humor" ? "light_humor" : nameLane,
         count: 8,
         rerollSeed: reroll ? `${Date.now()}` : undefined,
         currentName: commitName || undefined,
+        mode: nameMode,
+        variance: nameVariance,
+        context: nameContext,
       });
       setNameSuggestions(res.names.map((row) => row.name));
     } catch {
@@ -193,6 +206,28 @@ export function LuckyResultStep() {
             Lore
           </button>
         </div>
+        <div className="flow-nav flow-nav--wrap" style={{ marginTop: 8 }}>
+          <button type="button" className={`btn-ghost ${nameMode === "reflective" ? "chip-btn--on" : ""}`} onClick={() => setNameMode("reflective")}>
+            Reflect choices
+          </button>
+          <button type="button" className={`btn-ghost ${nameMode === "high_variance" ? "chip-btn--on" : ""}`} onClick={() => setNameMode("high_variance")}>
+            More unique
+          </button>
+          <button type="button" className={`btn-ghost ${nameMode === "humor" ? "chip-btn--on" : ""}`} onClick={() => setNameMode("humor")}>
+            Humor
+          </button>
+        </div>
+        <label style={{ display: "block", marginTop: 8, fontSize: 12, color: "var(--ts)" }}>
+          Name variance: {Math.round(nameVariance * 100)}%
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={Math.round(nameVariance * 100)}
+            onChange={(e) => setNameVariance(Number(e.target.value) / 100)}
+            style={{ width: "100%" }}
+          />
+        </label>
         <div className="flow-nav" style={{ marginTop: 10 }}>
           <button type="button" className="btn-ghost" disabled={isLoadingNames || !sessionId} onClick={() => void loadGeneratedNames(false)}>
             {isLoadingNames ? "Loading..." : "Generate more names"}

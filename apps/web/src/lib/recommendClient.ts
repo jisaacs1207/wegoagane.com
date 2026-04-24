@@ -404,6 +404,9 @@ export async function generateNameCandidates(input: {
   count?: number;
   rerollSeed?: string;
   currentName?: string;
+  mode?: "default" | "reflective" | "high_variance" | "humor";
+  variance?: number;
+  context?: string;
 }): Promise<{ names: NameCandidateRow[]; aiUsed: boolean }> {
   const response = await fetch("/api/v1/build/names/generate", {
     method: "POST",

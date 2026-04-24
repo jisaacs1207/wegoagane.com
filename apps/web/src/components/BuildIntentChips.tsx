@@ -95,6 +95,8 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
   const [depth, setDepth] = useState<IntentDepth>(() => readDepth(storageKey));
   const [step, setStep] = useState<JourneyStep>("depth");
   const [vector, setVector] = useState<VectorKey>("survivability");
+  const [selectedVectors, setSelectedVectors] = useState<VectorKey[]>([]);
+  const [vectorCursor, setVectorCursor] = useState(0);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [corePreset, setCorePreset] = useState<CorePreset>("balanced");
   const [powerCurve, setPowerCurve] = useState<PowerCurveId | null>(() => readPowerCurve(storageKey));
@@ -129,7 +131,7 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
       storageKey,
       depth,
       step,
-      vector,
+      vector: selectedVectors[vectorCursor] ?? vector,
       questionIndex,
       statCount: value.statPhilosophy?.length ?? 0,
       professionCount: value.professionIntents?.length ?? 0,
@@ -144,6 +146,8 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
       step,
       storageKey,
       vector,
+      selectedVectors,
+      vectorCursor,
       value.buildVectors?.length,
       value.professionIntents?.length,
       value.raceMode,
@@ -345,7 +349,8 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
       },
     ],
   };
-  const currentQuestions = questionsByVector[vector];
+  const activeVector = selectedVectors[vectorCursor] ?? vector;
+  const currentQuestions = questionsByVector[activeVector];
   const currentQuestion = currentQuestions[Math.min(questionIndex, Math.max(0, currentQuestions.length - 1))];
 
   function removeActive(id: string) {
@@ -391,6 +396,8 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
     setDepth("balanced");
     setStep("depth");
     setVector("survivability");
+    setSelectedVectors([]);
+    setVectorCursor(0);
     setQuestionIndex(0);
     setCorePreset("balanced");
     setPowerCurve(null);
@@ -500,14 +507,24 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
           <p className="hero-sub" style={{ marginTop: 0, marginBottom: 10, fontSize: 12 }}>
             What should lead this build?
           </p>
+          {selectedVectors.length > 0 ? (
+            <p className="hero-sub" style={{ marginTop: 0, marginBottom: 10, fontSize: 12 }}>
+              Selected priorities: {selectedVectors.map((v) => VECTOR_ROWS.find((r) => r.id === v)?.title ?? v).join(" -> ")}
+            </p>
+          ) : null}
           <div className="journey-vector-grid">
             {VECTOR_ROWS.map((row) => (
               <button
                 key={row.id}
                 type="button"
-                className={`journey-vector-tile ${vector === row.id ? "journey-vector-tile--on" : ""}`}
+                className={`journey-vector-tile ${(selectedVectors.includes(row.id) || vector === row.id) ? "journey-vector-tile--on" : ""}`}
                 onClick={() => {
                   setVector(row.id);
+                  setSelectedVectors((prev) => {
+                    if (prev.includes(row.id)) return prev.filter((v) => v !== row.id);
+                    if (prev.length >= 3) return [...prev.slice(1), row.id];
+                    return [...prev, row.id];
+                  });
                   trackEvent(AnalyticsEvent.VectorSelected, { ...eventContext, vector: row.id });
                 }}
               >
@@ -535,17 +552,23 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
               type="button"
               className="btn-primary"
               onClick={() => {
+                const queue = selectedVectors.length > 0 ? selectedVectors : [vector];
+                setSelectedVectors(queue);
+                setVectorCursor(0);
                 setQuestionIndex(0);
                 setStep("question");
               }}
             >
-              Continue
+              Refine priorities
             </button>
           </div>
         </>
       ) : null}
       {step === "question" ? (
         <>
+          <p className="step-label" style={{ marginBottom: 6 }}>
+            Refining: {VECTOR_ROWS.find((r) => r.id === activeVector)?.title ?? activeVector}
+          </p>
           <p className="hero-sub" style={{ marginTop: 0, marginBottom: 10, fontSize: 12 }}>
             {currentQuestion.prompt}
           </p>
@@ -559,7 +582,12 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
                   persist(currentQuestion.apply(answer));
                   trackEvent(AnalyticsEvent.QuestionAnswered, { ...eventContext, questionId: currentQuestion.id, answer });
                   if (questionIndex >= currentQuestions.length - 1) {
-                    setStep("review");
+                    if (vectorCursor < selectedVectors.length - 1) {
+                      setVectorCursor((prev) => prev + 1);
+                      setQuestionIndex(0);
+                    } else {
+                      setStep("review");
+                    }
                   } else {
                     setQuestionIndex((prev) => prev + 1);
                   }
@@ -577,11 +605,11 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
               type="button"
               className="btn-ghost"
               onClick={() => {
-                setQuestionIndex(0);
+                setVectorCursor(0);
                 setStep("vector");
               }}
             >
-              Pick a different priority
+              Add another priority
             </button>
             <button type="button" className="btn-primary" onClick={() => setStep("review")}>
               Skip to review
