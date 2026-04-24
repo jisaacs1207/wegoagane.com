@@ -488,6 +488,8 @@ Rollout result:
 - **CI migration drift after manual migration**:
   - `db:generate` produced `0006` because manual `0005` lacked matching Drizzle metadata snapshot.
   - Resolved by committing `0006` metadata files and making `0006` SQL intentionally no-op.
+- **API Deploy post-deploy smoke returns 403 on `https://wegoagane.com`** (GitHub Actions only):
+  - `.github/workflows/api-deploy.yml` runs `npm run smoke:growth:production`, which calls `packages/api/scripts/smoke.mjs`. Set Actions variable **`GROWTH_HEALTH_URL`** to your full workers.dev growth health URL (same as the hourly growth check), or set **`API_SMOKE_BASE_URL`** to the workers.dev **origin** only. The script prefers `API_SMOKE_BASE_URL`, then derives the origin from `GROWTH_HEALTH_URL`, then defaults to `https://wegoagane.com`. Override for one-off runs: `node packages/api/scripts/smoke.mjs https://other.example`.
 
 ### Growth control token rotation (quick runbook)
 
@@ -516,7 +518,7 @@ Rollout result:
 - Quality gates:
   - API: `npm run typecheck --prefix packages/api` and `npm run test --prefix packages/api`.
   - Web: `npm run build --prefix apps/web`.
-  - Smoke: `GROWTH_CONTROL_TOKEN=... npm run smoke:growth:production --prefix packages/api` (verifies growth auth deny/allow + growth health + analytics growth config).
+  - Smoke: `GROWTH_CONTROL_TOKEN=... npm run smoke:growth:production --prefix packages/api` (verifies recommend + memorial + growth health + analytics + growth tick auth). In GitHub Actions, set **`GROWTH_HEALTH_URL`** or **`API_SMOKE_BASE_URL`** when the apex host blocks runners (see rollout gotchas).
 - Post-release observation window (first 24h):
   - Check PostHog for `growth_assignment_served`, `growth_decision_made`, `growth_hard_stop_triggered`.
   - Verify no unexpected spike in rerolls or validation failures.

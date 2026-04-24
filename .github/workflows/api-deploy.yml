@@ -107,4 +107,6 @@ jobs:
       - name: Post-deploy growth smoke check
         env:
           GROWTH_CONTROL_TOKEN: ${{ secrets.API_GROWTH_CONTROL_TOKEN }}
+          API_SMOKE_BASE_URL: ${{ vars.API_SMOKE_BASE_URL }}
+          GROWTH_HEALTH_URL: ${{ vars.GROWTH_HEALTH_URL }}
         run: npm run smoke:growth:production --prefix packages/api

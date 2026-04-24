@@ -1,6 +1,39 @@
 #!/usr/bin/env node
 
-const base = process.argv[2] ?? "https://wegoagane.com";
+/** Prefer env (CI) so GitHub runners can hit *.workers.dev when wegoagane.com returns 403 at the edge. */
+function resolveSmokeBase() {
+  const explicit = process.env.API_SMOKE_BASE_URL?.trim();
+  if (explicit) return explicit.replace(/\/$/, "");
+  const growthHealth = process.env.GROWTH_HEALTH_URL?.trim();
+  if (growthHealth) {
+    try {
+      return new URL(growthHealth).origin.replace(/\/$/, "");
+    } catch {
+      /* ignore */
+    }
+  }
+  const arg = process.argv[2]?.trim();
+  if (arg) return arg.replace(/\/$/, "");
+  return "https://wegoagane.com";
+}
+
+const base = resolveSmokeBase();
+if (process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true") {
+  console.log(`smoke base=${base}`);
+}
+
+const ua =
+  process.env.GITHUB_ACTIONS === "true"
+    ? `wegoagane-api-smoke/1 (github-actions; ${process.env.GITHUB_REPOSITORY ?? "unknown"})`
+    : "wegoagane-api-smoke/1";
+
+/** @param {string} url @param {RequestInit} [init] */
+function smokeFetch(url, init = {}) {
+  const headers = new Headers(init.headers ?? undefined);
+  if (!headers.has("User-Agent")) headers.set("User-Agent", ua);
+  if (!headers.has("Accept")) headers.set("Accept", "application/json");
+  return fetch(url, { ...init, headers });
+}
 
 const healthUrl = `${base}/api/health`;
 const recommendUrl = `${base}/api/v1/recommend`;
@@ -20,12 +53,12 @@ const body = {
 };
 
 async function run() {
-  const health = await fetch(healthUrl);
+  const health = await smokeFetch(healthUrl);
   if (!health.ok) {
     throw new Error(`Health failed (${health.status}) ${healthUrl}`);
   }
 
-  const recommend = await fetch(recommendUrl, {
+  const recommend = await smokeFetch(recommendUrl, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
@@ -40,7 +73,7 @@ async function run() {
     throw new Error("Recommend response missing destinyId/sessionId");
   }
 
-  const memorial = await fetch(memorialUrl, {
+  const memorial = await smokeFetch(memorialUrl, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
@@ -64,7 +97,7 @@ async function run() {
     throw new Error("Memorial response missing memorialId/output");
   }
 
-  const growthHealth = await fetch(growthHealthUrl);
+  const growthHealth = await smokeFetch(growthHealthUrl);
   if (!growthHealth.ok) {
     throw new Error(`Growth health failed (${growthHealth.status}) ${growthHealthUrl}`);
   }
@@ -73,7 +106,7 @@ async function run() {
     throw new Error("Growth health missing experimentsRunning");
   }
 
-  const analyticsConfig = await fetch(analyticsConfigUrl);
+  const analyticsConfig = await smokeFetch(analyticsConfigUrl);
   if (!analyticsConfig.ok) {
     throw new Error(`Analytics config failed (${analyticsConfig.status}) ${analyticsConfigUrl}`);
   }
@@ -82,13 +115,13 @@ async function run() {
     throw new Error("Analytics config missing growth block");
   }
 
-  const tickDenied = await fetch(growthTickProbeUrl, { method: "POST" });
+  const tickDenied = await smokeFetch(growthTickProbeUrl, { method: "POST" });
   if (tickDenied.status !== 403) {
     throw new Error(`Growth tick auth expected 403 without token, got ${tickDenied.status}`);
   }
 
   if (growthToken) {
-    const tickAllowed = await fetch(growthTickProbeUrl, {
+    const tickAllowed = await smokeFetch(growthTickProbeUrl, {
       method: "POST",
       headers: { "x-growth-control-token": growthToken },
     });
