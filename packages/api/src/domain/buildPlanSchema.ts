@@ -68,8 +68,24 @@ export const buildPlanPayloadSchema = z.object({
     rationale: z.string().max(500),
     alternatives: z.array(z.string().max(80)).max(4).optional(),
   }),
+  identity: z
+    .object({
+      raceSuggestion: z.string().max(80).optional(),
+      factionSuggestion: z.enum(["horde", "alliance", "neutral"]).optional(),
+      genderLean: z.enum(["masculine", "feminine", "neutral"]).optional(),
+      buildFantasy: z.string().max(300).optional(),
+      archetypeSummary: z.string().max(500).optional(),
+    })
+    .optional(),
   namesByLane: namesByLaneSchema,
   forks: z.array(forkSchema).max(6),
+  /** Raw AI outputs retained for deeper debugging and downstream features. */
+  aiRaw: z
+    .object({
+      generatorJson: z.string().max(50000).optional(),
+      reviewerJson: z.string().max(50000).optional(),
+    })
+    .optional(),
 });
 
 export type BuildPlanPayload = z.infer<typeof buildPlanPayloadSchema>;

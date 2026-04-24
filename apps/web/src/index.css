@@ -939,14 +939,26 @@ textarea::placeholder {
   align-items: start;
 }
 
+.commit-action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
 @media (min-width: 960px) {
   .commit-page-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+    grid-template-columns: minmax(0, 1.1fr) minmax(300px, 380px);
   }
 
   .commit-page-grid__guidance {
     position: sticky;
     top: 16px;
+  }
+}
+
+@media (max-width: 760px) {
+  .commit-action-grid {
+    grid-template-columns: 1fr;
   }
 }
 
