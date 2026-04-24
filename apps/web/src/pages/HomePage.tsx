@@ -54,6 +54,11 @@ export function HomePage() {
             to="/release-spirit/mood"
             className="entry-btn"
             onClick={() => {
+              sessionStorage.removeItem("death.buildIntent");
+              sessionStorage.removeItem("death.buildIntent.depth");
+              sessionStorage.removeItem("death.buildIntent.powerCurve");
+              sessionStorage.removeItem("death.generatedDestiny");
+              sessionStorage.removeItem("death.destinyId");
               if (!assignmentId) return;
               void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_release_spirit" } }).catch(() => {});
             }}
@@ -75,6 +80,11 @@ export function HomePage() {
             to="/draft-a-run/intent"
             className="entry-btn"
             onClick={() => {
+              sessionStorage.removeItem("plan.buildIntent");
+              sessionStorage.removeItem("plan.buildIntent.depth");
+              sessionStorage.removeItem("plan.buildIntent.powerCurve");
+              sessionStorage.removeItem("plan.generatedDestiny");
+              sessionStorage.removeItem("plan.destinyId");
               if (!assignmentId) return;
               void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_draft_run" } }).catch(() => {});
             }}
@@ -96,6 +106,11 @@ export function HomePage() {
             to="/lucky-roll/journey"
             className="entry-btn"
             onClick={() => {
+              sessionStorage.removeItem("lucky.buildIntent");
+              sessionStorage.removeItem("lucky.buildIntent.depth");
+              sessionStorage.removeItem("lucky.buildIntent.powerCurve");
+              sessionStorage.removeItem("lucky.generatedDestiny");
+              sessionStorage.removeItem("lucky.destinyId");
               if (!assignmentId) return;
               void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_lucky_roll" } }).catch(() => {});
             }}

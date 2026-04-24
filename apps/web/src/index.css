@@ -401,6 +401,27 @@ a:hover {
   gap: 12px;
 }
 
+.icon-motif-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.icon-motif-card::before {
+  content: "";
+  position: absolute;
+  right: -26px;
+  top: -24px;
+  width: 132px;
+  height: 132px;
+  border-radius: 999px;
+  opacity: 0.16;
+  background-image: var(--motif-url);
+  background-size: cover;
+  background-position: center;
+  filter: saturate(1.12) contrast(1.08);
+  pointer-events: none;
+}
+
 .btn-primary {
   display: inline-flex;
   align-items: center;

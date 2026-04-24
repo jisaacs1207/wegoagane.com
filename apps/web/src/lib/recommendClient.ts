@@ -397,6 +397,25 @@ export async function fetchNameCandidates(params?: {
   return (await response.json()) as { names: NameCandidateRow[] };
 }
 
+export async function generateNameCandidates(input: {
+  sessionId: string;
+  destinyId?: string;
+  style?: "lore_world" | "hc_practical" | "light_humor" | "grimdark" | "neutral" | "pop_culture";
+  count?: number;
+  rerollSeed?: string;
+  currentName?: string;
+}): Promise<{ names: NameCandidateRow[]; aiUsed: boolean }> {
+  const response = await fetch("/api/v1/build/names/generate", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    throw new Error(`names_generate_failed:${response.status}`);
+  }
+  return (await response.json()) as { names: NameCandidateRow[]; aiUsed: boolean };
+}
+
 export async function commitJourneyBuild(input: {
   sessionId: string;
   destinyId: string;

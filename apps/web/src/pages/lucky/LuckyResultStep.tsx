@@ -2,8 +2,9 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { DestinyCard } from "../../components/cards/DestinyCard";
 import type { DestinyFixture } from "../../content/cardFixtures";
+import { wowPackUrl } from "../../content/identityAssets";
 import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
-import { commitJourneyBuild, fetchNameCandidates } from "../../lib/recommendClient";
+import { commitJourneyBuild, fetchNameCandidates, generateNameCandidates } from "../../lib/recommendClient";
 import { readStoredDestiny } from "../../lib/flowDestinyState";
 import { readBuildIntent } from "../../lib/readBuildIntent";
 
@@ -16,6 +17,8 @@ export function LuckyResultStep() {
   const [commitName, setCommitName] = useState("");
   const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
   const [commitMessage, setCommitMessage] = useState("");
+  const [isLoadingNames, setIsLoadingNames] = useState(false);
+  const [nameLane, setNameLane] = useState<"neutral" | "light_humor" | "lore_world">("neutral");
 
   useEffect(() => {
     const stored = readStoredDestiny("lucky");
@@ -32,10 +35,32 @@ export function LuckyResultStep() {
   }, [destinyId]);
 
   useEffect(() => {
-    void fetchNameCandidates({ limit: 6 })
+    setIsLoadingNames(true);
+    void fetchNameCandidates({ lane: nameLane, limit: 6 })
       .then((res) => setNameSuggestions(res.names.map((row) => row.name)))
-      .catch(() => setNameSuggestions([]));
-  }, []);
+      .catch(() => setNameSuggestions([]))
+      .finally(() => setIsLoadingNames(false));
+  }, [nameLane]);
+
+  async function loadGeneratedNames(reroll: boolean) {
+    if (!sessionId || !destinyId || isLoadingNames) return;
+    setIsLoadingNames(true);
+    try {
+      const res = await generateNameCandidates({
+        sessionId,
+        destinyId,
+        style: nameLane,
+        count: 8,
+        rerollSeed: reroll ? `${Date.now()}` : undefined,
+        currentName: commitName || undefined,
+      });
+      setNameSuggestions(res.names.map((row) => row.name));
+    } catch {
+      setCommitMessage("Could not generate more names yet.");
+    } finally {
+      setIsLoadingNames(false);
+    }
+  }
 
   async function commitBuild() {
     if (!sessionId || !destinyId) return;
@@ -128,7 +153,10 @@ export function LuckyResultStep() {
           </div>
         ) : null}
         </div>
-        <div className="card" style={{ marginTop: 12 }}>
+        <div
+          className="card icon-motif-card"
+          style={{ marginTop: 12, ["--motif-url" as string]: `url(${wowPackUrl("Abilities", "Blink.png")})` }}
+        >
         <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Name this build before commit</p>
         <input
           value={commitName}
@@ -145,7 +173,32 @@ export function LuckyResultStep() {
             ))}
           </div>
         ) : null}
+        <div className="flow-nav flow-nav--wrap" style={{ marginTop: 8 }}>
+          <button type="button" className={`btn-ghost ${nameLane === "neutral" ? "chip-btn--on" : ""}`} onClick={() => setNameLane("neutral")}>
+            Neutral
+          </button>
+          <button
+            type="button"
+            className={`btn-ghost ${nameLane === "light_humor" ? "chip-btn--on" : ""}`}
+            onClick={() => setNameLane("light_humor")}
+          >
+            Fun
+          </button>
+          <button
+            type="button"
+            className={`btn-ghost ${nameLane === "lore_world" ? "chip-btn--on" : ""}`}
+            onClick={() => setNameLane("lore_world")}
+          >
+            Lore
+          </button>
+        </div>
         <div className="flow-nav" style={{ marginTop: 10 }}>
+          <button type="button" className="btn-ghost" disabled={isLoadingNames || !sessionId} onClick={() => void loadGeneratedNames(false)}>
+            {isLoadingNames ? "Loading..." : "Generate more names"}
+          </button>
+          <button type="button" className="btn-ghost" disabled={isLoadingNames || !sessionId} onClick={() => void loadGeneratedNames(true)}>
+            Reroll names
+          </button>
           <button type="button" className="btn-primary" onClick={() => void commitBuild()}>
             Commit build URL
           </button>
