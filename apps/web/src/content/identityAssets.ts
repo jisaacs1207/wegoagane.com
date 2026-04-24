@@ -21,69 +21,81 @@ export type JourneyVectorKey =
   | "survivability"
   | "surprise";
 
-const RACE_PLACEHOLDER = "/placeholders/races/rune.svg";
-
 /**
- * Drop-in placeholder asset manifest.
- * Replace files under `public/placeholders/` with licensed art as needed.
+ * Vendored WoW UI texture pack (user-supplied). Served from `public/` as static files.
+ * Internal folders keep original names (spaces OK); URLs encode each segment.
  */
+export const WOW_ICON_PACK_BASE = "/wegoagane-wow-icon-pack-v1";
+
+export function wowPackUrl(...pathSegments: string[]): string {
+  return `${WOW_ICON_PACK_BASE}/${pathSegments.map((s) => encodeURIComponent(s)).join("/")}`;
+}
+
+const CHAR = "Characters and Creatures";
+const TRADE = "Trade";
+const ABIL = "Abilities";
+const SPELL = "Spells";
+const MISC = "Miscellaneous";
+const ARMOUR = "Armour";
+
+/** Class crest textures from pack (`mage.png`, `warrior.png`, …). */
 export const CLASS_ASSET_URLS: Record<ClassId, string> = {
-  warrior: "/placeholders/classes/warrior.svg",
-  mage: "/placeholders/classes/mage.svg",
-  rogue: "/placeholders/classes/rogue.svg",
-  priest: "/placeholders/classes/priest.svg",
-  hunter: "/placeholders/classes/hunter.svg",
-  warlock: "/placeholders/classes/warlock.svg",
-  druid: "/placeholders/classes/druid.svg",
-  paladin: "/placeholders/classes/paladin.svg",
-  shaman: "/placeholders/classes/shaman.svg",
+  warrior: wowPackUrl(CHAR, "warrior.png"),
+  mage: wowPackUrl(CHAR, "mage.png"),
+  rogue: wowPackUrl(CHAR, "rogue.png"),
+  priest: wowPackUrl(CHAR, "priest.png"),
+  hunter: wowPackUrl(CHAR, "hunter.png"),
+  warlock: wowPackUrl(CHAR, "warlock.png"),
+  druid: wowPackUrl(CHAR, "druid.png"),
+  paladin: wowPackUrl(CHAR, "paladin.png"),
+  shaman: wowPackUrl(CHAR, "shaman.png"),
 };
 
-export const FACTION_ASSET_URLS: Record<FactionId, string> = {
-  horde: "/placeholders/factions/horde.svg",
-  alliance: "/placeholders/factions/alliance.svg",
-  neutral: "/placeholders/factions/neutral.svg",
-};
-
+/** Race portraits from pack (Classic-era humanoid busts). */
 export const RACE_ASSET_URLS: Record<RaceId, string> = {
-  human: RACE_PLACEHOLDER,
-  dwarf: RACE_PLACEHOLDER,
-  night_elf: RACE_PLACEHOLDER,
-  gnome: RACE_PLACEHOLDER,
-  orc: RACE_PLACEHOLDER,
-  troll: RACE_PLACEHOLDER,
-  tauren: RACE_PLACEHOLDER,
-  undead: RACE_PLACEHOLDER,
-  neutral: RACE_PLACEHOLDER,
+  human: wowPackUrl(CHAR, "human.png"),
+  dwarf: wowPackUrl(CHAR, "dwarf.png"),
+  night_elf: wowPackUrl(CHAR, "nelf.png"),
+  gnome: wowPackUrl(CHAR, "gnome.png"),
+  orc: wowPackUrl(CHAR, "orc.png"),
+  troll: wowPackUrl(CHAR, "troll.png"),
+  tauren: wowPackUrl(CHAR, "tauren.png"),
+  undead: wowPackUrl(CHAR, "undead.png"),
+  neutral: wowPackUrl(MISC, "QuestionMark.png"),
+};
+
+/** Faction banners / tabards from pack. */
+export const FACTION_ASSET_URLS: Record<FactionId, string> = {
+  horde: wowPackUrl(MISC, "Tournaments_banner_Orc.png"),
+  alliance: wowPackUrl(MISC, "Tournaments_banner_Human.png"),
+  neutral: wowPackUrl(MISC, "TabardPVP_02.png"),
 };
 
 export const VECTOR_JOURNEY_URLS: Record<JourneyVectorKey, string> = {
-  profession: "/placeholders/journey/vector-profession.svg",
-  playstyle: "/placeholders/journey/vector-playstyle.svg",
-  class_fantasy: "/placeholders/journey/vector-class-fantasy.svg",
-  combat_style: "/placeholders/journey/vector-combat.svg",
-  survivability: "/placeholders/journey/vector-survivability.svg",
-  surprise: "/placeholders/journey/vector-surprise.svg",
+  profession: wowPackUrl(TRADE, "engineering.png"),
+  playstyle: wowPackUrl(ABIL, "SliceDice.png"),
+  class_fantasy: wowPackUrl(SPELL, "StarFire.png"),
+  combat_style: wowPackUrl(ABIL, "SwordandBoard.png"),
+  survivability: wowPackUrl(ABIL, "ShieldWall.png"),
+  surprise: wowPackUrl(MISC, "Dice_01.png"),
 };
 
-export const DEPTH_JOURNEY_URL = "/placeholders/journey/depth.svg";
+export const DEPTH_JOURNEY_URL = wowPackUrl(SPELL, "BorrowedTime.png");
 
-/** Depth-specific crest (replaces generic depth icon when strip is expanded). */
 export const DEPTH_VISUAL_URLS: Record<"quick" | "balanced" | "dialed_in", string> = {
-  quick: "/placeholders/journey/depth-quick.svg",
-  balanced: "/placeholders/journey/depth-balanced.svg",
-  dialed_in: "/placeholders/journey/depth-dialed.svg",
+  quick: wowPackUrl(SPELL, "BurningSpeed.png"),
+  balanced: wowPackUrl(SPELL, "BorrowedTime.png"),
+  dialed_in: wowPackUrl(SPELL, "TimeStop.png"),
 };
 
-/** Core route preset from journey step 1. */
 export const CORE_PRESET_VISUAL_URLS: Record<"safe" | "balanced" | "bold", string> = {
-  safe: "/placeholders/journey/preset-safe.svg",
-  balanced: "/placeholders/journey/preset-balanced.svg",
-  bold: "/placeholders/journey/preset-bold.svg",
+  safe: wowPackUrl(ABIL, "ShieldWall.png"),
+  balanced: wowPackUrl(ABIL, "SwordandBoard.png"),
+  bold: wowPackUrl(ABIL, "BloodFrenzy.png"),
 };
 
-export const PROF_SLOT_URL = "/placeholders/journey/profession-slot.svg";
-export const ITEM_SLOT_URL = "/placeholders/journey/item-slot.svg";
+export const PROF_SLOT_URL = wowPackUrl(TRADE, "engineering.png");
+export const ITEM_SLOT_URL = wowPackUrl(ARMOUR, "Helm_Plate_Naxxramas_RaidWarrior_C_01.png");
 
 export function inferRaceFromHeadline(headline: string): RaceId {
   const h = headline.toLowerCase();
@@ -102,4 +114,9 @@ export function inferFactionFromRace(raceId: RaceId): FactionId {
   if (raceId === "neutral") return "neutral";
   if (raceId === "human" || raceId === "dwarf" || raceId === "night_elf" || raceId === "gnome") return "alliance";
   return "horde";
+}
+
+export function formatRaceLabel(raceId: RaceId): string {
+  if (raceId === "neutral") return "Race TBD";
+  return raceId.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }

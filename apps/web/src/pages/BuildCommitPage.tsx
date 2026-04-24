@@ -8,6 +8,8 @@ import {
   ITEM_SLOT_URL,
   PROF_SLOT_URL,
   RACE_ASSET_URLS,
+  WOW_ICON_PACK_BASE,
+  formatRaceLabel,
   inferFactionFromRace,
   inferRaceFromHeadline,
 } from "../content/identityAssets";
@@ -88,7 +90,7 @@ export function BuildCommitPage() {
   }
 
   return (
-    <div>
+    <div className="commit-page-shell">
       <div className="card">
         <p className="step-label">Committed build</p>
         <h1 className="hero-question">{record.commitName || "Hardcore build artifact"}</h1>
@@ -96,30 +98,33 @@ export function BuildCommitPage() {
           Immutable URL: <code>/build/commit/{record.slug}</code>
         </p>
       </div>
+      <div className="commit-page-grid">
+        <div className="commit-page-grid__primary">
       <div style={{ marginTop: 12 }}>
-        <DestinyCard data={destiny} />
+        <DestinyCard data={destiny} compact />
       </div>
       <div className="card commit-identity-panel" style={{ marginTop: 12 }}>
         <p className="step-label">Classic identity packet</p>
         <p className="hero-sub" style={{ marginTop: 0, marginBottom: 12 }}>
-          Frozen artifact — swap placeholder art under <code>public/placeholders/</code> anytime.
+          Frozen artifact — class / race / faction art from <code>{WOW_ICON_PACK_BASE}</code>.
         </p>
         <div className="commit-identity-grid">
           <figure className="commit-identity-tile">
-            <IdentityPortrait
-              src={CLASS_ASSET_URLS[destiny.classId]}
-              alt={`${destiny.classId} class crest`}
-              className="commit-identity-tile__img"
-              title={`Class: ${destiny.classId}`}
-            />
+            <span className="commit-identity-tile__class-ring">
+              <IdentityPortrait
+                src={CLASS_ASSET_URLS[destiny.classId]}
+                alt={`${destiny.classId} class`}
+                className="commit-identity-tile__class-img"
+              />
+            </span>
             <figcaption>Class</figcaption>
           </figure>
           <figure className="commit-identity-tile">
             <IdentityPortrait
               src={RACE_ASSET_URLS[raceId]}
-              alt={`${raceId.replace("_", " ")} race crest`}
+              alt={formatRaceLabel(raceId)}
               className="commit-identity-tile__img"
-              title={`Race signal: ${raceId}`}
+              title={formatRaceLabel(raceId)}
             />
             <figcaption>Race</figcaption>
           </figure>
@@ -172,7 +177,7 @@ export function BuildCommitPage() {
             Retool from this run
           </button>
           <Link to={`/build/${record.destinyId}`} className="btn-ghost">
-            Open detailed sheet
+            Open technical sheet
           </Link>
         </div>
       </div>
@@ -194,6 +199,22 @@ export function BuildCommitPage() {
           </button>
         </div>
         {message ? <p style={{ marginBottom: 0 }}>{message}</p> : null}
+      </div>
+        </div>
+        <aside className="commit-page-grid__guidance">
+          <div className="card">
+            <p className="step-label">Build guidance (preview)</p>
+            <p className="hero-sub" style={{ marginTop: 0 }}>
+              On desktop this column stays visible while you scroll. AI-enriched sections (profession recipes, spike levels,
+              warnings, and playstyle cadence) will attach here from the committed payload as the coach pipeline fills in.
+            </p>
+            <ul style={{ margin: "10px 0 0", paddingLeft: 18, fontSize: 13, color: "var(--tp)", lineHeight: 1.45 }}>
+              <li>Playstyle: {destiny.bullets.join(" · ")}</li>
+              <li>Professions: tie-break from your journey chips + plan JSON when present.</li>
+              <li>Power budget: inferred from survival / tempo tags until explicit curve ships server-side.</li>
+            </ul>
+          </div>
+        </aside>
       </div>
     </div>
   );

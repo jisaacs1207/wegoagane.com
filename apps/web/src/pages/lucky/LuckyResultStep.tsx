@@ -5,6 +5,7 @@ import type { DestinyFixture } from "../../content/cardFixtures";
 import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 import { commitJourneyBuild, fetchNameCandidates } from "../../lib/recommendClient";
 import { readStoredDestiny } from "../../lib/flowDestinyState";
+import { readBuildIntent } from "../../lib/readBuildIntent";
 
 export function LuckyResultStep() {
   const [destiny, setDestiny] = useState<DestinyFixture | null>(null);
@@ -75,7 +76,7 @@ export function LuckyResultStep() {
 
   return (
     <div>
-      <DestinyCard data={destiny} />
+      <DestinyCard data={destiny} intentSignals={readBuildIntent("lucky.buildIntent")} />
       <div className="card" style={{ marginTop: 12 }}>
         <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Was this close to what you wanted?</p>
         <div className="flow-nav" style={{ marginTop: 10 }}>
@@ -149,9 +150,6 @@ export function LuckyResultStep() {
         {commitMessage ? <p style={{ marginBottom: 0 }}>{commitMessage}</p> : null}
       </div>
       <div className="flow-nav" style={{ marginTop: 16 }}>
-        <Link to={`/build/${destinyId}`} className="btn-primary">
-          Open HC build sheet
-        </Link>
         <Link to="/lucky-roll/journey" className="btn-ghost">
           Retool path
         </Link>

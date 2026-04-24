@@ -7,6 +7,8 @@ import {
 import { DestinyCard } from "../components/cards/DestinyCard";
 import { MemorialCard } from "../components/cards/MemorialCard";
 import { ShareComboLayout } from "../components/cards/ShareComboLayout";
+import { CLASS_ASSET_URLS, WOW_ICON_PACK_BASE } from "../content/identityAssets";
+import { IdentityPortrait } from "../components/IdentityPortrait";
 import { ClassIcon } from "../icons/ClassIcon";
 import { CLASS_IDS } from "../icons/types";
 
@@ -17,16 +19,27 @@ export function DesignCardsPage() {
       <p className="step-label">M2 · design QA</p>
       <h1 className="hero-question">Card shells & icons</h1>
       <p className="hero-sub">
-        Reference layouts: class glyphs (handbook §14.4), memorial warmth, destiny stripe, and memorial+destiny share combo (§15.1). Fixtures are placeholders until the pipeline ships.
+        Reference layouts: vector class glyphs (§14.4), vendored class crests from <code>{WOW_ICON_PACK_BASE}</code>, memorial warmth, destiny stripe, and memorial+destiny share combo (§15.1).
       </p>
 
       <div className="card" style={{ marginTop: 20 }}>
-        <p className="step-label">Class icons</p>
+        <p className="step-label">Class · vector glyphs</p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "12px 16px", alignItems: "center" }}>
           {CLASS_IDS.map((id) => (
             <span key={id} style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--ts)", fontSize: 12 }}>
               <ClassIcon classId={id} />
               {id}
+            </span>
+          ))}
+        </div>
+        <p className="step-label" style={{ marginTop: 16 }}>
+          Class · texture pack
+        </p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+          {CLASS_IDS.map((id) => (
+            <span key={`tex-${id}`} style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              <IdentityPortrait src={CLASS_ASSET_URLS[id]} alt="" className="design-cards-class-tex" title={id} />
+              <span style={{ fontSize: 10, color: "var(--ts)" }}>{id}</span>
             </span>
           ))}
         </div>

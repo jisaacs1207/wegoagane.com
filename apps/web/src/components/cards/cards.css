@@ -34,6 +34,24 @@
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.22);
 }
 
+.memorial-card__class-crest {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--gold), transparent 45%);
+  background: radial-gradient(circle at 30% 20%, rgba(255, 210, 120, 0.12), transparent 60%);
+}
+
+.memorial-card__class-crest-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
 .memorial-card__mark {
   color: var(--gold-dim);
   display: flex;
@@ -120,6 +138,31 @@
   flex-shrink: 0;
 }
 
+.destiny-card__title-class-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid #4f4334;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.destiny-card__class-ring-img {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  object-fit: cover;
+  display: block;
+}
+
+.destiny-card__race-portrait {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid #4f4334;
+  object-fit: cover;
+}
+
 .destiny-card__titles h2 {
   margin: 0 0 4px;
   font-size: 17px;
@@ -131,6 +174,101 @@
   margin: 0;
   font-size: 13px;
   color: var(--ts);
+}
+
+.destiny-card__identity-band {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 10px 0 12px;
+  flex-wrap: wrap;
+}
+
+.destiny-card__class-ring {
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--gold), transparent 40%);
+  background: radial-gradient(circle at 30% 20%, rgba(255, 210, 120, 0.08), transparent 55%);
+}
+
+.destiny-card__race-faction {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.destiny-card__race-faction-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.destiny-card__race-line {
+  font-size: 13px;
+  color: var(--ts);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.destiny-card__faction-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--gold), transparent 55%);
+  width: fit-content;
+}
+
+.destiny-card__faction-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+.destiny-card__faction-pill--horde {
+  color: #f0c4c4;
+  border-color: rgba(196, 72, 72, 0.45);
+}
+
+.destiny-card__faction-pill--alliance {
+  color: #c6d9ff;
+  border-color: rgba(72, 118, 196, 0.45);
+}
+
+.destiny-card__faction-pill--neutral {
+  color: var(--ts);
+}
+
+.destiny-card__intent-wrap {
+  margin: 2px 0 10px;
+}
+
+.destiny-card__intent-label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ts);
+  margin: 0 0 6px;
+}
+
+.destiny-card__intent-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.destiny-card__intent-chip {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--gold), transparent 60%);
+  color: #bcae93;
 }
 
 .destiny-card__identity-row {
@@ -202,6 +340,18 @@
 
 .destiny-card__bullets li {
   margin-bottom: 4px;
+}
+
+.destiny-card__rollup {
+  margin: 14px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #c9bba3;
+}
+
+.destiny-card__rollup strong {
+  color: #dcc7a4;
+  font-weight: 600;
 }
 
 .share-combo {

@@ -470,7 +470,7 @@ textarea::placeholder {
   display: none;
 }
 
-/* Identity portraits — swap assets under public/placeholders/ */
+/* Identity portraits — primary art from public/wegoagane-wow-icon-pack-v1/ (see identityAssets.ts) */
 .identity-portrait {
   display: block;
   object-fit: cover;
@@ -666,4 +666,161 @@ textarea::placeholder {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ts);
+}
+
+.commit-identity-tile__class-ring {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  padding: 8px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--gold), transparent 40%);
+}
+
+.commit-identity-tile__class-img {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  object-fit: cover;
+  display: block;
+}
+
+.design-cards-class-tex {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid #4f4334;
+  object-fit: cover;
+}
+
+.commit-page-shell {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.commit-page-grid {
+  display: grid;
+  gap: 14px;
+  margin-top: 12px;
+  align-items: start;
+}
+
+@media (min-width: 960px) {
+  .commit-page-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  }
+
+  .commit-page-grid__guidance {
+    position: sticky;
+    top: 16px;
+  }
+}
+
+.result-page-grid {
+  display: grid;
+  gap: 14px;
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .result-page-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  }
+}
+
+.result-page-grid__main,
+.result-page-grid__side {
+  min-width: 0;
+}
+
+.journey-vector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.journey-vector-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 12px 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #4a4034;
+  background: linear-gradient(160deg, rgba(40, 34, 26, 0.95), rgba(22, 20, 18, 0.98));
+  text-align: left;
+  cursor: pointer;
+}
+
+.journey-vector-tile--on {
+  border-color: color-mix(in srgb, var(--gold), #4a4034 35%);
+  box-shadow: 0 0 0 1px rgba(212, 175, 104, 0.35);
+}
+
+.journey-vector-tile__icons {
+  display: flex;
+  gap: 4px;
+}
+
+.journey-vector-tile__classimg {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #4f4334;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.journey-vector-tile__classimg.identity-portrait--fallback {
+  width: 28px;
+  height: 28px;
+}
+
+.journey-vector-tile__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e8dcc4;
+}
+
+.journey-vector-tile__blurb {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--ts);
+}
+
+.journey-power-curve {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.journey-power-curve__btn {
+  border-radius: 999px;
+  border: 1px solid #4a4034;
+  background: rgba(21, 18, 14, 0.8);
+  color: #dcc7a4;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.journey-power-curve__btn--on {
+  border-color: color-mix(in srgb, var(--gold), #4a4034 20%);
+  color: var(--gold-bright);
+}
+
+.journey-power-curve__clear {
+  border: none;
+  background: transparent;
+  color: var(--ts);
+  font-size: 11px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.flow-nav.flow-nav--wrap {
+  flex-wrap: wrap;
+  gap: 8px;
 }

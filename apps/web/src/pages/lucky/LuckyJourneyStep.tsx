@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { BuildIntentChips } from "../../components/BuildIntentChips";
 import type { BuildIntentSignals } from "../../lib/buildIntentTypes";
+import { augmentNextSignalWithPower } from "../../lib/journeySignalsExtras";
 import { fetchDestiny, fetchGrowthAssignment, submitGrowthOutcome } from "../../lib/recommendClient";
 import { buildMemoryHints } from "../../lib/memoryProfile";
 import { writeStoredDestiny } from "../../lib/flowDestinyState";
@@ -28,7 +29,7 @@ export function LuckyJourneyStep() {
         entryPath: "lucky_roll",
         sessionId,
         signals: {
-          nextSignal: "Surprise me",
+          nextSignal: augmentNextSignalWithPower("Surprise me", "lucky.buildIntent"),
           memoryHints: buildMemoryHints(),
           recommendVariantId: assignment?.variantId ?? undefined,
           ...signals,

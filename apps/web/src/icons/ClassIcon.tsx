@@ -16,7 +16,8 @@ const VAR: Record<ClassId, string> = {
 type IconProps = { classId: ClassId; accessibleName?: string } & Omit<SVGProps<SVGSVGElement>, "children">;
 
 /**
- * Original geometric glyphs (not WoW assets). Legible at ~16px per handbook §14.4.
+ * Class-colored vector glyphs (WoW palette via CSS vars — not Blizzard artwork).
+ * Prefer these over unrelated abstract marks anywhere class identity should read.
  */
 export function ClassIcon({ classId, accessibleName, ...rest }: IconProps) {
   const stroke = VAR[classId];

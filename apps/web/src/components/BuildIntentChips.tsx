@@ -9,8 +9,10 @@ import {
   type CorePreset,
   type IntentDepth,
 } from "./intent/intentOptions";
-import { JourneyIdentityStrip } from "./journey/JourneyIdentityStrip";
-import type { JourneyVectorKey } from "../content/identityAssets";
+import { CLASS_ASSET_URLS, type JourneyVectorKey } from "../content/identityAssets";
+import { IdentityPortrait } from "./IdentityPortrait";
+import type { ClassId } from "../icons/types";
+import { readPowerCurve, type PowerCurveId } from "../lib/journeySignalsExtras";
 
 type Props = {
   storageKey: string;
@@ -20,6 +22,31 @@ type Props = {
 };
 type JourneyStep = "depth" | "vector" | "question" | "review";
 type VectorKey = JourneyVectorKey;
+
+const VECTOR_CLASS_GLIMPSE: Record<VectorKey, ClassId[]> = {
+  profession: ["hunter", "rogue", "shaman"],
+  playstyle: ["priest", "warrior", "mage"],
+  class_fantasy: ["paladin", "druid", "warlock"],
+  combat_style: ["warrior", "rogue", "hunter"],
+  survivability: ["warrior", "paladin", "priest"],
+  surprise: ["druid", "mage", "warlock"],
+};
+
+const VECTOR_ROWS: Array<{ id: VectorKey; title: string; blurb: string }> = [
+  { id: "profession", title: "Profession-first", blurb: "Gold, consumables, and profession pairs lead the run." },
+  { id: "playstyle", title: "Playstyle", blurb: "Risk, pulls, and how you want the world to feel." },
+  { id: "class_fantasy", title: "Class fantasy", blurb: "Holy, nature, fel, or steel — tone before specifics." },
+  { id: "combat_style", title: "Combat style", blurb: "Melee, ranged, or hybrid pacing." },
+  { id: "survivability", title: "Survivability", blurb: "How hard you want the survival lane to bite." },
+  { id: "surprise", title: "Surprise me", blurb: "Let the engine bias toward novelty within HC guardrails." },
+];
+
+const POWER_CURVE_OPTIONS: Array<{ id: PowerCurveId; label: string }> = [
+  { id: "early", label: "Early power" },
+  { id: "mid", label: "Mid climb" },
+  { id: "late", label: "Late spikes" },
+  { id: "balanced", label: "Balanced curve" },
+];
 
 function readStorage(key: string): BuildIntentSignals {
   try {
@@ -62,6 +89,7 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
   const [vector, setVector] = useState<VectorKey>("survivability");
   const [questionIndex, setQuestionIndex] = useState(0);
   const [corePreset, setCorePreset] = useState<CorePreset>("balanced");
+  const [powerCurve, setPowerCurve] = useState<PowerCurveId | null>(() => readPowerCurve(storageKey));
 
   function persist(next: BuildIntentSignals) {
     try {
@@ -205,6 +233,20 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
             ) as BuildIntentSignals["buildVectors"],
           }),
       },
+      {
+        id: "fantasy_weapon",
+        prompt: "Weapon identity lean?",
+        answers: ["Two-hander fantasy", "Dual wield", "Caster focus", "Flexible"],
+        apply: (a) =>
+          ({
+            ...value,
+            buildVectors: toggleList(
+              value.buildVectors,
+              a === "Two-hander fantasy" ? "melee" : a === "Dual wield" ? "melee" : a === "Caster focus" ? "caster" : "hybrid",
+              6,
+            ) as BuildIntentSignals["buildVectors"],
+          }),
+      },
     ],
     combat_style: [
       {
@@ -217,6 +259,20 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
             buildVectors: toggleList(
               value.buildVectors,
               a === "Melee" ? "melee" : a === "Ranged" ? "ranged" : a === "Hybrid" ? "hybrid" : "hybrid",
+              6,
+            ) as BuildIntentSignals["buildVectors"],
+          }),
+      },
+      {
+        id: "combat_ctrl",
+        prompt: "Control vs throughput?",
+        answers: ["High control", "Balanced", "Throughput", "Chaos ok"],
+        apply: (a) =>
+          ({
+            ...value,
+            buildVectors: toggleList(
+              value.buildVectors,
+              a === "High control" ? "tank" : a === "Balanced" ? "hybrid" : a === "Throughput" ? "rage" : "melee",
               6,
             ) as BuildIntentSignals["buildVectors"],
           }),
@@ -237,6 +293,20 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
             ) as BuildIntentSignals["statPhilosophy"],
           }),
       },
+      {
+        id: "survival_recovery",
+        prompt: "Recovery style?",
+        answers: ["Slow and steady", "Burst recovery", "Minimize downtime", "Map aware"],
+        apply: (a) =>
+          ({
+            ...value,
+            buildVectors: toggleList(
+              value.buildVectors,
+              a === "Slow and steady" ? "tank" : a === "Burst recovery" ? "hybrid" : a === "Minimize downtime" ? "solo" : "group_ok",
+              6,
+            ) as BuildIntentSignals["buildVectors"],
+          }),
+      },
     ],
     surprise: [
       {
@@ -244,6 +314,26 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
         prompt: "How wild should the surprise be?",
         answers: ["Stable surprise", "Balanced surprise", "Spicy surprise", "Maximum chaos"],
         apply: (a) => ({ ...value, raceMode: a === "Maximum chaos" ? "surprise" : "signal_inferred" }),
+      },
+      {
+        id: "surprise_class",
+        prompt: "Class flexibility for surprise?",
+        answers: ["Any spec ok", "Avoid pet classes", "Prefer hybrid classes", "Full wildcard"],
+        apply: (a) =>
+          ({
+            ...value,
+            buildVectors: toggleList(
+              value.buildVectors,
+              a === "Avoid pet classes"
+                ? "solo"
+                : a === "Prefer hybrid classes"
+                  ? "hybrid"
+                  : a === "Full wildcard"
+                    ? "caster"
+                    : "group_ok",
+              6,
+            ) as BuildIntentSignals["buildVectors"],
+          }),
       },
     ],
   };
@@ -271,14 +361,23 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
     }
   }
 
+  function setStoredPowerCurve(next: PowerCurveId | null) {
+    setPowerCurve(next);
+    try {
+      if (next) sessionStorage.setItem(`${storageKey}.powerCurve`, next);
+      else sessionStorage.removeItem(`${storageKey}.powerCurve`);
+    } catch {
+      /* ignore */
+    }
+  }
+
   return (
     <div className="build-intent card" style={{ marginTop: 12 }}>
-      <JourneyIdentityStrip step={step} vector={vector} depth={depth} corePreset={corePreset} signals={value} />
       <p className="step-label" style={{ marginBottom: 8 }}>
         Build journey
       </p>
       <p className="hero-sub" style={{ marginTop: 0, marginBottom: 10, fontSize: 12 }}>
-        Choose a vector, answer one question per screen, and generate whenever you are ready.
+        Pick depth and route, tune one vector at a time, then generate when you are ready.
       </p>
       <p className="hero-sub" style={{ marginTop: 0, marginBottom: 12, fontSize: 12 }}>
         Step {step === "depth" ? "1" : step === "vector" ? "2" : step === "question" ? "3" : "4"} of 4
@@ -307,13 +406,6 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
           <p className="hero-sub" style={{ marginTop: 8, marginBottom: 12, fontSize: 12 }}>
             {depthHelper}
           </p>
-          <details style={{ marginBottom: 12 }}>
-            <summary style={{ cursor: "pointer", fontSize: 12, color: "var(--ts)" }}>What changes in each mode</summary>
-            <p className="hero-sub" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>
-              Quick asks only core preference. Balanced lets you branch into selected details. Dialed-in expects deeper
-              tuning before final generation.
-            </p>
-          </details>
           <fieldset style={{ border: "none", padding: 0, margin: "0 0 12px 0" }}>
             <legend style={{ fontSize: 12, color: "var(--ts)", marginBottom: 6 }}>Core preference</legend>
             <div className="chip-row">
@@ -336,6 +428,30 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
               ))}
             </div>
           </fieldset>
+          <fieldset className="journey-power-fieldset" style={{ border: "none", padding: 0, margin: "0 0 12px 0" }}>
+            <legend style={{ fontSize: 12, color: "var(--ts)", marginBottom: 6 }}>Power curve (optional)</legend>
+            <p className="hero-sub" style={{ marginTop: 0, marginBottom: 8, fontSize: 11 }}>
+              Nudges the recommender toward early kit, mid climb, late spikes, or an even curve.
+            </p>
+            <div className="journey-power-curve">
+              {POWER_CURVE_OPTIONS.map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  className={`journey-power-curve__btn ${powerCurve === o.id ? "journey-power-curve__btn--on" : ""}`}
+                  onClick={() => {
+                    setStoredPowerCurve(o.id);
+                    trackEvent(AnalyticsEvent.IntentDepthSelected, { ...eventContext, powerCurve: o.id });
+                  }}
+                >
+                  {o.label}
+                </button>
+              ))}
+              <button type="button" className="journey-power-curve__clear" onClick={() => setStoredPowerCurve(null)}>
+                Clear
+              </button>
+            </div>
+          </fieldset>
           <div className="flow-nav">
             {depth === "quick" ? (
               <button type="button" className="btn-primary" onClick={() => setStep("review")}>
@@ -351,26 +467,33 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
       ) : null}
       {step === "vector" ? (
         <>
-          <p className="hero-sub" style={{ marginTop: 0, marginBottom: 10, fontSize: 12 }}>What is your build entrance vector?</p>
-          <div className="chip-row" style={{ marginBottom: 12 }}>
-            {[
-              { id: "profession", label: "Profession-first" },
-              { id: "playstyle", label: "Playstyle" },
-              { id: "class_fantasy", label: "Class fantasy" },
-              { id: "combat_style", label: "Combat style" },
-              { id: "survivability", label: "Survivability" },
-              { id: "surprise", label: "Surprise me" },
-            ].map((opt) => (
+          <p className="hero-sub" style={{ marginTop: 0, marginBottom: 10, fontSize: 12 }}>
+            What is your build entrance vector? Each tile previews three class crests from the texture pack.
+          </p>
+          <div className="journey-vector-grid">
+            {VECTOR_ROWS.map((row) => (
               <button
-                key={opt.id}
+                key={row.id}
                 type="button"
-                className={`chip-btn ${vector === opt.id ? "chip-btn--on" : ""}`}
+                className={`journey-vector-tile ${vector === row.id ? "journey-vector-tile--on" : ""}`}
                 onClick={() => {
-                  setVector(opt.id as VectorKey);
-                  trackEvent(AnalyticsEvent.VectorSelected, { ...eventContext, vector: opt.id });
+                  setVector(row.id);
+                  trackEvent(AnalyticsEvent.VectorSelected, { ...eventContext, vector: row.id });
                 }}
               >
-                {opt.label}
+                <div className="journey-vector-tile__icons" aria-hidden>
+                  {VECTOR_CLASS_GLIMPSE[row.id].map((cid) => (
+                    <IdentityPortrait
+                      key={cid}
+                      src={CLASS_ASSET_URLS[cid]}
+                      alt=""
+                      className="journey-vector-tile__classimg"
+                      title={cid}
+                    />
+                  ))}
+                </div>
+                <span className="journey-vector-tile__title">{row.title}</span>
+                <span className="journey-vector-tile__blurb">{row.blurb}</span>
               </button>
             ))}
           </div>
@@ -405,7 +528,7 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
                 onClick={() => {
                   persist(currentQuestion.apply(answer));
                   trackEvent(AnalyticsEvent.QuestionAnswered, { ...eventContext, questionId: currentQuestion.id, answer });
-                  if (questionIndex >= 4 || questionIndex >= currentQuestions.length - 1) {
+                  if (questionIndex >= currentQuestions.length - 1) {
                     setStep("review");
                   } else {
                     setQuestionIndex((prev) => prev + 1);
@@ -416,9 +539,19 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
               </button>
             ))}
           </div>
-          <div className="flow-nav">
+          <div className="flow-nav flow-nav--wrap">
             <button type="button" className="btn-ghost" onClick={() => setStep("vector")}>
               Back
+            </button>
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => {
+                setQuestionIndex(0);
+                setStep("vector");
+              }}
+            >
+              Different priority
             </button>
             <button type="button" className="btn-primary" onClick={() => setStep("review")}>
               Generate now

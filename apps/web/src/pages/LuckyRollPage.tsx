@@ -2,7 +2,9 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { DestinyCard } from "../components/cards/DestinyCard";
 import { type DestinyFixture } from "../content/cardFixtures";
+import { augmentNextSignalWithPower } from "../lib/journeySignalsExtras";
 import { fetchDestiny, fetchGrowthAssignment, submitGrowthOutcome } from "../lib/recommendClient";
+import { readBuildIntent } from "../lib/readBuildIntent";
 import { buildMemoryHints } from "../lib/memoryProfile";
 import { BuildIntentChips } from "../components/BuildIntentChips";
 import type { BuildIntentSignals } from "../lib/buildIntentTypes";
@@ -47,7 +49,7 @@ export function LuckyRollPage() {
         entryPath: "lucky_roll",
         sessionId,
         signals: {
-          nextSignal: "Surprise me",
+          nextSignal: augmentNextSignalWithPower("Surprise me", "lucky.buildIntent"),
           memoryHints: buildMemoryHints(),
           recommendVariantId: variantId ?? undefined,
           ...signals,
@@ -88,7 +90,7 @@ export function LuckyRollPage() {
           {loadError}
         </p>
       ) : null}
-      {destiny ? <DestinyCard data={destiny} /> : null}
+      {destiny ? <DestinyCard data={destiny} intentSignals={readBuildIntent("lucky.buildIntent")} /> : null}
       {destiny ? (
         <div className="card" style={{ marginTop: 12 }}>
           <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Was this close to what you wanted?</p>

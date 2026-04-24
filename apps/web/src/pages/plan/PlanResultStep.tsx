@@ -11,6 +11,7 @@ import {
   type RerollReason,
   submitDestinyFeedback,
 } from "../../lib/recommendClient";
+import { augmentFreeformWithPower } from "../../lib/journeySignalsExtras";
 import { readBuildIntent } from "../../lib/readBuildIntent";
 import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 import { buildMemoryHints, rememberAccept, rememberReroll } from "../../lib/memoryProfile";
@@ -118,7 +119,7 @@ export function PlanResultStep() {
         sessionId,
         signals: {
           intent,
-          freeform,
+          freeform: augmentFreeformWithPower(freeform, "plan.buildIntent"),
           memoryHints: buildMemoryHints(),
           recommendVariantId: recommendVariantId ?? undefined,
           ...readBuildIntent("plan.buildIntent"),
@@ -238,7 +239,7 @@ export function PlanResultStep() {
         </div>
       ) : (
         <>
-          <DestinyCard data={destiny} />
+          <DestinyCard data={destiny} intentSignals={readBuildIntent("plan.buildIntent")} />
           <div className="card" style={{ marginTop: 12 }}>
             <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Was this close to what you wanted?</p>
             <div className="flow-nav" style={{ marginTop: 10 }}>
@@ -289,9 +290,6 @@ export function PlanResultStep() {
           </div>
           {destinyId ? (
             <div className="flow-nav" style={{ marginTop: 12 }}>
-              <Link to={`/build/${destinyId}`} className="btn-ghost">
-                Open HC build sheet
-              </Link>
               <Link to="/draft-a-run/journey" className="btn-ghost">
                 Retool journey
               </Link>

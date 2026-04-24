@@ -100,3 +100,12 @@ export function optionLabel(id: string): string {
   return all.find((x) => x.id === id)?.label ?? id;
 }
 
+/** Human labels for chips the player picked in the build journey. */
+export function signalSummaryLabels(s: BuildIntentSignals): string[] {
+  const ids: string[] = [];
+  ids.push(...(s.statPhilosophy ?? []));
+  ids.push(...(s.professionIntents ?? []));
+  ids.push(...(s.buildVectors ?? []));
+  if (s.raceMode) ids.push(s.raceMode);
+  return ids.map((id) => optionLabel(id));
+}
