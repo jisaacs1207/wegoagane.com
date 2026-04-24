@@ -5,6 +5,12 @@ let initialized = false;
 
 export const AnalyticsEvent = {
   FlowStarted: "flow_started",
+  IntentDepthSelected: "intent_depth_selected",
+  IntentAdvancedToggled: "intent_advanced_toggled",
+  IntentGenerateClicked: "intent_generate_clicked",
+  IntentRegenerateClicked: "intent_regenerate_clicked",
+  IntentFeedbackPromptShown: "intent_feedback_prompt_shown",
+  IntentFeedbackSubmitted: "intent_feedback_submitted",
   RerollReasonSelected: "reroll_reason_selected",
   AcceptClicked: "accept_clicked",
   PostAcceptRatingSubmitted: "post_accept_rating_submitted",

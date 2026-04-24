@@ -12,6 +12,7 @@ import {
 } from "../../lib/recommendClient";
 import { BuildIntentChips } from "../../components/BuildIntentChips";
 import { readBuildIntent } from "../../lib/readBuildIntent";
+import type { BuildIntentSignals } from "../../lib/buildIntentTypes";
 import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 import { buildMemoryHints, rememberAccept, rememberReroll } from "../../lib/memoryProfile";
 
@@ -36,83 +37,83 @@ export function PlanResultStep() {
   const [loadError, setLoadError] = useState<string>("");
   const [loadingPhase, setLoadingPhase] = useState("Reviewing your run intent...");
   const [recommendVariantId, setRecommendVariantId] = useState<string | null>(null);
-
-  async function wait(ms: number) {
-    await new Promise((resolve) => setTimeout(resolve, ms));
-  }
+  const [feedbackChoice, setFeedbackChoice] = useState<"closer" | "off" | null>(null);
+  const [feedbackReason, setFeedbackReason] = useState<string>("");
 
   useEffect(() => {
-    const intent = sessionStorage.getItem("plan.intent") ?? undefined;
-    const freeform = sessionStorage.getItem("plan.freeform") ?? undefined;
     const existingSession = sessionStorage.getItem("plan.sessionId") ?? undefined;
 
     const seededSession = existingSession ?? crypto.randomUUID();
-    const assignmentPromise = fetchGrowthAssignment({
+    if (!existingSession) {
+      sessionStorage.setItem("plan.sessionId", seededSession);
+    }
+    void fetchGrowthAssignment({
       sessionId: seededSession,
       surface: "recommendation",
       entryPath: "draft_a_run",
     })
       .then((assignment) => {
         setRecommendVariantId(assignment.variantId);
-        return assignment;
       })
       .catch(() => null);
-
-    void (async () => {
-      setIsLoadingDestiny(true);
-      setLoadError("");
-      setLoadingPhase("Reviewing your run intent...");
-      const phaseTimer1 = setTimeout(() => setLoadingPhase("Comparing class survivability paths..."), 900);
-      const phaseTimer2 = setTimeout(() => setLoadingPhase("Forging your recommended route..."), 1800);
-      const phaseTimer3 = setTimeout(() => setLoadingPhase("Sealing your run plan..."), 3000);
-      try {
-        const startedAt = Date.now();
-        let result: Awaited<ReturnType<typeof fetchDestiny>> | null = null;
-        while (!result && Date.now() - startedAt < 12000) {
-          try {
-            result = await fetchDestiny({
-              entryPath: "draft_a_run",
-              sessionId: seededSession,
-              // Never block initial card render on experiment assignment latency.
-              signals: { intent, freeform, memoryHints: buildMemoryHints(), ...readBuildIntent("plan.buildIntent") },
-            });
-          } catch {
-            await wait(1200);
-          }
-        }
-        if (!result) {
-          setDestiny(null);
-          setLoadError("Your route is still being planned. Hold a moment while we complete your destiny draft.");
-          return;
-        }
-
-        setDestiny(result.output);
-        setSessionId(result.sessionId);
-        setDestinyId(result.destinyId);
-        sessionStorage.setItem("plan.sessionId", result.sessionId);
-        sessionStorage.setItem("plan.destinyId", result.destinyId);
-        assignmentPromise
-          .then((assignment) => {
-            if (!assignment) return;
-            void submitGrowthOutcome({
-              assignmentId: assignment.assignmentId,
-              converted: true,
-              outcome: { event: "recommend_rendered", destinyId: result.destinyId },
-            }).catch(() => {});
-          })
-          .catch(() => {});
-      } catch {
-        setDestiny(null);
-        setLoadError("Route planning is delayed. The system is still refining your best next path.");
-      } finally {
-        clearTimeout(phaseTimer1);
-        clearTimeout(phaseTimer2);
-        clearTimeout(phaseTimer3);
-        setIsLoadingDestiny(false);
-      }
-    })();
+    setSessionId(seededSession);
     trackEvent(AnalyticsEvent.FlowStarted, { flow: "draft_a_run" });
   }, []);
+
+  useEffect(() => {
+    if (!destinyId) return;
+    trackEvent(AnalyticsEvent.IntentFeedbackPromptShown, { flow: "draft_a_run", destinyId });
+    setFeedbackChoice(null);
+    setFeedbackReason("");
+  }, [destinyId]);
+
+  async function generateDestiny(signals: BuildIntentSignals) {
+    if (!sessionId) return;
+    const intent = sessionStorage.getItem("plan.intent") ?? undefined;
+    const freeform = sessionStorage.getItem("plan.freeform") ?? undefined;
+    setIsLoadingDestiny(true);
+    setLoadError("");
+    setLoadingPhase("Reviewing your run intent...");
+    const phaseTimer1 = setTimeout(() => setLoadingPhase("Comparing class survivability paths..."), 900);
+    const phaseTimer2 = setTimeout(() => setLoadingPhase("Forging your recommended route..."), 1800);
+    const phaseTimer3 = setTimeout(() => setLoadingPhase("Sealing your run plan..."), 3000);
+    try {
+      const result = await fetchDestiny({
+        entryPath: "draft_a_run",
+        sessionId,
+        signals: {
+          intent,
+          freeform,
+          memoryHints: buildMemoryHints(),
+          recommendVariantId: recommendVariantId ?? undefined,
+          ...signals,
+        },
+      });
+      setDestiny(result.output);
+      setDestinyId(result.destinyId);
+      sessionStorage.setItem("plan.destinyId", result.destinyId);
+      void fetchGrowthAssignment({
+        sessionId,
+        surface: "recommendation",
+        entryPath: "draft_a_run",
+      })
+        .then((assignment) => {
+          void submitGrowthOutcome({
+            assignmentId: assignment.assignmentId,
+            converted: true,
+            outcome: { event: "recommend_rendered", destinyId: result.destinyId },
+          }).catch(() => {});
+        })
+        .catch(() => {});
+    } catch {
+      setLoadError("Route planning is delayed. The system is still refining your best next path.");
+    } finally {
+      clearTimeout(phaseTimer1);
+      clearTimeout(phaseTimer2);
+      clearTimeout(phaseTimer3);
+      setIsLoadingDestiny(false);
+    }
+  }
 
   async function runRerollWithReason(reason: RerollReason) {
     if (!sessionId || !destinyId || !destiny || isSubmitting) return;
@@ -123,6 +124,11 @@ export function PlanResultStep() {
       reason,
       destinyId,
       sessionId,
+      filterCount:
+        (readBuildIntent("plan.buildIntent").statPhilosophy?.length ?? 0) +
+        (readBuildIntent("plan.buildIntent").professionIntents?.length ?? 0) +
+        (readBuildIntent("plan.buildIntent").buildVectors?.length ?? 0) +
+        (readBuildIntent("plan.buildIntent").raceMode ? 1 : 0),
     });
     try {
       const intent = sessionStorage.getItem("plan.intent") ?? undefined;
@@ -233,10 +239,63 @@ export function PlanResultStep() {
 
   return (
     <div>
-      <BuildIntentChips storageKey="plan.buildIntent" />
+      <BuildIntentChips
+        storageKey="plan.buildIntent"
+        hasGenerated={Boolean(destiny)}
+        isGenerating={isLoadingDestiny}
+        onGenerate={(signals) => void generateDestiny(signals)}
+      />
       {destiny ? (
         <>
           <DestinyCard data={destiny} />
+          <div className="card" style={{ marginTop: 12 }}>
+            <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Was this close to what you wanted?</p>
+            <div className="flow-nav" style={{ marginTop: 10 }}>
+              <button
+                type="button"
+                className={`btn-ghost ${feedbackChoice === "closer" ? "chip-btn--on" : ""}`}
+                onClick={() => {
+                  setFeedbackChoice("closer");
+                  trackEvent(AnalyticsEvent.IntentFeedbackSubmitted, {
+                    flow: "draft_a_run",
+                    destinyId,
+                    feedback: "closer",
+                  });
+                }}
+              >
+                Closer than expected
+              </button>
+              <button
+                type="button"
+                className={`btn-ghost ${feedbackChoice === "off" ? "chip-btn--on" : ""}`}
+                onClick={() => setFeedbackChoice("off")}
+              >
+                Still off target
+              </button>
+            </div>
+            {feedbackChoice === "off" ? (
+              <div className="chip-row" style={{ marginTop: 10 }}>
+                {["Too risky", "Wrong fantasy", "Wrong pace", "Wrong role"].map((reason) => (
+                  <button
+                    key={reason}
+                    type="button"
+                    className={`chip-btn ${feedbackReason === reason ? "chip-btn--on" : ""}`}
+                    onClick={() => {
+                      setFeedbackReason(reason);
+                      trackEvent(AnalyticsEvent.IntentFeedbackSubmitted, {
+                        flow: "draft_a_run",
+                        destinyId,
+                        feedback: "off_target",
+                        reason,
+                      });
+                    }}
+                  >
+                    {reason}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
           {destinyId ? (
             <div className="flow-nav" style={{ marginTop: 12 }}>
               <Link to={`/build/${destinyId}`} className="btn-ghost">
