@@ -106,7 +106,7 @@ export function LuckyResultStep() {
       </div>
       <aside className="result-page-grid__side">
         <div className="card">
-        <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Was this close to what you wanted?</p>
+        <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>How close is this to what you wanted?</p>
         <div className="flow-nav" style={{ marginTop: 10 }}>
           <button
             type="button"
@@ -120,14 +120,14 @@ export function LuckyResultStep() {
               });
             }}
           >
-            Closer than expected
+            Pretty close
           </button>
           <button
             type="button"
             className={`btn-ghost ${feedbackChoice === "off" ? "chip-btn--on" : ""}`}
             onClick={() => setFeedbackChoice("off")}
           >
-            Still off target
+            Off target
           </button>
         </div>
         {feedbackChoice === "off" ? (
@@ -161,6 +161,7 @@ export function LuckyResultStep() {
         <input
           value={commitName}
           onChange={(event) => setCommitName(event.target.value)}
+          maxLength={80}
           placeholder="Custom build name"
           style={{ marginTop: 8, width: "100%" }}
         />
@@ -200,14 +201,14 @@ export function LuckyResultStep() {
             Reroll names
           </button>
           <button type="button" className="btn-primary" onClick={() => void commitBuild()}>
-            Commit build URL
+            Create build link
           </button>
         </div>
         {commitMessage ? <p style={{ marginBottom: 0 }}>{commitMessage}</p> : null}
         </div>
         <div className="flow-nav flow-nav--wrap" style={{ marginTop: 16 }}>
           <Link to="/lucky-roll/journey" className="btn-ghost">
-            Retool path
+            Adjust journey
           </Link>
           <Link to="/" className="btn-ghost">
             Home

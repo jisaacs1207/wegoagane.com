@@ -34,8 +34,9 @@ function deriveSignalBias(mood?: string, nextSignal?: string) {
   if (mood === "Long time coming") base.buildVectors = ["hybrid", "group_ok"];
   if (nextSignal === "Safer") base.buildVectors = [...((base.buildVectors as string[] | undefined) ?? []), "tank", "solo"];
   if (nextSignal === "Faster") base.statPhilosophy = ["agility_forward", ...((base.statPhilosophy as string[] | undefined) ?? [])];
-  if (nextSignal === "Different") base.raceMode = "surprise";
-  if (nextSignal === "No pet class") base.buildVectors = [...((base.buildVectors as string[] | undefined) ?? []), "melee"];
+  if (nextSignal === "Different" || nextSignal === "Different playstyle") base.raceMode = "surprise";
+  if (nextSignal === "No pet class" || nextSignal === "No pet classes")
+    base.buildVectors = [...((base.buildVectors as string[] | undefined) ?? []), "melee"];
   return base;
 }
 
@@ -360,7 +361,7 @@ export function DeathResultStep() {
                 className="card icon-motif-card"
                 style={{ marginTop: 12, ["--motif-url" as string]: `url(${wowPackUrl("Trade", "WeightStone_01.png")})` }}
               >
-                <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Was this close to what you wanted?</p>
+                <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>How close is this to what you wanted?</p>
                 <div className="flow-nav" style={{ marginTop: 10 }}>
                   <button
                     type="button"
@@ -374,14 +375,14 @@ export function DeathResultStep() {
                       });
                     }}
                   >
-                    Closer than expected
+                    Pretty close
                   </button>
                   <button
                     type="button"
                     className={`btn-ghost ${feedbackChoice === "off" ? "chip-btn--on" : ""}`}
                     onClick={() => setFeedbackChoice("off")}
                   >
-                    Still off target
+                    Off target
                   </button>
                 </div>
                 {feedbackChoice === "off" ? (
@@ -413,6 +414,7 @@ export function DeathResultStep() {
                 <input
                   value={commitName}
                   onChange={(event) => setCommitName(event.target.value)}
+                  maxLength={80}
                   placeholder="Custom build name"
                   style={{ marginTop: 8, width: "100%" }}
                 />
@@ -466,14 +468,14 @@ export function DeathResultStep() {
                     Reroll names
                   </button>
                   <button type="button" className="btn-primary" disabled={isSubmitting} onClick={() => void commitBuild()}>
-                    Commit build URL
+                    Create build link
                   </button>
                 </div>
               </div>
 
               <div className="flow-nav flow-nav--wrap" style={{ marginTop: 12 }}>
                 <Link to="/release-spirit/mood" className="btn-ghost">
-                  Retool journey
+                  Adjust journey
                 </Link>
                 <Link to="/" className="btn-ghost" style={{ display: "inline-flex", alignItems: "center" }}>
                   Home

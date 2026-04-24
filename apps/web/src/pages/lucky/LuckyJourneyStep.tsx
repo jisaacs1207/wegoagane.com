@@ -56,8 +56,13 @@ export function LuckyJourneyStep() {
         }).catch(() => {});
       }
       navigate("/lucky-roll/result");
-    } catch {
-      setError("Generation failed. Adjust your path or try again.");
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "";
+      if (msg.includes("recommend_failed:400")) {
+        setError("Generation failed due to invalid input. Reset path choices and try again.");
+      } else {
+        setError("Generation failed. Adjust your path or try again.");
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -67,11 +72,11 @@ export function LuckyJourneyStep() {
     <div>
       <div className="card" style={{ marginBottom: 12 }}>
         <p className="step-label">Lucky roll</p>
-        <h1 className="hero-question">Choose your luck profile</h1>
+        <h1 className="hero-question">Set your lucky roll profile</h1>
         <p className="hero-sub" style={{ marginBottom: 0 }}>
-          Fastest route. Set a vector and get a commit-ready run with minimal setup.
+          Fastest route: pick a priority and generate a commit-ready run in a few taps.
         </p>
-        <div className="entry-icon-row" style={{ marginTop: 10 }}>
+        <div className="entry-icon-row entry-icon-row--overlap" style={{ marginTop: 10 }}>
           <IdentityPortrait src={wowPackUrl("Miscellaneous", "Dice_02.png")} alt="" className="entry-icon" />
           <IdentityPortrait src={wowPackUrl("Spells", "StarFire.png")} alt="" className="entry-icon" />
           <IdentityPortrait src={wowPackUrl("Abilities", "BloodFrenzy.png")} alt="" className="entry-icon" />

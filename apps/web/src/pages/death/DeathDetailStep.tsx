@@ -11,40 +11,44 @@ export function DeathDetailStep() {
   return (
     <div className="card">
       <p className="step-label">Release spirit · step 3 of 4</p>
-      <h1 className="hero-question">Optional details</h1>
-      <p className="hero-sub">Add context from the death. We fold this into the next recommendation tone.</p>
+      <h1 className="hero-question">Add optional context</h1>
+      <p className="hero-sub">Add quick details from the death to fine-tune your next recommendation.</p>
       <div className="ritual-detail-grid">
         <input
           value={zone}
           onChange={(e) => {
-            setZone(e.target.value);
-            sessionStorage.setItem("death.detail.zone", e.target.value);
+            const next = e.target.value.slice(0, 60);
+            setZone(next);
+            sessionStorage.setItem("death.detail.zone", next);
           }}
           placeholder="Zone (optional)"
         />
         <input
           value={cause}
           onChange={(e) => {
-            setCause(e.target.value);
-            sessionStorage.setItem("death.detail.cause", e.target.value);
+            const next = e.target.value.slice(0, 80);
+            setCause(next);
+            sessionStorage.setItem("death.detail.cause", next);
           }}
           placeholder="Cause (optional)"
         />
         <input
           value={level}
           onChange={(e) => {
-            setLevel(e.target.value);
-            sessionStorage.setItem("death.detail.level", e.target.value);
+            const next = e.target.value.replace(/[^0-9]/g, "").slice(0, 2);
+            setLevel(next);
+            sessionStorage.setItem("death.detail.level", next);
           }}
           placeholder="Level (optional)"
         />
         <textarea
           value={note}
           onChange={(e) => {
-            setNote(e.target.value);
-            sessionStorage.setItem("death.detail.note", e.target.value);
+            const next = e.target.value.slice(0, 120);
+            setNote(next);
+            sessionStorage.setItem("death.detail.note", next);
           }}
-          placeholder="Short note to shape the reroll tone (optional)"
+          placeholder="Anything we should avoid or prioritize next time? (optional)"
           rows={3}
         />
       </div>

@@ -11,7 +11,7 @@ export function PlanFreeformStep() {
     <div className="card">
       <p className="step-label">Draft a run · step 2 of 3</p>
       <h1 className="hero-question">Add constraints (optional)</h1>
-      <p className="hero-sub">Call out dealbreakers or hard preferences so the result is immediately usable.</p>
+      <p className="hero-sub">Add dealbreakers or must-haves so the result is usable right away.</p>
       <div className="ritual-constraint-row">
         <span className="ritual-constraint-chip">
           <IdentityPortrait src={wowPackUrl("Trade", "herbalism.png")} alt="" className="ritual-option__icon" />
@@ -34,7 +34,7 @@ export function PlanFreeformStep() {
           sessionStorage.setItem("plan.freeform", next);
         }}
         rows={3}
-        placeholder="e.g. hate pet management, already tried mage"
+        placeholder="e.g. no pet micromanagement, no mage, prefer strong solo sustain"
         style={{
           width: "100%",
           marginTop: 12,

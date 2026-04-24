@@ -63,7 +63,7 @@ export function HomePage() {
               void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_release_spirit" } }).catch(() => {});
             }}
           >
-            <span className="entry-icon-row">
+            <span className="entry-icon-row entry-icon-row--stacked">
               <IdentityPortrait src={wowPackUrl("Miscellaneous", "Tournaments_banner_Scourge.png")} alt="" className="entry-icon" />
               <IdentityPortrait src={wowPackUrl("Spells", "HellifrePVPThrallmarFavor.png")} alt="" className="entry-icon" />
               <IdentityPortrait src={wowPackUrl("Abilities", "ShieldWall.png")} alt="" className="entry-icon" />
@@ -89,7 +89,7 @@ export function HomePage() {
               void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_draft_run" } }).catch(() => {});
             }}
           >
-            <span className="entry-icon-row">
+            <span className="entry-icon-row entry-icon-row--lead">
               <IdentityPortrait src={wowPackUrl("Trade", "engineering.png")} alt="" className="entry-icon" />
               <IdentityPortrait src={wowPackUrl("Trade", "herbalism.png")} alt="" className="entry-icon" />
               <IdentityPortrait src={wowPackUrl("Abilities", "SwordandBoard.png")} alt="" className="entry-icon" />
@@ -115,7 +115,7 @@ export function HomePage() {
               void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_lucky_roll" } }).catch(() => {});
             }}
           >
-            <span className="entry-icon-row">
+            <span className="entry-icon-row entry-icon-row--overlap">
               <IdentityPortrait src={wowPackUrl("Miscellaneous", "Dice_01.png")} alt="" className="entry-icon" />
               <IdentityPortrait src={wowPackUrl("Spells", "StarFire.png")} alt="" className="entry-icon" />
               <IdentityPortrait src={wowPackUrl("Abilities", "BloodFrenzy.png")} alt="" className="entry-icon" />

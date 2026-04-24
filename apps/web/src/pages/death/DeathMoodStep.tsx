@@ -5,10 +5,10 @@ import { wowPackUrl } from "../../content/identityAssets";
 
 const MOODS = [
   { id: "my_fault", label: "My fault", hint: "I misplayed and want a cleaner safety loop.", icon: wowPackUrl("Abilities", "ShieldGuard.png") },
-  { id: "bullshit", label: "Bullshit death", hint: "I got clipped by chaos and want stability.", icon: wowPackUrl("Spells", "Slow.png") },
+  { id: "bullshit", label: "Felt unfair", hint: "I got clipped by chaos and want stability.", icon: wowPackUrl("Spells", "Slow.png") },
   { id: "first_time", label: "First time", hint: "I need conservative guidance and confidence.", icon: wowPackUrl("Abilities", "HealingInstincts.png") },
   { id: "long_time_coming", label: "Long time coming", hint: "I was checked out and want a fresh tone.", icon: wowPackUrl("Spells", "StarFall.png") },
-  { id: "just_generate", label: "Skip details", hint: "Jump straight to build tuning.", icon: wowPackUrl("Miscellaneous", "Dice_01.png") },
+  { id: "just_generate", label: "Skip mood", hint: "Jump straight to build tuning.", icon: wowPackUrl("Miscellaneous", "Dice_01.png") },
 ] as const;
 
 export function DeathMoodStep() {
@@ -23,8 +23,8 @@ export function DeathMoodStep() {
   return (
     <div className="card">
       <p className="step-label">Release spirit · step 1 of 4</p>
-      <h1 className="hero-question">What happened?</h1>
-      <p className="hero-sub">Pick the emotional context so the next recommendation lands in the right lane.</p>
+      <h1 className="hero-question">What was the tone of that death?</h1>
+      <p className="hero-sub">Pick the mood so your next recommendation matches how you want to recover.</p>
       <div className="ritual-option-grid">
         {MOODS.map((m) => (
           <button
