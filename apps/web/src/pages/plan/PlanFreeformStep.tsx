@@ -36,8 +36,8 @@ export function PlanFreeformStep() {
         <button type="button" className="btn-ghost" onClick={() => navigate("/draft-a-run/intent")}>
           Back
         </button>
-        <button type="button" className="btn-primary" onClick={() => navigate("/draft-a-run/result")}>
-          Generate Destiny
+        <button type="button" className="btn-primary" onClick={() => navigate("/draft-a-run/journey")}>
+          Continue
         </button>
       </div>
     </div>

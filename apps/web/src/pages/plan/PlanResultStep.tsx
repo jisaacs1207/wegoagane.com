@@ -7,14 +7,12 @@ import {
   fetchDestiny,
   fetchGrowthAssignment,
   type RerollReason,
-  submitGrowthOutcome,
   submitDestinyFeedback,
 } from "../../lib/recommendClient";
-import { BuildIntentChips } from "../../components/BuildIntentChips";
 import { readBuildIntent } from "../../lib/readBuildIntent";
-import type { BuildIntentSignals } from "../../lib/buildIntentTypes";
 import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 import { buildMemoryHints, rememberAccept, rememberReroll } from "../../lib/memoryProfile";
+import { readStoredDestiny } from "../../lib/flowDestinyState";
 
 const rerollReasons: Array<{ value: RerollReason; label: string }> = [
   { value: "wrong_class", label: "Wrong class" },
@@ -33,22 +31,23 @@ export function PlanResultStep() {
   const [note, setNote] = useState("");
   const [showRerollGate, setShowRerollGate] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoadingDestiny, setIsLoadingDestiny] = useState(false);
   const [loadError, setLoadError] = useState<string>("");
-  const [loadingPhase, setLoadingPhase] = useState("Reviewing your run intent...");
   const [recommendVariantId, setRecommendVariantId] = useState<string | null>(null);
   const [feedbackChoice, setFeedbackChoice] = useState<"closer" | "off" | null>(null);
   const [feedbackReason, setFeedbackReason] = useState<string>("");
 
   useEffect(() => {
-    const existingSession = sessionStorage.getItem("plan.sessionId") ?? undefined;
-
-    const seededSession = existingSession ?? crypto.randomUUID();
-    if (!existingSession) {
-      sessionStorage.setItem("plan.sessionId", seededSession);
+    const stored = readStoredDestiny("plan");
+    if (!stored) {
+      setLoadError("No generated destiny found yet. Complete the journey first.");
+      return;
     }
+    setDestiny(stored.output);
+    setDestinyId(stored.destinyId);
+    setSessionId(stored.sessionId);
+
     void fetchGrowthAssignment({
-      sessionId: seededSession,
+      sessionId: stored.sessionId,
       surface: "recommendation",
       entryPath: "draft_a_run",
     })
@@ -56,8 +55,6 @@ export function PlanResultStep() {
         setRecommendVariantId(assignment.variantId);
       })
       .catch(() => null);
-    setSessionId(seededSession);
-    trackEvent(AnalyticsEvent.FlowStarted, { flow: "draft_a_run" });
   }, []);
 
   useEffect(() => {
@@ -66,54 +63,6 @@ export function PlanResultStep() {
     setFeedbackChoice(null);
     setFeedbackReason("");
   }, [destinyId]);
-
-  async function generateDestiny(signals: BuildIntentSignals) {
-    if (!sessionId) return;
-    const intent = sessionStorage.getItem("plan.intent") ?? undefined;
-    const freeform = sessionStorage.getItem("plan.freeform") ?? undefined;
-    setIsLoadingDestiny(true);
-    setLoadError("");
-    setLoadingPhase("Reviewing your run intent...");
-    const phaseTimer1 = setTimeout(() => setLoadingPhase("Comparing class survivability paths..."), 900);
-    const phaseTimer2 = setTimeout(() => setLoadingPhase("Forging your recommended route..."), 1800);
-    const phaseTimer3 = setTimeout(() => setLoadingPhase("Sealing your run plan..."), 3000);
-    try {
-      const result = await fetchDestiny({
-        entryPath: "draft_a_run",
-        sessionId,
-        signals: {
-          intent,
-          freeform,
-          memoryHints: buildMemoryHints(),
-          recommendVariantId: recommendVariantId ?? undefined,
-          ...signals,
-        },
-      });
-      setDestiny(result.output);
-      setDestinyId(result.destinyId);
-      sessionStorage.setItem("plan.destinyId", result.destinyId);
-      void fetchGrowthAssignment({
-        sessionId,
-        surface: "recommendation",
-        entryPath: "draft_a_run",
-      })
-        .then((assignment) => {
-          void submitGrowthOutcome({
-            assignmentId: assignment.assignmentId,
-            converted: true,
-            outcome: { event: "recommend_rendered", destinyId: result.destinyId },
-          }).catch(() => {});
-        })
-        .catch(() => {});
-    } catch {
-      setLoadError("Route planning is delayed. The system is still refining your best next path.");
-    } finally {
-      clearTimeout(phaseTimer1);
-      clearTimeout(phaseTimer2);
-      clearTimeout(phaseTimer3);
-      setIsLoadingDestiny(false);
-    }
-  }
 
   async function runRerollWithReason(reason: RerollReason) {
     if (!sessionId || !destinyId || !destiny || isSubmitting) return;
@@ -239,13 +188,21 @@ export function PlanResultStep() {
 
   return (
     <div>
-      <BuildIntentChips
-        storageKey="plan.buildIntent"
-        hasGenerated={Boolean(destiny)}
-        isGenerating={isLoadingDestiny}
-        onGenerate={(signals) => void generateDestiny(signals)}
-      />
-      {destiny ? (
+      {!destiny || !sessionId || !destinyId ? (
+        <div className="card" style={{ marginTop: 14 }}>
+          <p className="step-label">Draft a run</p>
+          <h1 className="hero-question">Journey required</h1>
+          <p className="hero-sub">{loadError || "Complete your build journey first."}</p>
+          <div className="flow-nav" style={{ marginTop: 12 }}>
+            <Link to="/draft-a-run/journey" className="btn-primary">
+              Go to journey
+            </Link>
+            <Link to="/" className="btn-ghost">
+              Home
+            </Link>
+          </div>
+        </div>
+      ) : (
         <>
           <DestinyCard data={destiny} />
           <div className="card" style={{ marginTop: 12 }}>
@@ -301,22 +258,12 @@ export function PlanResultStep() {
               <Link to={`/build/${destinyId}`} className="btn-ghost">
                 Open HC build sheet
               </Link>
+              <Link to="/draft-a-run/journey" className="btn-ghost">
+                Retool journey
+              </Link>
             </div>
           ) : null}
-        </>
-      ) : (
-        <div className="card">
-          <p className="step-label">Draft a run</p>
-          <h1 className="hero-question">Building your destiny...</h1>
-          <div className="forge-status-row">
-            <span className="forge-spinner" aria-hidden="true" />
-            <p className="hero-sub" style={{ margin: 0 }}>
-              {isLoadingDestiny ? loadingPhase : loadError || "Set your journey above, then generate your route."}
-            </p>
-          </div>
-        </div>
-      )}
-      <p style={{ marginTop: 14, fontSize: 13, color: "var(--ts)" }}>
+          <p style={{ marginTop: 14, fontSize: 13, color: "var(--ts)" }}>
         Planning mode skips memorial chrome — only the next Destiny card is shown here.
       </p>
       <div className="card" style={{ marginTop: 12 }}>
@@ -379,6 +326,8 @@ export function PlanResultStep() {
           <p style={{ marginTop: 10, marginBottom: 0, fontSize: 12, color: "var(--ts)" }}>{actionMessage}</p>
         ) : null}
       </div>
+        </>
+      )}
       <div className="flow-nav" style={{ marginTop: 8 }}>
         <Link to="/" className="btn-ghost" style={{ display: "inline-flex", alignItems: "center" }}>
           Home
