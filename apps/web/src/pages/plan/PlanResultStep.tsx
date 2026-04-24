@@ -1,12 +1,14 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { type DestinyFixture } from "../../content/cardFixtures";
+import { wowPackUrl } from "../../content/identityAssets";
 import { DestinyCard } from "../../components/cards/DestinyCard";
 import {
   commitJourneyBuild,
   createShareRun,
   fetchDestiny,
   fetchNameCandidates,
+  generateNameCandidates,
   fetchGrowthAssignment,
   type RerollReason,
   submitDestinyFeedback,
@@ -40,6 +42,8 @@ export function PlanResultStep() {
   const [feedbackReason, setFeedbackReason] = useState<string>("");
   const [commitName, setCommitName] = useState("");
   const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
+  const [isLoadingNames, setIsLoadingNames] = useState(false);
+  const [nameLane, setNameLane] = useState<"hc_practical" | "lore_world" | "neutral">("hc_practical");
 
   useEffect(() => {
     const stored = readStoredDestiny("plan");
@@ -70,10 +74,32 @@ export function PlanResultStep() {
   }, [destinyId]);
 
   useEffect(() => {
-    void fetchNameCandidates({ limit: 6 })
+    setIsLoadingNames(true);
+    void fetchNameCandidates({ lane: nameLane, limit: 6 })
       .then((res) => setNameSuggestions(res.names.map((row) => row.name)))
-      .catch(() => setNameSuggestions([]));
-  }, []);
+      .catch(() => setNameSuggestions([]))
+      .finally(() => setIsLoadingNames(false));
+  }, [nameLane]);
+
+  async function loadGeneratedNames(reroll: boolean) {
+    if (!sessionId || !destinyId || isLoadingNames) return;
+    setIsLoadingNames(true);
+    try {
+      const res = await generateNameCandidates({
+        sessionId,
+        destinyId,
+        style: nameLane,
+        count: 8,
+        rerollSeed: reroll ? `${Date.now()}` : undefined,
+        currentName: commitName || undefined,
+      });
+      setNameSuggestions(res.names.map((row) => row.name));
+    } catch {
+      setActionMessage("Could not generate additional names right now.");
+    } finally {
+      setIsLoadingNames(false);
+    }
+  }
 
   async function runRerollWithReason(reason: RerollReason) {
     if (!sessionId || !destinyId || !destiny || isSubmitting) return;
@@ -240,7 +266,10 @@ export function PlanResultStep() {
       ) : (
         <>
           <DestinyCard data={destiny} intentSignals={readBuildIntent("plan.buildIntent")} />
-          <div className="card" style={{ marginTop: 12 }}>
+          <div
+            className="card icon-motif-card"
+            style={{ marginTop: 12, ["--motif-url" as string]: `url(${wowPackUrl("Trade", "engineering.png")})` }}
+          >
             <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Was this close to what you wanted?</p>
             <div className="flow-nav" style={{ marginTop: 10 }}>
               <button
@@ -290,7 +319,7 @@ export function PlanResultStep() {
           </div>
           {destinyId ? (
             <div className="flow-nav" style={{ marginTop: 12 }}>
-              <Link to="/draft-a-run/journey" className="btn-ghost">
+              <Link to="/draft-a-run/intent" className="btn-ghost">
                 Retool journey
               </Link>
             </div>
@@ -312,7 +341,46 @@ export function PlanResultStep() {
                 ))}
               </div>
             ) : null}
+            <div className="flow-nav flow-nav--wrap" style={{ marginTop: 8 }}>
+              <button
+                type="button"
+                className={`btn-ghost ${nameLane === "hc_practical" ? "chip-btn--on" : ""}`}
+                onClick={() => setNameLane("hc_practical")}
+              >
+                Practical
+              </button>
+              <button
+                type="button"
+                className={`btn-ghost ${nameLane === "lore_world" ? "chip-btn--on" : ""}`}
+                onClick={() => setNameLane("lore_world")}
+              >
+                Lore
+              </button>
+              <button
+                type="button"
+                className={`btn-ghost ${nameLane === "neutral" ? "chip-btn--on" : ""}`}
+                onClick={() => setNameLane("neutral")}
+              >
+                Neutral
+              </button>
+            </div>
             <div className="flow-nav" style={{ marginTop: 10 }}>
+              <button
+                type="button"
+                className="btn-ghost"
+                disabled={isLoadingNames || !sessionId}
+                onClick={() => void loadGeneratedNames(false)}
+              >
+                {isLoadingNames ? "Loading..." : "Generate more names"}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost"
+                disabled={isLoadingNames || !sessionId}
+                onClick={() => void loadGeneratedNames(true)}
+              >
+                Reroll names
+              </button>
               <button type="button" className="btn-primary" disabled={isSubmitting} onClick={() => void commitBuild()}>
                 Commit build URL
               </button>

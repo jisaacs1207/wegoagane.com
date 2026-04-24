@@ -3,9 +3,11 @@ import { type Context, Hono } from "hono";
 import { z } from "zod";
 import { captureServerEvent } from "../analytics/posthog";
 import { AnalyticsEvent } from "../analytics/events";
+import { callAiGateway, extractJsonPayload, getAiGateStatus } from "../ai/adapter";
 import { runBuildPlanGeneration, loadDestinyRow } from "../ai/buildPlan";
 import { getDb, type ApiEnv } from "../db/client";
 import { buildPlans } from "../db/schema";
+import { filterValidNames } from "../domain/nameRules";
 import { recommendInputSchema } from "../domain/validator";
 import type { RecommendInput } from "../domain/types";
 import { computeViability } from "../domain/viability";
@@ -14,6 +16,14 @@ const postBodySchema = z.object({
   destinyId: z.string().min(1).max(80),
   sessionId: z.string().min(1).max(80),
   recommendInput: recommendInputSchema.optional(),
+});
+const generateNamesSchema = z.object({
+  sessionId: z.string().min(1).max(120),
+  destinyId: z.string().min(1).max(120).optional(),
+  style: z.enum(["lore_world", "hc_practical", "light_humor", "grimdark", "neutral", "pop_culture"]).optional(),
+  count: z.number().int().min(4).max(18).optional(),
+  rerollSeed: z.string().max(80).optional(),
+  currentName: z.string().max(80).optional(),
 });
 
 export const buildRouter = new Hono<ApiEnv>();
@@ -220,6 +230,76 @@ export async function handleGetNames(c: Context<ApiEnv>) {
   return c.json({ names: res.results ?? [] });
 }
 
+function titleCase(name: string): string {
+  if (!name) return name;
+  return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+}
+
+function fallbackGeneratedNames(seed: string, count: number): string[] {
+  const prefixes = ["Ash", "Stone", "Frost", "Dusk", "Iron", "Rune", "Grim", "Storm", "Wild", "Ember"];
+  const suffixes = ["veil", "ward", "rend", "moor", "blade", "hold", "fang", "crest", "weave", "bloom"];
+  const out: string[] = [];
+  for (let i = 0; i < count * 3 && out.length < count; i += 1) {
+    const a = prefixes[(seed.length + i * 3) % prefixes.length];
+    const b = suffixes[(seed.charCodeAt(i % Math.max(1, seed.length)) + i) % suffixes.length];
+    const n = titleCase(`${a}${b}`);
+    if (filterValidNames([n]).length === 0) continue;
+    if (out.includes(n)) continue;
+    out.push(n);
+  }
+  return out;
+}
+
+export async function handlePostGenerateNames(c: Context<ApiEnv>) {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "invalid_json" }, 400);
+  }
+  const parsed = generateNamesSchema.safeParse(body);
+  if (!parsed.success) return c.json({ error: "invalid_input" }, 400);
+  const data = parsed.data;
+  const count = data.count ?? 10;
+  const gate = getAiGateStatus(c.env);
+  const seed = `${data.sessionId}|${data.destinyId ?? ""}|${data.style ?? "neutral"}|${data.rerollSeed ?? ""}`;
+
+  if (!gate.ready) {
+    const fallback = fallbackGeneratedNames(seed, count);
+    return c.json({ names: fallback.map((name) => ({ lane: data.style ?? "neutral", genderLean: null, name })), aiUsed: false });
+  }
+
+  const prompt = [
+    "Return JSON with a single key `names` containing an array of character names.",
+    "Rules: ASCII letters only, 2-12 chars, no spaces, no punctuation, no numbers.",
+    "Names should be original and avoid trademark strings.",
+    `Requested style lane: ${data.style ?? "neutral"}.`,
+    `Count: ${count}.`,
+    `Current name to avoid repeating: ${data.currentName ?? "none"}.`,
+    `Reroll seed: ${data.rerollSeed ?? "none"}.`,
+  ].join("\n");
+
+  const ai = await callAiGateway(c.env, c.env.AI_MODEL_DESTINY ?? "openrouter/auto", prompt, 10000);
+  if (!ai.ok) {
+    const fallback = fallbackGeneratedNames(seed, count);
+    return c.json({ names: fallback.map((name) => ({ lane: data.style ?? "neutral", genderLean: null, name })), aiUsed: false });
+  }
+  let parsedAi: { names?: string[] } = {};
+  try {
+    parsedAi = JSON.parse(extractJsonPayload(ai.content)) as { names?: string[] };
+  } catch {
+    parsedAi = {};
+  }
+  const unique = Array.from(new Set(filterValidNames((parsedAi.names ?? []).map((n) => titleCase(n.trim())))));
+  const names = unique.slice(0, count);
+  if (names.length === 0) {
+    const fallback = fallbackGeneratedNames(seed, count);
+    return c.json({ names: fallback.map((name) => ({ lane: data.style ?? "neutral", genderLean: null, name })), aiUsed: false });
+  }
+  return c.json({ names: names.map((name) => ({ lane: data.style ?? "neutral", genderLean: null, name })), aiUsed: true });
+}
+
 buildRouter.post("/", handlePostBuild);
+buildRouter.post("/names/generate", handlePostGenerateNames);
 buildRouter.get("/names", handleGetNames);
 buildRouter.get("/:destinyId", handleGetBuild);

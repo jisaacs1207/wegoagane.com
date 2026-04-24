@@ -165,6 +165,8 @@ export type MemoryHints = {
 export type MemoryFeatures = {
   classAffinity: Partial<Record<ClassId, number>>;
   rerollReasonCounts: Partial<Record<MemoryRerollReason, number>>;
+  /** Most recent archetype keys seen in this session, newest first. */
+  recentArchetypeKeys?: string[];
   confidence: number;
   sampleSize: number;
 };

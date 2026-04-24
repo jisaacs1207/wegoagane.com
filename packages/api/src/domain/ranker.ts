@@ -2,6 +2,15 @@ import { archetypes } from "./archetypes";
 import { mergeDesiredTags } from "./intentTags";
 import type { Archetype, MemoryFeatures, MemoryRankingConfig, RankedArchetype, RecommendInput } from "./types";
 
+function hashToUnit(seed: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i += 1) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return ((h >>> 0) % 100000) / 100000;
+}
+
 function scoreArchetype(archetype: Archetype, desiredTags: string[]): RankedArchetype {
   let score = 0;
   const reasons: string[] = [];
@@ -85,6 +94,19 @@ export function rankArchetypes(
   });
 
   const preferredClass = input.signals.preferredClass;
+  const recencyPenalty = new Map<string, number>();
+  for (const [idx, key] of (memory.serverMemory?.recentArchetypeKeys ?? []).entries()) {
+    // Newest key gets strongest soft penalty to reduce same-archetype loops.
+    recencyPenalty.set(key, Number((Math.max(0.15, 0.75 - idx * 0.12)).toFixed(3)));
+  }
+  const tieBreakBucket = Math.floor(Date.now() / (1000 * 60 * 30));
+  const tieSeedPrefix = [
+    input.sessionId ?? "anon",
+    input.entryPath,
+    desired.slice().sort().join(","),
+    preferredClass ?? "",
+    String(tieBreakBucket),
+  ].join("|");
   let clampHits = 0;
   let biasTotal = 0;
   const ranked = filtered.map((a) => {
@@ -101,6 +123,15 @@ export function rankArchetypes(
       biasTotal += memoryBias.bias;
     }
     if (memoryBias.clamped) clampHits += 1;
+    const recentPenalty = recencyPenalty.get(a.key) ?? 0;
+    if (recentPenalty > 0) {
+      scored.score -= recentPenalty;
+      scored.reasons.push(`recent_penalty:-${recentPenalty.toFixed(2)}`);
+    }
+    // Tiny deterministic jitter breaks score ties without violating viability constraints.
+    const tiebreak = (hashToUnit(`${tieSeedPrefix}|${a.key}`) - 0.5) * 0.22;
+    scored.score += tiebreak;
+    scored.reasons.push(`tie_jitter:${tiebreak > 0 ? "+" : ""}${tiebreak.toFixed(3)}`);
     return scored;
   });
   ranked.sort((a, b) => b.score - a.score);

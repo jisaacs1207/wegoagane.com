@@ -45,7 +45,7 @@ async function deriveServerMemory(
   lookbackLimit: number,
 ): Promise<MemoryFeatures> {
   if (!sessionId) {
-    return { classAffinity: {}, rerollReasonCounts: {}, confidence: 0, sampleSize: 0 };
+    return { classAffinity: {}, rerollReasonCounts: {}, recentArchetypeKeys: [], confidence: 0, sampleSize: 0 };
   }
 
   const rows = await db
@@ -71,6 +71,16 @@ async function deriveServerMemory(
     )
     .bind(sessionId)
     .first<{ avg_confidence: number | null }>();
+  const recentArchetypes = await db
+    .prepare(
+      `SELECT archetype_key
+       FROM destinies
+       WHERE session_id = ?1
+       ORDER BY created_at DESC
+       LIMIT 6`,
+    )
+    .bind(sessionId)
+    .all<{ archetype_key: string | null }>();
 
   const counts: Record<string, { accept: number; almostRight: number; miss: number }> = {};
   const rerollReasonCounts: Record<string, number> = {};
@@ -102,6 +112,7 @@ async function deriveServerMemory(
   return {
     classAffinity,
     rerollReasonCounts,
+    recentArchetypeKeys: (recentArchetypes.results ?? []).map((r) => r.archetype_key).filter((x): x is string => Boolean(x)),
     confidence: Number(((activityConfidence + logConfidence) / 2).toFixed(4)),
     sampleSize,
   };

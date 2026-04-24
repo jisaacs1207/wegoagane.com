@@ -171,7 +171,7 @@ export function BuildCommitPage() {
             onClick={() => {
               sessionStorage.setItem("plan.seedDestinyId", record.destinyId);
               trackEvent(AnalyticsEvent.RetoolStarted, { slug: record.slug, destinyId: record.destinyId });
-              navigate("/draft-a-run/journey");
+              navigate("/draft-a-run/intent");
             }}
           >
             Retool from this run
