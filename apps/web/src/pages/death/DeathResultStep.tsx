@@ -17,6 +17,7 @@ import {
   submitDestinyFeedback,
 } from "../../lib/recommendClient";
 import { BuildIntentChips } from "../../components/BuildIntentChips";
+import type { BuildIntentSignals } from "../../lib/buildIntentTypes";
 import { readBuildIntent } from "../../lib/readBuildIntent";
 import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 import { buildMemoryHints, rememberAccept, rememberReroll } from "../../lib/memoryProfile";
@@ -43,10 +44,8 @@ export function DeathResultStep() {
   const [loadError, setLoadError] = useState<string>("");
   const [loadingPhase, setLoadingPhase] = useState("Reading your final combat log...");
   const [recommendVariantId, setRecommendVariantId] = useState<string | null>(null);
-
-  async function wait(ms: number) {
-    await new Promise((resolve) => setTimeout(resolve, ms));
-  }
+  const [feedbackChoice, setFeedbackChoice] = useState<"closer" | "off" | null>(null);
+  const [feedbackReason, setFeedbackReason] = useState<string>("");
 
   useEffect(() => {
     const mood = sessionStorage.getItem("death.mood") ?? undefined;
@@ -57,71 +56,17 @@ export function DeathResultStep() {
       sessionStorage.setItem("death.sessionId", seededSessionId);
     }
 
-    const assignmentPromise = fetchGrowthAssignment({
+    void fetchGrowthAssignment({
       sessionId: seededSessionId,
       surface: "recommendation",
       entryPath: "release_spirit",
     })
       .then((assignment) => {
         setRecommendVariantId(assignment.variantId);
-        return assignment;
       })
       .catch(() => null);
 
-    void (async () => {
-      setIsLoadingDestiny(true);
-      setLoadError("");
-      setLoadingPhase("Reading your final combat log...");
-      const phaseTimer1 = setTimeout(() => setLoadingPhase("Consulting the spirit healers..."), 900);
-      const phaseTimer2 = setTimeout(() => setLoadingPhase("Drafting a safer next path..."), 1800);
-      const phaseTimer3 = setTimeout(() => setLoadingPhase("Binding your next oath to parchment..."), 3000);
-      try {
-        const startedAt = Date.now();
-        let result: Awaited<ReturnType<typeof fetchDestiny>> | null = null;
-        while (!result && Date.now() - startedAt < 12000) {
-          try {
-            result = await fetchDestiny({
-              entryPath: "release_spirit",
-              sessionId: seededSessionId,
-              // Never block initial card render on experiment assignment latency.
-              signals: { mood, nextSignal, memoryHints: buildMemoryHints(), ...readBuildIntent("death.buildIntent") },
-            });
-          } catch {
-            await wait(1200);
-          }
-        }
-        if (!result) {
-          setDestiny(null);
-          setLoadError("The spirit healers are still scrying your path. Hold steady while we finish the ritual.");
-          return;
-        }
-
-        setDestiny(result.output);
-        setSessionId(result.sessionId);
-        setDestinyId(result.destinyId);
-        sessionStorage.setItem("death.sessionId", result.sessionId);
-        sessionStorage.setItem("death.destinyId", result.destinyId);
-        assignmentPromise
-          .then((assignment) => {
-            if (!assignment) return;
-            void submitGrowthOutcome({
-              assignmentId: assignment.assignmentId,
-              converted: true,
-              outcome: { event: "recommend_rendered", destinyId: result.destinyId },
-            }).catch(() => {});
-          })
-          .catch(() => {});
-      } catch {
-        setDestiny(null);
-        setLoadError("The spirit archives are delayed. We are still forging your next destiny.");
-      } finally {
-        clearTimeout(phaseTimer1);
-        clearTimeout(phaseTimer2);
-        clearTimeout(phaseTimer3);
-        setIsLoadingDestiny(false);
-      }
-    })();
-
+    setSessionId(seededSessionId);
     void fetchMemorial({
       sessionId: seededSessionId,
       zone: "Unknown Zone",
@@ -137,6 +82,61 @@ export function DeathResultStep() {
     trackEvent(AnalyticsEvent.FlowStarted, { flow: "release_spirit" });
   }, []);
 
+  useEffect(() => {
+    if (!destinyId) return;
+    trackEvent(AnalyticsEvent.IntentFeedbackPromptShown, { flow: "release_spirit", destinyId });
+    setFeedbackChoice(null);
+    setFeedbackReason("");
+  }, [destinyId]);
+
+  async function generateDestiny(signals: BuildIntentSignals) {
+    if (!sessionId) return;
+    const mood = sessionStorage.getItem("death.mood") ?? undefined;
+    const nextSignal = sessionStorage.getItem("death.nextSignal") ?? undefined;
+    setIsLoadingDestiny(true);
+    setLoadError("");
+    setLoadingPhase("Reading your final combat log...");
+    const phaseTimer1 = setTimeout(() => setLoadingPhase("Consulting the spirit healers..."), 900);
+    const phaseTimer2 = setTimeout(() => setLoadingPhase("Drafting a safer next path..."), 1800);
+    const phaseTimer3 = setTimeout(() => setLoadingPhase("Binding your next oath to parchment..."), 3000);
+    try {
+      const result = await fetchDestiny({
+        entryPath: "release_spirit",
+        sessionId,
+        signals: {
+          mood,
+          nextSignal,
+          memoryHints: buildMemoryHints(),
+          recommendVariantId: recommendVariantId ?? undefined,
+          ...signals,
+        },
+      });
+      setDestiny(result.output);
+      setDestinyId(result.destinyId);
+      sessionStorage.setItem("death.destinyId", result.destinyId);
+      void fetchGrowthAssignment({
+        sessionId,
+        surface: "recommendation",
+        entryPath: "release_spirit",
+      })
+        .then((assignment) => {
+          void submitGrowthOutcome({
+            assignmentId: assignment.assignmentId,
+            converted: true,
+            outcome: { event: "recommend_rendered", destinyId: result.destinyId },
+          }).catch(() => {});
+        })
+        .catch(() => {});
+    } catch {
+      setLoadError("The spirit archives are delayed. We are still forging your next destiny.");
+    } finally {
+      clearTimeout(phaseTimer1);
+      clearTimeout(phaseTimer2);
+      clearTimeout(phaseTimer3);
+      setIsLoadingDestiny(false);
+    }
+  }
+
   async function runRerollWithReason(reason: RerollReason) {
     if (!sessionId || !destinyId || !destiny || isSubmitting) return;
     setIsSubmitting(true);
@@ -146,6 +146,11 @@ export function DeathResultStep() {
       reason,
       destinyId,
       sessionId,
+      filterCount:
+        (readBuildIntent("death.buildIntent").statPhilosophy?.length ?? 0) +
+        (readBuildIntent("death.buildIntent").professionIntents?.length ?? 0) +
+        (readBuildIntent("death.buildIntent").buildVectors?.length ?? 0) +
+        (readBuildIntent("death.buildIntent").raceMode ? 1 : 0),
     });
     try {
       const mood = sessionStorage.getItem("death.mood") ?? undefined;
@@ -256,11 +261,64 @@ export function DeathResultStep() {
   return (
     <div>
       <MemorialCard data={memorial} />
-      <BuildIntentChips storageKey="death.buildIntent" />
+      <BuildIntentChips
+        storageKey="death.buildIntent"
+        hasGenerated={Boolean(destiny)}
+        isGenerating={isLoadingDestiny}
+        onGenerate={(signals) => void generateDestiny(signals)}
+      />
       <div style={{ marginTop: 14 }}>
         {destiny ? (
           <>
             <DestinyCard data={destiny} />
+            <div className="card" style={{ marginTop: 12 }}>
+              <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Was this close to what you wanted?</p>
+              <div className="flow-nav" style={{ marginTop: 10 }}>
+                <button
+                  type="button"
+                  className={`btn-ghost ${feedbackChoice === "closer" ? "chip-btn--on" : ""}`}
+                  onClick={() => {
+                    setFeedbackChoice("closer");
+                    trackEvent(AnalyticsEvent.IntentFeedbackSubmitted, {
+                      flow: "release_spirit",
+                      destinyId,
+                      feedback: "closer",
+                    });
+                  }}
+                >
+                  Closer than expected
+                </button>
+                <button
+                  type="button"
+                  className={`btn-ghost ${feedbackChoice === "off" ? "chip-btn--on" : ""}`}
+                  onClick={() => setFeedbackChoice("off")}
+                >
+                  Still off target
+                </button>
+              </div>
+              {feedbackChoice === "off" ? (
+                <div className="chip-row" style={{ marginTop: 10 }}>
+                  {["Too risky", "Wrong fantasy", "Wrong pace", "Wrong role"].map((reason) => (
+                    <button
+                      key={reason}
+                      type="button"
+                      className={`chip-btn ${feedbackReason === reason ? "chip-btn--on" : ""}`}
+                      onClick={() => {
+                        setFeedbackReason(reason);
+                        trackEvent(AnalyticsEvent.IntentFeedbackSubmitted, {
+                          flow: "release_spirit",
+                          destinyId,
+                          feedback: "off_target",
+                          reason,
+                        });
+                      }}
+                    >
+                      {reason}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
             {destinyId ? (
               <div className="flow-nav" style={{ marginTop: 12 }}>
                 <Link to={`/build/${destinyId}`} className="btn-ghost">
