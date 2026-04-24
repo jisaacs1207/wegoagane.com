@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" role="img" aria-label="Item slot">
+  <rect width="40" height="40" rx="8" fill="#1a1612"/>
+  <rect x="11" y="13" width="18" height="14" rx="2" fill="none" stroke="#c4a35a" stroke-width="1.6"/>
+  <path fill="#c4a35a" opacity="0.35" d="M14 16h12v2H14zm0 4h8v2H14z"/>
+</svg>

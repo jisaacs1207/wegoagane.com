@@ -58,6 +58,11 @@ export function HomePage() {
           >
             <span className="entry-btn-title">Release Spirit</span>
             <span className="entry-btn-desc">I just died — memorial + next run in one guided journey</span>
+            <span className="entry-pill-row">
+              <span className="entry-pill">Memorial</span>
+              <span className="entry-pill">Faction identity</span>
+              <span className="entry-pill">Retool loop</span>
+            </span>
           </Link>
           <Link
             to="/draft-a-run/intent"
@@ -69,6 +74,11 @@ export function HomePage() {
           >
             <span className="entry-btn-title">Draft a Run</span>
             <span className="entry-btn-desc">I&apos;m planning — build path first, then generate</span>
+            <span className="entry-pill-row">
+              <span className="entry-pill">Vector-first</span>
+              <span className="entry-pill">5-question cap</span>
+              <span className="entry-pill">Commit URL</span>
+            </span>
           </Link>
           <Link
             to="/lucky-roll/journey"
@@ -80,6 +90,11 @@ export function HomePage() {
           >
             <span className="entry-btn-title">Lucky roll</span>
             <span className="entry-btn-desc">Surprise me — fast path, final generate step</span>
+            <span className="entry-pill-row">
+              <span className="entry-pill">Fast ceremony</span>
+              <span className="entry-pill">Class fantasy</span>
+              <span className="entry-pill">Shareable artifact</span>
+            </span>
           </Link>
         </div>
         <p style={{ margin: "18px 0 0", fontSize: 12, color: "var(--td)" }}>

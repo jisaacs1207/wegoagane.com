@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" role="img" aria-label="Surprise">
+  <rect width="40" height="40" rx="8" fill="#1a1612"/>
+  <rect x="12" y="12" width="16" height="16" rx="3" fill="none" stroke="#fff569" stroke-width="1.6"/>
+  <circle cx="17" cy="17" r="1.4" fill="#fff569"/>
+  <circle cx="23" cy="23" r="1.4" fill="#fff569"/>
+  <path fill="none" stroke="#e8c97a" stroke-width="1.2" d="M15 25h10"/>
+</svg>

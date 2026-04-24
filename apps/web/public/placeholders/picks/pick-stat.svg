@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" role="img" aria-label="Stat">
+  <rect width="28" height="28" rx="6" fill="#1a1612"/>
+  <path fill="none" stroke="#1a78c2" stroke-width="1.6" d="M8 18V10l6-4 6 4v8"/>
+  <path fill="none" stroke="#b8d8f5" stroke-width="1.2" d="M14 12v8"/>
+</svg>

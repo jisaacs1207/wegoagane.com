@@ -29,6 +29,9 @@
   --font-sans: -apple-system, "Segoe UI", system-ui, sans-serif;
   /* Memorial quote — design reference: serif italic for epitaph only */
   --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+  --line: #4a4034;
+  --card: #211d19;
+  --text: #e8dcc8;
 }
 
 *,
@@ -66,6 +69,64 @@ a:hover {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  position: relative;
+  isolation: isolate;
+}
+
+.atmo-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.atmo-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 120% at 50% -10%, rgba(232, 201, 122, 0.08), transparent 45%),
+    radial-gradient(100% 80% at 100% 50%, rgba(26, 120, 194, 0.09), transparent 55%),
+    radial-gradient(120% 120% at 50% 120%, rgba(196, 31, 59, 0.05), transparent 55%);
+}
+
+.atmo-glow {
+  position: absolute;
+  width: 420px;
+  height: 420px;
+  border-radius: 999px;
+  filter: blur(80px);
+  opacity: 0.15;
+}
+
+.atmo-glow--gold {
+  background: #d6af62;
+  left: -120px;
+  top: -100px;
+}
+
+.atmo-glow--blue {
+  background: #2b6393;
+  right: -120px;
+  top: 26%;
+}
+
+.atmo-spark {
+  position: absolute;
+  left: var(--spark-x);
+  top: var(--spark-y);
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(232, 201, 122, 0.55);
+  transform: scale(var(--spark-scale));
+  animation: atmo-drift 4.8s ease-in-out infinite;
+  animation-delay: var(--spark-delay);
+}
+
+@keyframes atmo-drift {
+  0% { transform: translateY(0) scale(var(--spark-scale)); opacity: 0.2; }
+  50% { transform: translateY(-8px) scale(calc(var(--spark-scale) + 0.15)); opacity: 0.8; }
+  100% { transform: translateY(0) scale(var(--spark-scale)); opacity: 0.2; }
 }
 
 .app-header {
@@ -168,12 +229,15 @@ a:hover {
   font-family: inherit;
   font-size: 15px;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.18s, background 0.18s, transform 0.18s, box-shadow 0.18s;
 }
 
 .entry-btn:hover {
   border-color: var(--ba);
   background: #2e2a26;
+  text-decoration: none;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
 }
 
 .entry-btn-title {
@@ -185,6 +249,24 @@ a:hover {
 .entry-btn-desc {
   font-size: 13px;
   color: var(--ts);
+}
+
+.entry-pill-row {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.entry-pill {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #d8c7a5;
+  border: 1px solid #4f4537;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: rgba(20, 17, 14, 0.55);
 }
 
 .chip-row {
@@ -232,6 +314,12 @@ a:hover {
   font-size: 14px;
   cursor: pointer;
   font-family: inherit;
+  transition: transform 0.16s, filter 0.16s;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
 }
 
 .btn-primary:disabled {
@@ -253,6 +341,22 @@ a:hover {
 .btn-ghost:hover {
   border-color: var(--ba);
   color: var(--tp);
+}
+
+input,
+textarea {
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, #1b1815, #191613);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #8d7f65;
 }
 
 .step-label {
@@ -321,6 +425,12 @@ a:hover {
   font-size: 12px;
   cursor: pointer;
   font-family: inherit;
+  transition: border-color 0.16s, transform 0.16s;
+}
+
+.chip-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--gold);
 }
 
 .chip-btn--on {
@@ -358,4 +468,202 @@ a:hover {
 
 .build-accordion summary::-webkit-details-marker {
   display: none;
+}
+
+/* Identity portraits — swap assets under public/placeholders/ */
+.identity-portrait {
+  display: block;
+  object-fit: cover;
+}
+
+.identity-portrait--fallback {
+  background: radial-gradient(circle at 30% 25%, rgba(232, 201, 122, 0.22), transparent 55%), #15120f;
+  border: 1px solid #4a4034;
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.35);
+}
+
+.journey-identity-strip {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px;
+  margin: 0 0 14px;
+  border-radius: 12px;
+  border: 1px solid #4a4034;
+  background: linear-gradient(135deg, rgba(232, 201, 122, 0.06), transparent 60%), #1c1916;
+  overflow: hidden;
+}
+
+.journey-identity-strip__primary {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.journey-identity-strip__glow {
+  position: absolute;
+  inset: -40% -20%;
+  background: radial-gradient(ellipse at 50% 0%, rgba(232, 201, 122, 0.12), transparent 55%);
+  pointer-events: none;
+}
+
+.journey-identity-strip--question .journey-identity-strip__glow {
+  background: radial-gradient(ellipse at 80% 20%, rgba(105, 204, 240, 0.1), transparent 50%);
+}
+
+.journey-identity-strip--review .journey-identity-strip__glow {
+  background: radial-gradient(ellipse at 20% 0%, rgba(196, 31, 59, 0.08), transparent 55%);
+}
+
+.journey-identity-strip__icon {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  border: 1px solid #4f4334;
+  overflow: hidden;
+  background: #15120f;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+}
+
+/* Do not use width/height % here — % resolves against the flex row and blows icons up to full viewport. */
+.journey-identity-strip__icon.identity-portrait,
+.journey-identity-strip__icon.identity-portrait--fallback {
+  max-width: 40px;
+  max-height: 40px;
+}
+
+.journey-identity-strip__icon--accent {
+  width: 48px;
+  height: 48px;
+  border-color: #8a6f3a;
+  box-shadow: 0 0 0 1px rgba(232, 201, 122, 0.15), 0 6px 14px rgba(0, 0, 0, 0.3);
+}
+
+.journey-identity-strip__icon--accent.identity-portrait,
+.journey-identity-strip__icon--accent.identity-portrait--fallback {
+  max-width: 48px;
+  max-height: 48px;
+}
+
+.journey-identity-strip__picks {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 120px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+
+.journey-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px 3px 3px;
+  border-radius: 999px;
+  border: 1px solid #4a4034;
+  background: rgba(21, 18, 14, 0.85);
+  font-size: 10px;
+  color: #d8c7a5;
+  letter-spacing: 0.02em;
+  max-width: 100%;
+}
+
+.journey-pick--stat {
+  border-color: color-mix(in srgb, #1a78c2, #3a3028 55%);
+}
+
+.journey-pick--prof {
+  border-color: color-mix(in srgb, #8a6f3a, #3a3028 40%);
+}
+
+.journey-pick--vector {
+  border-color: color-mix(in srgb, #c41f3b, #3a3028 50%);
+}
+
+.journey-pick--race {
+  border-color: color-mix(in srgb, #c4a35a, #3a3028 35%);
+}
+
+.journey-pick--overflow {
+  padding: 3px 10px;
+  color: var(--gold-bright);
+  border-style: dashed;
+}
+
+.journey-pick__icon {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.journey-pick__icon.identity-portrait,
+.journey-pick__icon.identity-portrait--fallback {
+  width: 22px;
+  height: 22px;
+}
+
+.journey-pick__label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.commit-identity-panel {
+  position: relative;
+  overflow: hidden;
+}
+
+.commit-identity-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 520px) {
+  .commit-identity-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.commit-identity-tile {
+  margin: 0;
+  text-align: center;
+}
+
+.commit-identity-tile__img {
+  width: 100%;
+  max-width: 72px;
+  aspect-ratio: 1;
+  margin: 0 auto;
+  border-radius: 12px;
+  border: 1px solid #4a4034;
+  overflow: hidden;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.22);
+}
+
+.commit-identity-tile__img.identity-portrait,
+.commit-identity-tile__img.identity-portrait--fallback {
+  width: 100%;
+  height: auto;
+}
+
+.commit-identity-tile figcaption {
+  margin-top: 6px;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ts);
 }

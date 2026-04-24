@@ -4,10 +4,12 @@ import { memorialFixture, type DestinyFixture, type MemorialFixture } from "../.
 import { DestinyCard } from "../../components/cards/DestinyCard";
 import { MemorialCard } from "../../components/cards/MemorialCard";
 import {
+  commitJourneyBuild,
   createShareRun,
   fetchDestiny,
   fetchGrowthAssignment,
   fetchMemorial,
+  fetchNameCandidates,
   type RerollReason,
   submitDestinyFeedback,
 } from "../../lib/recommendClient";
@@ -38,6 +40,8 @@ export function DeathResultStep() {
   const [recommendVariantId, setRecommendVariantId] = useState<string | null>(null);
   const [feedbackChoice, setFeedbackChoice] = useState<"closer" | "off" | null>(null);
   const [feedbackReason, setFeedbackReason] = useState<string>("");
+  const [commitName, setCommitName] = useState("");
+  const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
 
   useEffect(() => {
     const stored = readStoredDestiny("death");
@@ -79,6 +83,12 @@ export function DeathResultStep() {
     setFeedbackChoice(null);
     setFeedbackReason("");
   }, [destinyId]);
+
+  useEffect(() => {
+    void fetchNameCandidates({ limit: 6 })
+      .then((res) => setNameSuggestions(res.names.map((row) => row.name)))
+      .catch(() => setNameSuggestions([]));
+  }, []);
 
   async function runRerollWithReason(reason: RerollReason) {
     if (!sessionId || !destinyId || !destiny || isSubmitting) return;
@@ -201,6 +211,30 @@ export function DeathResultStep() {
     }
   }
 
+  async function commitBuild() {
+    if (!sessionId || !destinyId || isSubmitting) return;
+    setIsSubmitting(true);
+    setActionMessage("");
+    trackEvent(AnalyticsEvent.CommitClicked, { flow: "release_spirit", destinyId });
+    try {
+      const committed = await commitJourneyBuild({
+        sessionId,
+        destinyId,
+        commitName: commitName.trim() || undefined,
+      });
+      trackEvent(AnalyticsEvent.CommitCompleted, {
+        flow: "release_spirit",
+        destinyId,
+        slug: committed.slug,
+      });
+      navigate(committed.path);
+    } catch {
+      setActionMessage("Could not commit this build yet.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <div>
       {!destiny || !sessionId || !destinyId ? (
@@ -219,7 +253,7 @@ export function DeathResultStep() {
         </div>
       ) : (
         <>
-          <MemorialCard data={memorial} />
+          <MemorialCard data={memorial} linkedClassId={destiny.classId} linkedHeadline={destiny.headline} />
           <div style={{ marginTop: 14 }}>
             <DestinyCard data={destiny} />
             <div className="card" style={{ marginTop: 12 }}>
@@ -280,6 +314,29 @@ export function DeathResultStep() {
                 </Link>
               </div>
             ) : null}
+            <div className="card" style={{ marginTop: 12 }}>
+              <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Name this build before commit</p>
+              <input
+                value={commitName}
+                onChange={(event) => setCommitName(event.target.value)}
+                placeholder="Custom build name"
+                style={{ marginTop: 8, width: "100%" }}
+              />
+              {nameSuggestions.length > 0 ? (
+                <div className="chip-row" style={{ marginTop: 8 }}>
+                  {nameSuggestions.map((name) => (
+                    <button key={name} type="button" className="chip-btn" onClick={() => setCommitName(name)}>
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <div className="flow-nav" style={{ marginTop: 10 }}>
+                <button type="button" className="btn-primary" disabled={isSubmitting} onClick={() => void commitBuild()}>
+                  Commit build URL
+                </button>
+              </div>
+            </div>
           </div>
           <div className="card" style={{ marginTop: 14 }}>
         <p style={{ margin: 0, fontSize: 13, color: "var(--ts)", lineHeight: 1.45 }}>

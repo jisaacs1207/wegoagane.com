@@ -5,14 +5,12 @@ import {
   applyCorePreset,
   DEPTH_OPTIONS,
   optionLabel,
-  PROF_OPTIONS,
-  RACE_MODES,
-  STAT_OPTIONS,
   toggleList,
-  VECTOR_OPTIONS,
   type CorePreset,
   type IntentDepth,
 } from "./intent/intentOptions";
+import { JourneyIdentityStrip } from "./journey/JourneyIdentityStrip";
+import type { JourneyVectorKey } from "../content/identityAssets";
 
 type Props = {
   storageKey: string;
@@ -20,8 +18,8 @@ type Props = {
   isGenerating?: boolean;
   hasGenerated?: boolean;
 };
-type JourneyStep = "depth" | "path" | "review";
-type BranchKey = "survivability" | "economy" | "combat";
+type JourneyStep = "depth" | "vector" | "question" | "review";
+type VectorKey = JourneyVectorKey;
 
 function readStorage(key: string): BuildIntentSignals {
   try {
@@ -61,7 +59,8 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
   const [value, setValue] = useState<BuildIntentSignals>(() => readStorage(storageKey));
   const [depth, setDepth] = useState<IntentDepth>(() => readDepth(storageKey));
   const [step, setStep] = useState<JourneyStep>("depth");
-  const [activeBranch, setActiveBranch] = useState<BranchKey>("survivability");
+  const [vector, setVector] = useState<VectorKey>("survivability");
+  const [questionIndex, setQuestionIndex] = useState(0);
   const [corePreset, setCorePreset] = useState<CorePreset>("balanced");
 
   function persist(next: BuildIntentSignals) {
@@ -94,7 +93,8 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
       storageKey,
       depth,
       step,
-      branch: activeBranch,
+      vector,
+      questionIndex,
       statCount: value.statPhilosophy?.length ?? 0,
       professionCount: value.professionIntents?.length ?? 0,
       vectorCount: value.buildVectors?.length ?? 0,
@@ -102,11 +102,12 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
       activeCount: activeIds.length,
     }),
     [
-      activeBranch,
       activeIds.length,
       depth,
+      questionIndex,
       step,
       storageKey,
+      vector,
       value.buildVectors?.length,
       value.professionIntents?.length,
       value.raceMode,
@@ -115,6 +116,139 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
   );
 
   const depthHelper = DEPTH_OPTIONS.find((o) => o.id === depth)?.helper;
+
+  const questionsByVector: Record<VectorKey, Array<{ id: string; prompt: string; answers: string[]; apply: (a: string) => BuildIntentSignals }>> = {
+    profession: [
+      {
+        id: "prof_priority",
+        prompt: "Which profession priority fits this run?",
+        answers: ["Gold pacing", "Self-sustain", "Consumables", "Power spikes"],
+        apply: (a) =>
+          ({
+            ...value,
+            professionIntents: toggleList(
+              value.professionIntents,
+              a === "Gold pacing"
+                ? "auction_house_play"
+                : a === "Self-sustain"
+                  ? "engineering_outs"
+                  : a === "Consumables"
+                    ? "alchemy_consumables"
+                    : "mining_engineering_pair",
+              4,
+            ) as BuildIntentSignals["professionIntents"],
+          }),
+      },
+      {
+        id: "prof_tempo",
+        prompt: "When should professions matter most?",
+        answers: ["Early", "Mid", "Late", "Any"],
+        apply: (a) =>
+          ({
+            ...value,
+            professionIntents: toggleList(
+              value.professionIntents,
+              a === "Early"
+                ? "skinning_mining_early"
+                : a === "Mid"
+                  ? "dual_gathering_bootstrap"
+                  : a === "Late"
+                    ? "early_gathering_then_pivot_engineering"
+                    : "fishing_optional",
+              4,
+            ) as BuildIntentSignals["professionIntents"],
+          }),
+      },
+    ],
+    playstyle: [
+      {
+        id: "style_risk",
+        prompt: "How much risk are you comfortable with?",
+        answers: ["Very low", "Low", "Balanced", "High"],
+        apply: (a) =>
+          ({
+            ...value,
+            statPhilosophy: toggleList(
+              value.statPhilosophy,
+              a === "Very low" ? "stamina_forward" : a === "Low" ? "balanced" : a === "Balanced" ? "balanced" : "meme_glass",
+              3,
+            ) as BuildIntentSignals["statPhilosophy"],
+          }),
+      },
+      {
+        id: "style_pulls",
+        prompt: "Preferred pull cadence?",
+        answers: ["Singles only", "Controlled chains", "Mixed", "Fast pulls"],
+        apply: (a) =>
+          ({
+            ...value,
+            buildVectors: toggleList(
+              value.buildVectors,
+              a === "Singles only" ? "solo" : a === "Controlled chains" ? "tank" : a === "Mixed" ? "hybrid" : "rage",
+              6,
+            ) as BuildIntentSignals["buildVectors"],
+          }),
+      },
+    ],
+    class_fantasy: [
+      {
+        id: "fantasy_tone",
+        prompt: "Which fantasy tone do you want?",
+        answers: ["Holy", "Nature", "Arcane", "Shadow"],
+        apply: (a) =>
+          ({
+            ...value,
+            buildVectors: toggleList(
+              value.buildVectors,
+              a === "Holy" ? "holy" : a === "Nature" ? "nature" : a === "Arcane" ? "caster" : "demonic",
+              6,
+            ) as BuildIntentSignals["buildVectors"],
+          }),
+      },
+    ],
+    combat_style: [
+      {
+        id: "combat_distance",
+        prompt: "Preferred combat distance?",
+        answers: ["Melee", "Ranged", "Hybrid", "No preference"],
+        apply: (a) =>
+          ({
+            ...value,
+            buildVectors: toggleList(
+              value.buildVectors,
+              a === "Melee" ? "melee" : a === "Ranged" ? "ranged" : a === "Hybrid" ? "hybrid" : "hybrid",
+              6,
+            ) as BuildIntentSignals["buildVectors"],
+          }),
+      },
+    ],
+    survivability: [
+      {
+        id: "survival_core",
+        prompt: "What survival profile fits you?",
+        answers: ["Never die", "Safe with speed", "Balanced", "High risk/high pace"],
+        apply: (a) =>
+          ({
+            ...value,
+            statPhilosophy: toggleList(
+              value.statPhilosophy,
+              a === "Never die" ? "stamina_forward" : a === "Safe with speed" ? "agility_forward" : a === "Balanced" ? "balanced" : "meme_glass",
+              3,
+            ) as BuildIntentSignals["statPhilosophy"],
+          }),
+      },
+    ],
+    surprise: [
+      {
+        id: "surprise_mode",
+        prompt: "How wild should the surprise be?",
+        answers: ["Stable surprise", "Balanced surprise", "Spicy surprise", "Maximum chaos"],
+        apply: (a) => ({ ...value, raceMode: a === "Maximum chaos" ? "surprise" : "signal_inferred" }),
+      },
+    ],
+  };
+  const currentQuestions = questionsByVector[vector];
+  const currentQuestion = currentQuestions[Math.min(questionIndex, Math.max(0, currentQuestions.length - 1))];
 
   function removeActive(id: string) {
     if (value.statPhilosophy?.includes(id as never)) {
@@ -139,14 +273,15 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
 
   return (
     <div className="build-intent card" style={{ marginTop: 12 }}>
+      <JourneyIdentityStrip step={step} vector={vector} depth={depth} corePreset={corePreset} signals={value} />
       <p className="step-label" style={{ marginBottom: 8 }}>
         Build journey
       </p>
       <p className="hero-sub" style={{ marginTop: 0, marginBottom: 10, fontSize: 12 }}>
-        Pick your depth, branch deeper if you want, then generate on the final screen.
+        Choose a vector, answer one question per screen, and generate whenever you are ready.
       </p>
       <p className="hero-sub" style={{ marginTop: 0, marginBottom: 12, fontSize: 12 }}>
-        Step {step === "depth" ? "1" : step === "path" ? "2" : "3"} of 3
+        Step {step === "depth" ? "1" : step === "vector" ? "2" : step === "question" ? "3" : "4"} of 4
       </p>
       {step === "depth" ? (
         <>
@@ -207,130 +342,86 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
                 Continue to generation
               </button>
             ) : (
-              <button type="button" className="btn-primary" onClick={() => setStep("path")}>
-                Continue to branches
+              <button type="button" className="btn-primary" onClick={() => setStep("vector")}>
+                Continue to vector
               </button>
             )}
           </div>
         </>
       ) : null}
-      {step === "path" ? (
+      {step === "vector" ? (
         <>
-          <p className="hero-sub" style={{ marginTop: 0, marginBottom: 10, fontSize: 12 }}>
-            Choose a branch like a talent path. You can stop early and generate any time.
-          </p>
+          <p className="hero-sub" style={{ marginTop: 0, marginBottom: 10, fontSize: 12 }}>What is your build entrance vector?</p>
           <div className="chip-row" style={{ marginBottom: 12 }}>
-            <button
-              type="button"
-              className={`chip-btn ${activeBranch === "survivability" ? "chip-btn--on" : ""}`}
-              onClick={() => setActiveBranch("survivability")}
-            >
-              Survivability
-            </button>
-            <button
-              type="button"
-              className={`chip-btn ${activeBranch === "economy" ? "chip-btn--on" : ""}`}
-              onClick={() => setActiveBranch("economy")}
-            >
-              Economy/professions
-            </button>
-            <button
-              type="button"
-              className={`chip-btn ${activeBranch === "combat" ? "chip-btn--on" : ""}`}
-              onClick={() => setActiveBranch("combat")}
-            >
-              Combat/fantasy
-            </button>
+            {[
+              { id: "profession", label: "Profession-first" },
+              { id: "playstyle", label: "Playstyle" },
+              { id: "class_fantasy", label: "Class fantasy" },
+              { id: "combat_style", label: "Combat style" },
+              { id: "survivability", label: "Survivability" },
+              { id: "surprise", label: "Surprise me" },
+            ].map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                className={`chip-btn ${vector === opt.id ? "chip-btn--on" : ""}`}
+                onClick={() => {
+                  setVector(opt.id as VectorKey);
+                  trackEvent(AnalyticsEvent.VectorSelected, { ...eventContext, vector: opt.id });
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
-          {activeBranch === "survivability" ? (
-            <>
-              <fieldset style={{ border: "none", padding: 0, margin: 0 }}>
-                <legend style={{ fontSize: 12, color: "var(--ts)", marginBottom: 6 }}>Stat lean</legend>
-                <div className="chip-row">
-                  {STAT_OPTIONS.map((o) => (
-                    <button
-                      key={o.id}
-                      type="button"
-                      className={`chip-btn ${value.statPhilosophy?.includes(o.id) ? "chip-btn--on" : ""}`}
-                      onClick={() =>
-                        persist({
-                          ...value,
-                          statPhilosophy: toggleList(value.statPhilosophy, o.id, 3) as BuildIntentSignals["statPhilosophy"],
-                        })
-                      }
-                    >
-                      {o.label}
-                    </button>
-                  ))}
-                </div>
-              </fieldset>
-              <fieldset style={{ border: "none", padding: 0, margin: "12px 0 0" }}>
-                <legend style={{ fontSize: 12, color: "var(--ts)", marginBottom: 6 }}>Race mode</legend>
-                <div className="chip-row">
-                  {RACE_MODES.map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      className={`chip-btn ${value.raceMode === m.id ? "chip-btn--on" : ""}`}
-                      onClick={() => persist({ ...value, raceMode: m.id as BuildIntentSignals["raceMode"] })}
-                    >
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
-              </fieldset>
-            </>
-          ) : null}
-          {activeBranch === "economy" ? (
-            <fieldset style={{ border: "none", padding: 0, margin: 0 }}>
-              <legend style={{ fontSize: 12, color: "var(--ts)", marginBottom: 6 }}>Professions / economy</legend>
-              <div className="chip-row">
-                {PROF_OPTIONS.map((o) => (
-                  <button
-                    key={o.id}
-                    type="button"
-                    className={`chip-btn ${value.professionIntents?.includes(o.id) ? "chip-btn--on" : ""}`}
-                    onClick={() =>
-                      persist({
-                        ...value,
-                        professionIntents: toggleList(value.professionIntents, o.id, 4) as BuildIntentSignals["professionIntents"],
-                      })
-                    }
-                  >
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-          ) : null}
-          {activeBranch === "combat" ? (
-            <fieldset style={{ border: "none", padding: 0, margin: 0 }}>
-              <legend style={{ fontSize: 12, color: "var(--ts)", marginBottom: 6 }}>Combat / fantasy</legend>
-              <div className="chip-row">
-                {VECTOR_OPTIONS.map((o) => (
-                  <button
-                    key={o.id}
-                    type="button"
-                    className={`chip-btn ${value.buildVectors?.includes(o.id) ? "chip-btn--on" : ""}`}
-                    onClick={() =>
-                      persist({
-                        ...value,
-                        buildVectors: toggleList(value.buildVectors, o.id, 6) as BuildIntentSignals["buildVectors"],
-                      })
-                    }
-                  >
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-          ) : null}
           <div className="flow-nav" style={{ marginTop: 12 }}>
             <button type="button" className="btn-ghost" onClick={() => setStep("depth")}>
               Back
             </button>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => {
+                setQuestionIndex(0);
+                setStep("question");
+              }}
+            >
+              Continue
+            </button>
+          </div>
+        </>
+      ) : null}
+      {step === "question" ? (
+        <>
+          <p className="hero-sub" style={{ marginTop: 0, marginBottom: 10, fontSize: 12 }}>
+            {currentQuestion.prompt}
+          </p>
+          <div className="chip-row" style={{ marginBottom: 10 }}>
+            {currentQuestion.answers.map((answer) => (
+              <button
+                key={answer}
+                type="button"
+                className="chip-btn"
+                onClick={() => {
+                  persist(currentQuestion.apply(answer));
+                  trackEvent(AnalyticsEvent.QuestionAnswered, { ...eventContext, questionId: currentQuestion.id, answer });
+                  if (questionIndex >= 4 || questionIndex >= currentQuestions.length - 1) {
+                    setStep("review");
+                  } else {
+                    setQuestionIndex((prev) => prev + 1);
+                  }
+                }}
+              >
+                {answer}
+              </button>
+            ))}
+          </div>
+          <div className="flow-nav">
+            <button type="button" className="btn-ghost" onClick={() => setStep("vector")}>
+              Back
+            </button>
             <button type="button" className="btn-primary" onClick={() => setStep("review")}>
-              Continue to generation
+              Generate now
             </button>
           </div>
         </>
@@ -356,7 +447,7 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
             </p>
           )}
           <div className="flow-nav">
-            <button type="button" className="btn-ghost" onClick={() => setStep(depth === "quick" ? "depth" : "path")}>
+            <button type="button" className="btn-ghost" onClick={() => setStep(depth === "quick" ? "depth" : "question")}>
               Back
             </button>
             <button
@@ -364,10 +455,7 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
               className="btn-primary"
               disabled={isGenerating}
               onClick={() => {
-                trackEvent(
-                  hasGenerated ? AnalyticsEvent.IntentRegenerateClicked : AnalyticsEvent.IntentGenerateClicked,
-                  eventContext,
-                );
+                trackEvent(hasGenerated ? AnalyticsEvent.IntentRegenerateClicked : AnalyticsEvent.GenerateClicked, eventContext);
                 onGenerate(value, depth);
               }}
             >

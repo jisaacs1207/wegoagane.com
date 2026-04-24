@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
+import { AtmosphereFx } from "./AtmosphereFx";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
@@ -7,6 +8,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="app-root">
+      <AtmosphereFx />
       <header className="app-header">
         <div className="app-header-inner">
           <Link to="/" className="app-logo">

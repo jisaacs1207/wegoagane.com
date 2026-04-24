@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { BuildIntentChips } from "../../components/BuildIntentChips";
+import { inferFactionFromRace, inferRaceFromHeadline } from "../../content/identityAssets";
+import type { ClassId } from "../../icons/types";
 import type { BuildIntentSignals } from "../../lib/buildIntentTypes";
-import { fetchDestiny, fetchGrowthAssignment, submitGrowthOutcome } from "../../lib/recommendClient";
+import { fetchBuildCommit, fetchDestiny, fetchGrowthAssignment, submitGrowthOutcome } from "../../lib/recommendClient";
 import { buildMemoryHints } from "../../lib/memoryProfile";
 import { writeStoredDestiny } from "../../lib/flowDestinyState";
 
@@ -20,6 +22,24 @@ export function PlanJourneyStep() {
     setIsGenerating(true);
     setError("");
     try {
+      let seedClass: ClassId | undefined;
+      let seedFaction: "horde" | "alliance" | undefined;
+      const seedDestinyId = sessionStorage.getItem("plan.seedDestinyId");
+      if (seedDestinyId) {
+        sessionStorage.removeItem("plan.seedDestinyId");
+        try {
+          const prior = await fetchBuildCommit(seedDestinyId);
+          const d = prior.payload?.destiny;
+          if (d?.classId) {
+            seedClass = d.classId;
+            const fac = inferFactionFromRace(inferRaceFromHeadline(d.headline));
+            if (fac === "horde" || fac === "alliance") seedFaction = fac;
+          }
+        } catch {
+          /* prior row missing or offline */
+        }
+      }
+
       const assignment = await fetchGrowthAssignment({
         sessionId,
         surface: "recommendation",
@@ -34,6 +54,8 @@ export function PlanJourneyStep() {
           freeform,
           memoryHints: buildMemoryHints(),
           recommendVariantId: assignment?.variantId ?? undefined,
+          preferredClass: seedClass,
+          factionPreference: seedFaction,
           ...signals,
         },
       });

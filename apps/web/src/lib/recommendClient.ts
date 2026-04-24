@@ -96,6 +96,27 @@ export type NameCandidateRow = {
   name: string;
 };
 
+export type BuildCommitResponse = {
+  commitId: string;
+  slug: string;
+  path: string;
+};
+
+export type BuildCommitRecord = {
+  id: string;
+  slug: string;
+  sessionId: string;
+  destinyId: string;
+  buildPlanId: string | null;
+  commitName: string | null;
+  sourceType: string;
+  payload: {
+    destiny?: DestinyFixture;
+    plan?: unknown;
+  } | null;
+  path: string;
+};
+
 type FeedbackChoice = "accept" | "almost_right" | "miss";
 type FeedbackStage = "reroll_gate" | "post_accept";
 
@@ -373,4 +394,50 @@ export async function fetchNameCandidates(params?: {
     throw new Error(`names_fetch_failed:${response.status}`);
   }
   return (await response.json()) as { names: NameCandidateRow[] };
+}
+
+export async function commitJourneyBuild(input: {
+  sessionId: string;
+  destinyId: string;
+  commitName?: string;
+}): Promise<BuildCommitResponse> {
+  const response = await fetch("/api/v1/journey/commit", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok && response.status !== 201) {
+    throw new Error(`journey_commit_failed:${response.status}`);
+  }
+  return (await response.json()) as BuildCommitResponse;
+}
+
+export async function fetchBuildCommit(slug: string): Promise<BuildCommitRecord> {
+  const response = await fetch(`/api/v1/journey/commit/${encodeURIComponent(slug)}`);
+  if (!response.ok) {
+    throw new Error(`build_commit_fetch_failed:${response.status}`);
+  }
+  return (await response.json()) as BuildCommitRecord;
+}
+
+export async function submitBuildCommitMemorial(
+  slug: string,
+  input: {
+    sessionId: string;
+    level?: number;
+    zone: string;
+    cause: string;
+    killer?: string;
+    note?: string;
+    rating?: string;
+  },
+): Promise<void> {
+  const response = await fetch(`/api/v1/journey/commit/${encodeURIComponent(slug)}/memorial`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    throw new Error(`build_commit_memorial_failed:${response.status}`);
+  }
 }
