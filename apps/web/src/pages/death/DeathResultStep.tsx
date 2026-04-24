@@ -1,14 +1,12 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { memorialFixture, type DestinyFixture, type MemorialFixture } from "../../content/cardFixtures";
+import { type DestinyFixture } from "../../content/cardFixtures";
 import { DestinyCard } from "../../components/cards/DestinyCard";
-import { MemorialCard } from "../../components/cards/MemorialCard";
 import {
   commitJourneyBuild,
   createShareRun,
   fetchDestiny,
   fetchGrowthAssignment,
-  fetchMemorial,
   fetchNameCandidates,
   type RerollReason,
   submitDestinyFeedback,
@@ -17,6 +15,7 @@ import { readBuildIntent } from "../../lib/readBuildIntent";
 import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 import { buildMemoryHints, rememberAccept, rememberReroll } from "../../lib/memoryProfile";
 import { readStoredDestiny } from "../../lib/flowDestinyState";
+import { augmentMoodWithPower } from "../../lib/journeySignalsExtras";
 
 const rerollReasons: Array<{ value: RerollReason; label: string }> = [
   { value: "wrong_class", label: "Wrong class" },
@@ -29,7 +28,6 @@ const rerollReasons: Array<{ value: RerollReason; label: string }> = [
 export function DeathResultStep() {
   const navigate = useNavigate();
   const [destiny, setDestiny] = useState<DestinyFixture | null>(null);
-  const [memorial, setMemorial] = useState<MemorialFixture>(memorialFixture);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [destinyId, setDestinyId] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string>("");
@@ -52,21 +50,6 @@ export function DeathResultStep() {
     setDestiny(stored.output);
     setDestinyId(stored.destinyId);
     setSessionId(stored.sessionId);
-
-    const mood = sessionStorage.getItem("death.mood") ?? undefined;
-    const nextSignal = sessionStorage.getItem("death.nextSignal") ?? undefined;
-    void fetchMemorial({
-      sessionId: stored.sessionId,
-      zone: "Unknown Zone",
-      cause: "Unknown Cause",
-      mood,
-      nextSignal,
-      faction: "horde",
-      characterName: memorialFixture.characterName,
-      level: memorialFixture.level ?? undefined,
-    })
-      .then(setMemorial)
-      .catch(() => setMemorial(memorialFixture));
 
     void fetchGrowthAssignment({
       sessionId: stored.sessionId,
@@ -133,7 +116,7 @@ export function DeathResultStep() {
         entryPath: "release_spirit",
         sessionId,
         signals: {
-          mood,
+          mood: augmentMoodWithPower(mood, "death.buildIntent"),
           nextSignal,
           memoryHints: buildMemoryHints(),
           recommendVariantId: recommendVariantId ?? undefined,
@@ -253,9 +236,9 @@ export function DeathResultStep() {
         </div>
       ) : (
         <>
-          <MemorialCard data={memorial} linkedClassId={destiny.classId} linkedHeadline={destiny.headline} />
-          <div style={{ marginTop: 14 }}>
-            <DestinyCard data={destiny} />
+          <div className="result-page-grid">
+            <div className="result-page-grid__main">
+              <DestinyCard data={destiny} intentSignals={readBuildIntent("death.buildIntent")} />
             <div className="card" style={{ marginTop: 12 }}>
               <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Was this close to what you wanted?</p>
               <div className="flow-nav" style={{ marginTop: 10 }}>
@@ -306,9 +289,6 @@ export function DeathResultStep() {
             </div>
             {destinyId ? (
               <div className="flow-nav" style={{ marginTop: 12 }}>
-                <Link to={`/build/${destinyId}`} className="btn-ghost">
-                  Open HC build sheet
-                </Link>
                 <Link to="/release-spirit/journey" className="btn-ghost">
                   Retool journey
                 </Link>
@@ -337,12 +317,12 @@ export function DeathResultStep() {
                 </button>
               </div>
             </div>
-          </div>
-          <div className="card" style={{ marginTop: 14 }}>
+            </div>
+            <aside className="result-page-grid__side">
+          <div className="card">
         <p style={{ margin: 0, fontSize: 13, color: "var(--ts)", lineHeight: 1.45 }}>
-          Memorial and next destiny can export as one image for sharing. See a{" "}
-          <strong>narrow side-by-side layout</strong> on{" "}
-          <Link to="/design/cards">card shells</Link> — polish, imagery, and real copy ship in later milestones.
+          Memorials now live on the committed build URL after you mark a death. Share exports still use the{" "}
+          <Link to="/design/cards">card shells</Link> reference layout.
         </p>
         <label style={{ marginTop: 10, display: "block", fontSize: 12, color: "var(--ts)" }}>
           Optional note
@@ -403,6 +383,8 @@ export function DeathResultStep() {
           </Link>
         </div>
       </div>
+            </aside>
+          </div>
         </>
       )}
     </div>

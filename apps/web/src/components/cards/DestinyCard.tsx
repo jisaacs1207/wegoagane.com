@@ -4,15 +4,19 @@ import {
   CLASS_ASSET_URLS,
   FACTION_ASSET_URLS,
   RACE_ASSET_URLS,
+  formatRaceLabel,
   inferFactionFromRace,
   inferRaceFromHeadline,
 } from "../../content/identityAssets";
 import { IdentityPortrait } from "../IdentityPortrait";
-import { ClassIcon } from "../../icons/ClassIcon";
+import type { BuildIntentSignals } from "../../lib/buildIntentTypes";
+import { signalSummaryLabels } from "../intent/intentOptions";
 
 type Props = {
   data: DestinyFixture;
   compact?: boolean;
+  /** When set, shows journey chips under the headline so picks read alongside the card. */
+  intentSignals?: BuildIntentSignals | null;
 };
 
 const CLASS_FANTASY_LABEL: Record<DestinyFixture["classId"], string> = {
@@ -27,7 +31,7 @@ const CLASS_FANTASY_LABEL: Record<DestinyFixture["classId"], string> = {
   shaman: "Stormbound Caller",
 };
 
-export function DestinyCard({ data, compact }: Props) {
+export function DestinyCard({ data, compact, intentSignals }: Props) {
   const headlineId = useId();
   const raceId = inferRaceFromHeadline(data.headline);
   const faction = inferFactionFromRace(raceId);
@@ -49,23 +53,55 @@ export function DestinyCard({ data, compact }: Props) {
         <div className="destiny-card__stripe" style={stripeStyle} />
         <div className="destiny-card__titles" style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <ClassIcon classId={data.classId} />
+            <IdentityPortrait
+              src={CLASS_ASSET_URLS[data.classId]}
+              alt=""
+              className="destiny-card__title-class-icon"
+              title={`Class: ${data.classId}`}
+            />
             <h2 id={headlineId}>{data.headline}</h2>
           </div>
           <p>{data.subline}</p>
-          <div className="destiny-card__portrait-row">
-            <IdentityPortrait
-              src={CLASS_ASSET_URLS[data.classId]}
-              alt={`${data.classId} crest`}
-              className="destiny-card__portrait"
-            />
-            <IdentityPortrait
-              src={RACE_ASSET_URLS[raceId]}
-              alt={`${raceId.replace("_", " ")} crest`}
-              className="destiny-card__portrait"
-            />
-            <IdentityPortrait src={FACTION_ASSET_URLS[faction]} alt={`${faction} banner`} className="destiny-card__portrait" />
+          <div className="destiny-card__identity-band">
+            <div className="destiny-card__class-ring" title={`Class: ${data.classId}`}>
+              <IdentityPortrait
+                src={CLASS_ASSET_URLS[data.classId]}
+                alt={`${data.classId} class`}
+                className="destiny-card__class-ring-img"
+              />
+            </div>
+            <div className="destiny-card__race-faction">
+              <IdentityPortrait
+                src={RACE_ASSET_URLS[raceId]}
+                alt={`${formatRaceLabel(raceId)}`}
+                className="destiny-card__race-portrait"
+                title={formatRaceLabel(raceId)}
+              />
+              <div className="destiny-card__race-faction-text">
+                <span className="destiny-card__race-line">{formatRaceLabel(raceId)}</span>
+                <span className={`destiny-card__faction-pill destiny-card__faction-pill--${faction}`}>
+                  <IdentityPortrait
+                    src={FACTION_ASSET_URLS[faction]}
+                    alt={`${faction} banner`}
+                    className="destiny-card__faction-icon"
+                  />
+                  {faction === "horde" ? "Horde" : faction === "alliance" ? "Alliance" : "Neutral"}
+                </span>
+              </div>
+            </div>
           </div>
+          {intentSignals && signalSummaryLabels(intentSignals).length > 0 ? (
+            <div className="destiny-card__intent-wrap">
+              <p className="destiny-card__intent-label">From your journey</p>
+              <div className="destiny-card__intent-chips">
+                {signalSummaryLabels(intentSignals).map((label) => (
+                  <span key={label} className="destiny-card__intent-chip">
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div className="destiny-card__identity-row">
             <span className={`destiny-card__class-tag destiny-card__class-tag--${data.classId}`}>
               {CLASS_FANTASY_LABEL[data.classId]}
@@ -81,6 +117,10 @@ export function DestinyCard({ data, compact }: Props) {
           <li key={b}>{b}</li>
         ))}
       </ul>
+      <p className="destiny-card__rollup">
+        <strong>Suggested identity:</strong> {CLASS_FANTASY_LABEL[data.classId]} · {formatRaceLabel(raceId)} ·{" "}
+        {faction === "horde" ? "Horde" : faction === "alliance" ? "Alliance" : "Neutral"} — {data.bullets.join(" · ")}
+      </p>
       <span className="card-watermark">wegoagane.com</span>
     </article>
   );

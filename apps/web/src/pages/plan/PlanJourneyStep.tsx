@@ -4,6 +4,7 @@ import { BuildIntentChips } from "../../components/BuildIntentChips";
 import { inferFactionFromRace, inferRaceFromHeadline } from "../../content/identityAssets";
 import type { ClassId } from "../../icons/types";
 import type { BuildIntentSignals } from "../../lib/buildIntentTypes";
+import { augmentFreeformWithPower } from "../../lib/journeySignalsExtras";
 import { fetchBuildCommit, fetchDestiny, fetchGrowthAssignment, submitGrowthOutcome } from "../../lib/recommendClient";
 import { buildMemoryHints } from "../../lib/memoryProfile";
 import { writeStoredDestiny } from "../../lib/flowDestinyState";
@@ -51,7 +52,7 @@ export function PlanJourneyStep() {
         sessionId,
         signals: {
           intent,
-          freeform,
+          freeform: augmentFreeformWithPower(freeform, "plan.buildIntent"),
           memoryHints: buildMemoryHints(),
           recommendVariantId: assignment?.variantId ?? undefined,
           preferredClass: seedClass,

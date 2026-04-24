@@ -1,7 +1,8 @@
 import { useId } from "react";
 import type { MemorialFixture } from "../../content/cardFixtures";
-import { CLASS_ASSET_URLS, FACTION_ASSET_URLS, RACE_ASSET_URLS, inferRaceFromHeadline } from "../../content/identityAssets";
+import { FACTION_ASSET_URLS, RACE_ASSET_URLS, inferRaceFromHeadline } from "../../content/identityAssets";
 import type { ClassId } from "../../icons/types";
+import { CLASS_ASSET_URLS } from "../../content/identityAssets";
 import { IdentityPortrait } from "../IdentityPortrait";
 import { MemorialMarkIcon } from "../../icons/MemorialMarkIcon";
 
@@ -40,7 +41,13 @@ export function MemorialCard({ data, compact, linkedClassId, linkedHeadline }: P
       <div className="memorial-card__portrait-row">
         <IdentityPortrait src={FACTION_ASSET_URLS[data.faction]} alt={`${data.faction} crest`} className="memorial-card__portrait" />
         {linkedClassId ? (
-          <IdentityPortrait src={CLASS_ASSET_URLS[linkedClassId]} alt={`${linkedClassId} crest`} className="memorial-card__portrait" />
+          <span className="memorial-card__class-crest" title={`${linkedClassId}`}>
+            <IdentityPortrait
+              src={CLASS_ASSET_URLS[linkedClassId]}
+              alt={`${linkedClassId} class`}
+              className="memorial-card__class-crest-img"
+            />
+          </span>
         ) : null}
         {raceId ? (
           <IdentityPortrait

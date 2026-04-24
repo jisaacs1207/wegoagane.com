@@ -1,5 +1,6 @@
 import type { BuildIntentSignals } from "../lib/buildIntentTypes";
 import { PROF_OPTIONS, STAT_OPTIONS, VECTOR_OPTIONS, optionLabel } from "../components/intent/intentOptions";
+import { wowPackUrl } from "./identityAssets";
 
 export type PickCategory = "stat" | "prof" | "vector" | "race";
 
@@ -43,10 +44,10 @@ const VECTOR_IDS = new Set<string>([
 ]);
 
 export const PICK_CATEGORY_URL: Record<PickCategory, string> = {
-  stat: "/placeholders/picks/pick-stat.svg",
-  prof: "/placeholders/picks/pick-prof.svg",
-  vector: "/placeholders/picks/pick-vector.svg",
-  race: "/placeholders/picks/pick-race.svg",
+  stat: wowPackUrl("Trade", "WeightStone_01.png"),
+  prof: wowPackUrl("Trade", "herbalism.png"),
+  vector: wowPackUrl("Abilities", "SwordandBoard.png"),
+  race: wowPackUrl("Characters and Creatures", "human.png"),
 };
 
 export type JourneyPickChip = { id: string; category: PickCategory; label: string };

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { BuildIntentChips } from "../../components/BuildIntentChips";
 import type { BuildIntentSignals } from "../../lib/buildIntentTypes";
+import { augmentMoodWithPower } from "../../lib/journeySignalsExtras";
 import { fetchDestiny, fetchGrowthAssignment, submitGrowthOutcome } from "../../lib/recommendClient";
 import { buildMemoryHints } from "../../lib/memoryProfile";
 import { writeStoredDestiny } from "../../lib/flowDestinyState";
@@ -30,7 +31,7 @@ export function DeathJourneyStep() {
         entryPath: "release_spirit",
         sessionId,
         signals: {
-          mood,
+          mood: augmentMoodWithPower(mood, "death.buildIntent"),
           nextSignal,
           memoryHints: buildMemoryHints(),
           recommendVariantId: assignment?.variantId ?? undefined,
