@@ -1,10 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import {
-  memorialFixture,
-  type DestinyFixture,
-  type MemorialFixture,
-} from "../../content/cardFixtures";
+import { memorialFixture, type DestinyFixture, type MemorialFixture } from "../../content/cardFixtures";
 import { DestinyCard } from "../../components/cards/DestinyCard";
 import { MemorialCard } from "../../components/cards/MemorialCard";
 import {
@@ -13,14 +9,12 @@ import {
   fetchGrowthAssignment,
   fetchMemorial,
   type RerollReason,
-  submitGrowthOutcome,
   submitDestinyFeedback,
 } from "../../lib/recommendClient";
-import { BuildIntentChips } from "../../components/BuildIntentChips";
-import type { BuildIntentSignals } from "../../lib/buildIntentTypes";
 import { readBuildIntent } from "../../lib/readBuildIntent";
 import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 import { buildMemoryHints, rememberAccept, rememberReroll } from "../../lib/memoryProfile";
+import { readStoredDestiny } from "../../lib/flowDestinyState";
 
 const rerollReasons: Array<{ value: RerollReason; label: string }> = [
   { value: "wrong_class", label: "Wrong class" },
@@ -40,35 +34,25 @@ export function DeathResultStep() {
   const [note, setNote] = useState("");
   const [showRerollGate, setShowRerollGate] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoadingDestiny, setIsLoadingDestiny] = useState(false);
   const [loadError, setLoadError] = useState<string>("");
-  const [loadingPhase, setLoadingPhase] = useState("Reading your final combat log...");
   const [recommendVariantId, setRecommendVariantId] = useState<string | null>(null);
   const [feedbackChoice, setFeedbackChoice] = useState<"closer" | "off" | null>(null);
   const [feedbackReason, setFeedbackReason] = useState<string>("");
 
   useEffect(() => {
+    const stored = readStoredDestiny("death");
+    if (!stored) {
+      setLoadError("No generated destiny found yet. Complete the journey first.");
+      return;
+    }
+    setDestiny(stored.output);
+    setDestinyId(stored.destinyId);
+    setSessionId(stored.sessionId);
+
     const mood = sessionStorage.getItem("death.mood") ?? undefined;
     const nextSignal = sessionStorage.getItem("death.nextSignal") ?? undefined;
-    const existingSession = sessionStorage.getItem("death.sessionId");
-    const seededSessionId = existingSession ?? crypto.randomUUID();
-    if (!existingSession) {
-      sessionStorage.setItem("death.sessionId", seededSessionId);
-    }
-
-    void fetchGrowthAssignment({
-      sessionId: seededSessionId,
-      surface: "recommendation",
-      entryPath: "release_spirit",
-    })
-      .then((assignment) => {
-        setRecommendVariantId(assignment.variantId);
-      })
-      .catch(() => null);
-
-    setSessionId(seededSessionId);
     void fetchMemorial({
-      sessionId: seededSessionId,
+      sessionId: stored.sessionId,
       zone: "Unknown Zone",
       cause: "Unknown Cause",
       mood,
@@ -79,7 +63,14 @@ export function DeathResultStep() {
     })
       .then(setMemorial)
       .catch(() => setMemorial(memorialFixture));
-    trackEvent(AnalyticsEvent.FlowStarted, { flow: "release_spirit" });
+
+    void fetchGrowthAssignment({
+      sessionId: stored.sessionId,
+      surface: "recommendation",
+      entryPath: "release_spirit",
+    })
+      .then((assignment) => setRecommendVariantId(assignment.variantId))
+      .catch(() => null);
   }, []);
 
   useEffect(() => {
@@ -88,54 +79,6 @@ export function DeathResultStep() {
     setFeedbackChoice(null);
     setFeedbackReason("");
   }, [destinyId]);
-
-  async function generateDestiny(signals: BuildIntentSignals) {
-    if (!sessionId) return;
-    const mood = sessionStorage.getItem("death.mood") ?? undefined;
-    const nextSignal = sessionStorage.getItem("death.nextSignal") ?? undefined;
-    setIsLoadingDestiny(true);
-    setLoadError("");
-    setLoadingPhase("Reading your final combat log...");
-    const phaseTimer1 = setTimeout(() => setLoadingPhase("Consulting the spirit healers..."), 900);
-    const phaseTimer2 = setTimeout(() => setLoadingPhase("Drafting a safer next path..."), 1800);
-    const phaseTimer3 = setTimeout(() => setLoadingPhase("Binding your next oath to parchment..."), 3000);
-    try {
-      const result = await fetchDestiny({
-        entryPath: "release_spirit",
-        sessionId,
-        signals: {
-          mood,
-          nextSignal,
-          memoryHints: buildMemoryHints(),
-          recommendVariantId: recommendVariantId ?? undefined,
-          ...signals,
-        },
-      });
-      setDestiny(result.output);
-      setDestinyId(result.destinyId);
-      sessionStorage.setItem("death.destinyId", result.destinyId);
-      void fetchGrowthAssignment({
-        sessionId,
-        surface: "recommendation",
-        entryPath: "release_spirit",
-      })
-        .then((assignment) => {
-          void submitGrowthOutcome({
-            assignmentId: assignment.assignmentId,
-            converted: true,
-            outcome: { event: "recommend_rendered", destinyId: result.destinyId },
-          }).catch(() => {});
-        })
-        .catch(() => {});
-    } catch {
-      setLoadError("The spirit archives are delayed. We are still forging your next destiny.");
-    } finally {
-      clearTimeout(phaseTimer1);
-      clearTimeout(phaseTimer2);
-      clearTimeout(phaseTimer3);
-      setIsLoadingDestiny(false);
-    }
-  }
 
   async function runRerollWithReason(reason: RerollReason) {
     if (!sessionId || !destinyId || !destiny || isSubmitting) return;
@@ -260,16 +203,24 @@ export function DeathResultStep() {
 
   return (
     <div>
-      <MemorialCard data={memorial} />
-      <BuildIntentChips
-        storageKey="death.buildIntent"
-        hasGenerated={Boolean(destiny)}
-        isGenerating={isLoadingDestiny}
-        onGenerate={(signals) => void generateDestiny(signals)}
-      />
-      <div style={{ marginTop: 14 }}>
-        {destiny ? (
-          <>
+      {!destiny || !sessionId || !destinyId ? (
+        <div className="card" style={{ marginTop: 14 }}>
+          <p className="step-label">Release spirit</p>
+          <h1 className="hero-question">Journey required</h1>
+          <p className="hero-sub">{loadError || "Complete your build journey first."}</p>
+          <div className="flow-nav" style={{ marginTop: 12 }}>
+            <Link to="/release-spirit/journey" className="btn-primary">
+              Go to journey
+            </Link>
+            <Link to="/" className="btn-ghost">
+              Home
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <>
+          <MemorialCard data={memorial} />
+          <div style={{ marginTop: 14 }}>
             <DestinyCard data={destiny} />
             <div className="card" style={{ marginTop: 12 }}>
               <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Was this close to what you wanted?</p>
@@ -324,23 +275,13 @@ export function DeathResultStep() {
                 <Link to={`/build/${destinyId}`} className="btn-ghost">
                   Open HC build sheet
                 </Link>
+                <Link to="/release-spirit/journey" className="btn-ghost">
+                  Retool journey
+                </Link>
               </div>
             ) : null}
-          </>
-        ) : (
-          <div className="card">
-            <p className="step-label">Release spirit</p>
-            <h1 className="hero-question">Forging your next destiny...</h1>
-            <div className="forge-status-row">
-              <span className="forge-spinner" aria-hidden="true" />
-              <p className="hero-sub" style={{ margin: 0 }}>
-                {isLoadingDestiny ? loadingPhase : loadError || "Set your journey above, then generate your next destiny."}
-              </p>
-            </div>
           </div>
-        )}
-      </div>
-      <div className="card" style={{ marginTop: 14 }}>
+          <div className="card" style={{ marginTop: 14 }}>
         <p style={{ margin: 0, fontSize: 13, color: "var(--ts)", lineHeight: 1.45 }}>
           Memorial and next destiny can export as one image for sharing. See a{" "}
           <strong>narrow side-by-side layout</strong> on{" "}
@@ -405,6 +346,8 @@ export function DeathResultStep() {
           </Link>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

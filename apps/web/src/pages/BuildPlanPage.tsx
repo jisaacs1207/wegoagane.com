@@ -1,6 +1,14 @@
 import { Link, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { fetchBuildPlan, fetchNameCandidates, type BuildPlanResponse, type NameCandidateRow } from "../lib/recommendClient";
+import {
+  createShareRun,
+  fetchBuildPlan,
+  fetchMemorial,
+  fetchNameCandidates,
+  type BuildPlanResponse,
+  type NameCandidateRow,
+} from "../lib/recommendClient";
+import { AnalyticsEvent, trackEvent } from "../lib/analytics";
 
 type PlanV1 = {
   v: 1;
@@ -31,6 +39,13 @@ export function BuildPlanPage() {
   const [error, setError] = useState<string | null>(null);
   const [publishTier, setPublishTier] = useState<string>("");
   const [names, setNames] = useState<NameCandidateRow[]>([]);
+  const [sessionId, setSessionId] = useState<string>("");
+  const [bookmarkCopied, setBookmarkCopied] = useState(false);
+  const [deathLevel, setDeathLevel] = useState<number | "">("");
+  const [deathZone, setDeathZone] = useState("");
+  const [deathCause, setDeathCause] = useState("");
+  const [deathName, setDeathName] = useState("");
+  const [memorialStatus, setMemorialStatus] = useState("");
 
   useEffect(() => {
     if (!destinyId) return;
@@ -42,6 +57,7 @@ export function BuildPlanPage() {
         setStatus(res.status);
         setPublishTier(res.publishTier);
         setError(res.error);
+        setSessionId(res.sessionId);
         if (res.plan && isPlanV1(res.plan)) setPlan(res.plan);
         else setPlan(null);
       } catch {
@@ -97,6 +113,33 @@ export function BuildPlanPage() {
           </p>
         ) : null}
         <div className="flow-nav" style={{ marginTop: 14 }}>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(window.location.href);
+                setBookmarkCopied(true);
+                trackEvent(AnalyticsEvent.BuildBookmarkCopied, { destinyId });
+                window.setTimeout(() => setBookmarkCopied(false), 1600);
+              } catch {
+                setBookmarkCopied(false);
+              }
+            }}
+          >
+            {bookmarkCopied ? "Bookmark copied" : "Copy bookmark URL"}
+          </button>
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={() => {
+              sessionStorage.setItem("plan.seedDestinyId", destinyId);
+              trackEvent(AnalyticsEvent.BuildRetoolClicked, { destinyId, source: "build_sheet" });
+              window.location.assign("/draft-a-run/journey");
+            }}
+          >
+            Retool from this run
+          </button>
           <Link to="/" className="btn-ghost">
             Home
           </Link>
@@ -221,6 +264,73 @@ export function BuildPlanPage() {
         </div>
       ) : status === "ready" ? (
         <p className="hero-sub">No plan payload yet.</p>
+      ) : null}
+      {status === "ready" ? (
+        <div className="card" style={{ marginTop: 14 }}>
+          <p className="step-label">If this run dies</p>
+          <h2 style={{ margin: "6px 0 8px", fontSize: 20 }}>Log death + create memorial</h2>
+          <p className="hero-sub" style={{ marginTop: 0 }}>
+            Build details stay read-only here for trust. You can log death info and create a share memorial.
+          </p>
+          <div style={{ display: "grid", gap: 8 }}>
+            <input
+              value={deathName}
+              onChange={(e) => setDeathName(e.target.value)}
+              placeholder="Character name"
+              className="chip-select"
+            />
+            <input
+              value={deathLevel}
+              onChange={(e) => setDeathLevel(e.target.value ? Number(e.target.value) : "")}
+              placeholder="Level"
+              className="chip-select"
+              type="number"
+              min={1}
+              max={60}
+            />
+            <input
+              value={deathZone}
+              onChange={(e) => setDeathZone(e.target.value)}
+              placeholder="Where did you die?"
+              className="chip-select"
+            />
+            <input
+              value={deathCause}
+              onChange={(e) => setDeathCause(e.target.value)}
+              placeholder="What killed you?"
+              className="chip-select"
+            />
+          </div>
+          <div className="flow-nav" style={{ marginTop: 12 }}>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={!sessionId || !deathZone || !deathCause}
+              onClick={async () => {
+                try {
+                  setMemorialStatus("Creating memorial...");
+                  trackEvent(AnalyticsEvent.MemorialCreateClicked, { destinyId, sessionId, hasLevel: deathLevel !== "" });
+                  await fetchMemorial({
+                    sessionId,
+                    zone: deathZone,
+                    cause: deathCause,
+                    characterName: deathName || undefined,
+                    level: deathLevel === "" ? undefined : deathLevel,
+                  });
+                  await createShareRun({ sessionId, destinyId });
+                  setMemorialStatus("Memorial created. You can open Share from result flow.");
+                  trackEvent(AnalyticsEvent.MemorialCreateResult, { destinyId, status: "success" });
+                } catch {
+                  setMemorialStatus("Could not create memorial yet.");
+                  trackEvent(AnalyticsEvent.MemorialCreateResult, { destinyId, status: "failed" });
+                }
+              }}
+            >
+              Create memorial
+            </button>
+          </div>
+          {memorialStatus ? <p className="hero-sub" style={{ marginTop: 10 }}>{memorialStatus}</p> : null}
+        </div>
       ) : null}
     </div>
   );

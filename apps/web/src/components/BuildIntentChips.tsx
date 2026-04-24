@@ -1,60 +1,18 @@
 import { useMemo, useState } from "react";
 import type { BuildIntentSignals } from "../lib/buildIntentTypes";
 import { AnalyticsEvent, trackEvent } from "../lib/analytics";
-
-const STAT_OPTIONS = [
-  { id: "stamina_forward", label: "Stam first" },
-  { id: "intellect_forward", label: "Int" },
-  { id: "agility_forward", label: "Agi" },
-  { id: "strength_forward", label: "Str" },
-  { id: "spirit_forward", label: "Spirit" },
-  { id: "balanced", label: "Balanced" },
-  { id: "meme_glass", label: "Spicy / glass" },
-] as const;
-
-const PROF_OPTIONS = [
-  { id: "engineering_outs", label: "Engineering" },
-  { id: "first_aid_mandatory_mindset", label: "First Aid heavy" },
-  { id: "herbalism_alchemy_pair", label: "Herb + Alch" },
-  { id: "alchemy_consumables", label: "Potion economy" },
-  { id: "mining_engineering_pair", label: "Mine + Eng" },
-  { id: "dual_gathering_bootstrap", label: "Dual gather" },
-  { id: "skinning_mining_early", label: "Skin + mine early" },
-  { id: "leatherworker_hunter_synergy", label: "LW + leather" },
-  { id: "tailoring_bags_arcane", label: "Tailor + bags" },
-  { id: "enchanter_disenchant_route", label: "Enchant + DE" },
-  { id: "blacksmith_weaponsmith_fantasy", label: "Smith fantasy" },
-  { id: "cooking_high_value", label: "Cooking focus" },
-  { id: "fishing_supports_cooking", label: "Fish + cook" },
-  { id: "fishing_optional", label: "Fishing optional" },
-  { id: "early_gathering_then_pivot_engineering", label: "Gather then Eng pivot" },
-  { id: "auction_house_play", label: "Auction house play" },
-] as const;
-
-const VECTOR_OPTIONS = [
-  { id: "solo", label: "Solo" },
-  { id: "group_ok", label: "Group okay" },
-  { id: "hybrid", label: "Hybrid toolkit" },
-  { id: "pet", label: "Pet class" },
-  { id: "melee", label: "Melee" },
-  { id: "ranged", label: "Ranged" },
-  { id: "caster", label: "Caster" },
-  { id: "heal", label: "Healing" },
-  { id: "tank", label: "Tanky" },
-  { id: "mana", label: "Mana" },
-  { id: "rage", label: "Rage" },
-  { id: "energy", label: "Energy" },
-  { id: "demonic", label: "Dark fantasy" },
-  { id: "holy", label: "Holy fantasy" },
-  { id: "nature", label: "Nature fantasy" },
-] as const;
-
-const RACE_MODES = [
-  { id: "signal_inferred", label: "From answers" },
-  { id: "optimize_theme", label: "Optimize" },
-  { id: "surprise", label: "Surprise me" },
-  { id: "user_pick", label: "I pick race" },
-] as const;
+import {
+  applyCorePreset,
+  DEPTH_OPTIONS,
+  optionLabel,
+  PROF_OPTIONS,
+  RACE_MODES,
+  STAT_OPTIONS,
+  toggleList,
+  VECTOR_OPTIONS,
+  type CorePreset,
+  type IntentDepth,
+} from "./intent/intentOptions";
 
 type Props = {
   storageKey: string;
@@ -62,18 +20,8 @@ type Props = {
   isGenerating?: boolean;
   hasGenerated?: boolean;
 };
-
-type IntentDepth = "quick" | "balanced" | "dialed_in";
-
-type CorePreset = "safe" | "balanced" | "bold";
 type JourneyStep = "depth" | "path" | "review";
 type BranchKey = "survivability" | "economy" | "combat";
-
-const DEPTH_OPTIONS: Array<{ id: IntentDepth; label: string; helper: string }> = [
-  { id: "quick", label: "Quick pick", helper: "Fast start, fewer knobs, still HC-aware." },
-  { id: "balanced", label: "Balanced", helper: "Best first-pass fit for most players." },
-  { id: "dialed_in", label: "Dialed-in", helper: "More inputs, tighter fit, slightly slower." },
-];
 
 function readStorage(key: string): BuildIntentSignals {
   try {
@@ -85,12 +33,6 @@ function readStorage(key: string): BuildIntentSignals {
   }
 }
 
-function toggleList(list: string[] | undefined, id: string, max: number): string[] {
-  const cur = list ?? [];
-  if (cur.includes(id)) return cur.filter((x) => x !== id);
-  if (cur.length >= max) return [...cur.slice(1), id];
-  return [...cur, id];
-}
 
 function depthStorageKey(storageKey: string) {
   return `${storageKey}.depth`;
@@ -114,35 +56,6 @@ function writeDepth(key: string, depth: IntentDepth) {
   }
 }
 
-function applyCorePreset(value: BuildIntentSignals, preset: CorePreset): BuildIntentSignals {
-  if (preset === "safe") {
-    return {
-      ...value,
-      statPhilosophy: ["stamina_forward", "balanced"],
-      professionIntents: ["engineering_outs", "first_aid_mandatory_mindset"],
-      buildVectors: ["solo", "tank", "mana"],
-    };
-  }
-  if (preset === "bold") {
-    return {
-      ...value,
-      statPhilosophy: ["meme_glass", "agility_forward"],
-      professionIntents: ["dual_gathering_bootstrap", "auction_house_play"],
-      buildVectors: ["melee", "ranged", "solo"],
-    };
-  }
-  return {
-    ...value,
-    statPhilosophy: ["balanced"],
-    professionIntents: ["engineering_outs", "cooking_high_value"],
-    buildVectors: ["solo", "group_ok"],
-  };
-}
-
-function optionLabel(id: string): string {
-  const all = [...STAT_OPTIONS, ...PROF_OPTIONS, ...VECTOR_OPTIONS, ...RACE_MODES];
-  return all.find((x) => x.id === id)?.label ?? id;
-}
 
 export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false, hasGenerated = false }: Props) {
   const [value, setValue] = useState<BuildIntentSignals>(() => readStorage(storageKey));

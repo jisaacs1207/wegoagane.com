@@ -15,8 +15,8 @@ export function DeathDetailStep() {
         <button type="button" className="btn-ghost" onClick={() => navigate("/release-spirit/next")}>
           Back
         </button>
-        <button type="button" className="btn-primary" onClick={() => navigate("/release-spirit/result")}>
-          Generate
+        <button type="button" className="btn-primary" onClick={() => navigate("/release-spirit/journey")}>
+          Continue
         </button>
       </div>
     </div>

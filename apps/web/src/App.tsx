@@ -2,7 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
 import { DeathFlowPage } from "./pages/DeathFlowPage";
 import { HomePage } from "./pages/HomePage";
-import { LuckyRollPage } from "./pages/LuckyRollPage";
+import { LuckyFlowPage } from "./pages/LuckyFlowPage";
 import { PlanFlowPage } from "./pages/PlanFlowPage";
 import { DesignCardsPage } from "./pages/DesignCardsPage";
 import { SharePlaceholderPage } from "./pages/SharePlaceholderPage";
@@ -17,7 +17,7 @@ export function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/release-spirit/*" element={<DeathFlowPage />} />
         <Route path="/draft-a-run/*" element={<PlanFlowPage />} />
-        <Route path="/lucky-roll" element={<LuckyRollPage />} />
+        <Route path="/lucky-roll/*" element={<LuckyFlowPage />} />
         <Route path="/build/:destinyId" element={<BuildPlanPage />} />
         <Route path="/share/:runId" element={<SharePlaceholderPage />} />
         <Route path="/design/cards" element={<DesignCardsPage />} />

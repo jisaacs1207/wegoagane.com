@@ -11,8 +11,8 @@ function sanitizeUiExperiment(payload: { headline?: string; subline?: string }) 
 }
 
 export function HomePage() {
-  const [heroQuestion, setHeroQuestion] = useState("Choose a path");
-  const [heroSub, setHeroSub] = useState("Each route is skippable where it matters — this is a living build.");
+  const [heroQuestion, setHeroQuestion] = useState("One clean decision, no noise");
+  const [heroSub, setHeroSub] = useState("Pick your ritual: recover from a death, plan a run, or roll a wildcard.");
   const [assignmentId, setAssignmentId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -57,7 +57,7 @@ export function HomePage() {
             }}
           >
             <span className="entry-btn-title">Release Spirit</span>
-            <span className="entry-btn-desc">I just died — memorial + next Destiny</span>
+            <span className="entry-btn-desc">I just died — memorial + next run in one guided journey</span>
           </Link>
           <Link
             to="/draft-a-run/intent"
@@ -68,10 +68,10 @@ export function HomePage() {
             }}
           >
             <span className="entry-btn-title">Draft a Run</span>
-            <span className="entry-btn-desc">I&apos;m planning — next Destiny only</span>
+            <span className="entry-btn-desc">I&apos;m planning — build path first, then generate</span>
           </Link>
           <Link
-            to="/lucky-roll"
+            to="/lucky-roll/journey"
             className="entry-btn"
             onClick={() => {
               if (!assignmentId) return;
@@ -79,21 +79,11 @@ export function HomePage() {
             }}
           >
             <span className="entry-btn-title">Lucky roll</span>
-            <span className="entry-btn-desc">Surprise me with a full Destiny card</span>
+            <span className="entry-btn-desc">Surprise me — fast path, final generate step</span>
           </Link>
         </div>
         <p style={{ margin: "18px 0 0", fontSize: 12, color: "var(--td)" }}>
-          <Link to="/design/cards" style={{ color: "var(--ts)" }}>
-            M2 card shells & icons (dev)
-          </Link>
-          {" · "}
-          <Link to="/ops/feedback" style={{ color: "var(--ts)" }}>
-            M10 feedback snapshot (dev)
-          </Link>
-          {" · "}
-          <Link to="/ops/growth" style={{ color: "var(--ts)" }}>
-            Growth engine status (dev)
-          </Link>
+          Every generation creates a bookmarkable build URL for revisits, help, and memorial updates.
         </p>
       </div>
     </div>
