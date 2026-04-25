@@ -31,6 +31,8 @@ export const AnalyticsEvent = {
   CommitCompleted: "commit_completed",
   OpsGrowthHealthFailed: "ops_growth_health_failed",
   OpsFeedbackSummaryFailed: "ops_feedback_summary_failed",
+  ExperimentalLaneOfferShown: "experimental_lane_offer_shown",
+  ExperimentalLaneChosen: "experimental_lane_chosen",
 } as const;
 
 export async function initAnalytics() {

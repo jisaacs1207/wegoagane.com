@@ -20,6 +20,10 @@ type Props = {
   hasGenerated?: boolean;
   /** Shown on the review step when recommend failed due to over-tight filters. */
   filterRecoveryAction?: { label: string; onSoften: () => void } | null;
+  /** Server-driven cohort (`cohort`) or tight-filter recovery (`forced`). */
+  experimentalOffer?: "none" | "cohort" | "forced";
+  recommendLane?: "curated" | "experimental" | null;
+  onRecommendLaneChange?: (lane: "curated" | "experimental") => void;
 };
 type JourneyStep = "depth" | "vector" | "question" | "review";
 type VectorKey = JourneyVectorKey;
@@ -98,6 +102,9 @@ export function BuildIntentChips({
   isGenerating = false,
   hasGenerated = false,
   filterRecoveryAction = null,
+  experimentalOffer = "none",
+  recommendLane = null,
+  onRecommendLaneChange,
 }: Props) {
   const [value, setValue] = useState<BuildIntentSignals>(() => readStorage(storageKey));
   const [depth, setDepth] = useState<IntentDepth>(() => readDepth(storageKey));
@@ -640,6 +647,42 @@ export function BuildIntentChips({
       ) : null}
       {step === "review" ? (
         <>
+          {experimentalOffer !== "none" ? (
+            <fieldset style={{ border: "none", padding: 0, margin: "0 0 14px 0" }}>
+              <legend className="step-label" style={{ marginBottom: 6 }}>
+                Deck source
+              </legend>
+              <p className="ui-caption" style={{ marginTop: 0, marginBottom: 10 }}>
+                {experimentalOffer === "forced"
+                  ? "No curated template matched every filter together. You can try an experimental AI-drafted lane (still HC-grounded), or soften filters and stay on curated fixtures."
+                  : "Part of this session can try an experimental AI-drafted lane alongside our curated fixture deck — pick one before generating."}
+              </p>
+              <div className="flow-nav flow-nav--wrap">
+                <button
+                  type="button"
+                  className={`btn-ghost ${recommendLane === "curated" ? "chip-btn--on" : ""}`}
+                  aria-pressed={recommendLane === "curated"}
+                  onClick={() => {
+                    onRecommendLaneChange?.("curated");
+                    trackEvent(AnalyticsEvent.ExperimentalLaneChosen, { lane: "curated", storageKey });
+                  }}
+                >
+                  Curated deck
+                </button>
+                <button
+                  type="button"
+                  className={`btn-ghost ${recommendLane === "experimental" ? "chip-btn--on" : ""}`}
+                  aria-pressed={recommendLane === "experimental"}
+                  onClick={() => {
+                    onRecommendLaneChange?.("experimental");
+                    trackEvent(AnalyticsEvent.ExperimentalLaneChosen, { lane: "experimental", storageKey });
+                  }}
+                >
+                  Experimental AI lane
+                </button>
+              </div>
+            </fieldset>
+          ) : null}
           {activeIds.length ? (
             <div style={{ marginBottom: 12 }}>
               <p className="step-label" style={{ marginBottom: 6 }}>
@@ -679,7 +722,7 @@ export function BuildIntentChips({
             <button
               type="button"
               className="btn-primary"
-              disabled={isGenerating}
+              disabled={isGenerating || (experimentalOffer === "cohort" && recommendLane === null)}
               onClick={() => {
                 trackEvent(hasGenerated ? AnalyticsEvent.IntentRegenerateClicked : AnalyticsEvent.GenerateClicked, eventContext);
                 onGenerate(value, depth);

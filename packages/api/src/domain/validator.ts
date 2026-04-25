@@ -91,6 +91,7 @@ export const recommendInputSchema = z.object({
     buildVectors: z.array(z.enum(buildVectorValues)).max(16).optional(),
     raceMode: z.enum(raceModeValues).optional(),
     pickedRace: z.string().min(2).max(24).optional(),
+    recommendLane: z.enum(["curated", "experimental"]).optional(),
     memoryHints: z
       .object({
         version: z.number().int().min(1).max(8),

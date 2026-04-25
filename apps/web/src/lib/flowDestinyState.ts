@@ -10,6 +10,8 @@ export type StoredDestinyState = {
   output: DestinyFixture;
   /** Filters merged into the recommend call for this card — drives result UI so it stays in sync if session is edited later. */
   intentSnapshot?: BuildIntentSignals;
+  /** AI-prototyped archetype row path (see API `experimentalLane`). */
+  experimentalLane?: boolean;
 };
 
 function key(flow: FlowKey) {

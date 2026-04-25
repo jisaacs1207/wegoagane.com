@@ -28,6 +28,7 @@ export type RecommendRequest = {
     preferredClass?: ClassId;
     memoryHints?: MemoryHints;
     recommendVariantId?: string;
+    recommendLane?: "curated" | "experimental";
   } & BuildIntentSignals;
 };
 
@@ -39,6 +40,8 @@ type RecommendResponse = {
   viabilityNotes?: string[];
   /** API widened class eligibility so template+AI could run (strict filters had zero matches). */
   filterRelaxedForAi?: boolean;
+  /** AI drafted a new archetype-shaped row before destiny enrich. */
+  experimentalLane?: boolean;
   sourceType: "template" | "ai";
   fallbackUsed: boolean;
   output: {
@@ -79,6 +82,7 @@ export type DestinyResult = {
   buildSheetPath?: string;
   viabilityNotes?: string[];
   filterRelaxedForAi?: boolean;
+  experimentalLane?: boolean;
   sourceType: "template" | "ai";
   fallbackUsed: boolean;
   output: DestinyFixture;
@@ -188,6 +192,10 @@ export type AnalyticsConfigResponse = {
     defaultHoldoutPercent: number;
     minSampleSize: number;
   };
+  experimentalLane: {
+    /** 0–100: share of sessions offered curated vs experimental choice on journey review. */
+    offerPercent: number;
+  };
 };
 
 export type GrowthSurface = "content" | "recommendation" | "ui" | "share" | "onboarding";
@@ -215,6 +223,7 @@ function destinyResultFromJson(data: RecommendResponse): DestinyResult {
     buildSheetPath: data.buildSheetPath,
     viabilityNotes: data.viabilityNotes,
     filterRelaxedForAi: data.filterRelaxedForAi,
+    experimentalLane: data.experimentalLane,
     sourceType: data.sourceType,
     fallbackUsed: data.fallbackUsed,
     output: {
@@ -253,6 +262,12 @@ export function destinyRecommendErrorHint(err: unknown): string {
   }
   if (message.includes("recommend_failed:422:validation_failed")) {
     return "Generation failed an output safety check. Try again with slightly different filters.";
+  }
+  if (message.includes("recommend_failed:400:experimental_requires_ai")) {
+    return "Experimental lanes need AI enabled on the API. Use curated filters, or try again when the gateway is configured.";
+  }
+  if (message.includes("recommend_failed:503:experimental_archetype_failed")) {
+    return "We could not draft an experimental lane right now. Try curated again or retry shortly.";
   }
   if (message.includes("recommend_failed:400:no_viable_build")) {
     return "No build matched all of those filters together. Remove a chip or loosen one constraint, then try again.";
