@@ -1,6 +1,7 @@
 import { and, eq, or } from "drizzle-orm";
 import { type Context, Hono } from "hono";
 import { z } from "zod";
+import { applyArchetypeCandidateCommitSignal } from "../db/archetypeLearning";
 import { getDb, type ApiEnv } from "../db/client";
 import { buildCommits, buildPlans, buildRunsDraft, destinies, memorialRuns, nameSuggestions } from "../db/schema";
 
@@ -249,6 +250,7 @@ journeyRouter.post("/commit", async (c) => {
     createdAt: now,
     updatedAt: now,
   });
+  c.executionCtx.waitUntil(applyArchetypeCandidateCommitSignal(c.env.DB, destinyId, sessionId));
   return c.json({ commitId: id, slug, path: `/build/commit/${slug}` }, 201);
 });
 

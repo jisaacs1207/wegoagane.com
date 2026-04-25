@@ -124,6 +124,7 @@ export function PlanJourneyStep() {
         output: result.output,
         intentSnapshot: signals,
         experimentalLane: result.experimentalLane,
+        experimentalCandidate: result.experimentalCandidate,
       });
       if (result.filterRelaxedForAi) {
         try {

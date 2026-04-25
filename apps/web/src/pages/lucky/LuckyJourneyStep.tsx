@@ -105,6 +105,7 @@ export function LuckyJourneyStep() {
         output: result.output,
         intentSnapshot: signals,
         experimentalLane: result.experimentalLane,
+        experimentalCandidate: result.experimentalCandidate,
       });
       if (result.filterRelaxedForAi) {
         try {

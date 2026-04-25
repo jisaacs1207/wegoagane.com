@@ -1,7 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import type { Archetype, ClassId } from "../domain/types";
 import { getDb } from "./client";
-import { archetypeCandidates, runtimeKv } from "./schema";
+import { archetypeCandidates, candidateEvents } from "./schema";
 
 export const KV_EXPERIMENTAL_SUPPLEMENT = "experimental_archetype_supplement";
 export const KV_EXPERIMENTAL_METRICS = "experimental_archetype_learning_metrics_json";
@@ -162,7 +162,10 @@ export async function loadPromotedArchetypes(db: D1Database, limit = 40): Promis
     rows = await db
       .prepare(
         `SELECT archetype_json FROM archetype_candidates
-         WHERE status = 'promoted' AND retired_at IS NULL
+         WHERE (
+            status = 'promoted'
+            OR display_status = 'experimental_live'
+          ) AND retired_at IS NULL
          ORDER BY promoted_at DESC
          LIMIT ?1`,
       )
@@ -199,23 +202,62 @@ export async function recordExperimentalArchetypeCandidate(
       id: crypto.randomUUID(),
       archetypeKey: params.archetype.key,
       classId: params.archetype.classId,
+      raceSuggestion: params.archetype.raceSuggestion ?? null,
+      factionSuggestion: params.archetype.faction === "either" ? "neutral" : params.archetype.faction,
+      genderLean: params.archetype.genderLean ?? "neutral",
       archetypeJson: JSON.stringify(params.archetype),
       contentFingerprint: fingerprint,
       sessionId: params.sessionId,
       destinyId: params.destinyId,
       status: "candidate",
+      displayStatus: "experimental_live",
+      exposureCount: 1,
       acceptCount: 0,
+      commitCount: 0,
       missCount: 0,
+      rerollCloseCount: 0,
+      rerollOffCount: 0,
       ratingSum: 0,
       ratingN: 0,
+      freeformSignalJson: null,
+      promotionScore: 0,
       promptVersionAtGen: params.promptVersionAtGen,
       createdAt: new Date(now),
       promotedAt: null,
       retiredAt: null,
     });
+    await drizzle.insert(candidateEvents).values({
+      id: crypto.randomUUID(),
+      candidateId: crypto.randomUUID(),
+      archetypeKey: params.archetype.key,
+      destinyId: params.destinyId,
+      sessionId: params.sessionId,
+      eventType: "generated",
+      payloadJson: JSON.stringify({ promptVersionAtGen: params.promptVersionAtGen }),
+      createdAt: new Date(now),
+    });
   } catch {
     /* duplicate destiny_id / archetype_key or migration not applied */
   }
+}
+
+function scoreDelta(params: {
+  choice?: "accept" | "almost_right" | "miss";
+  postAcceptRating?: string | null;
+  rerollVerdict?: string | null;
+  committed?: boolean;
+}): number {
+  let delta = 0;
+  if (params.choice === "accept") delta += 1;
+  if (params.choice === "almost_right") delta -= 0.3;
+  if (params.choice === "miss") delta -= 1.3;
+  if (params.rerollVerdict === "close_but_off") delta -= 0.3;
+  if (params.rerollVerdict === "totally_off") delta -= 1;
+  if (params.rerollVerdict === "resolved") delta += 0.6;
+  if (params.committed) delta += 2;
+  const rating = ratingNumeric(params.postAcceptRating);
+  if (rating != null) delta += (rating - 3) * 0.5;
+  return Number(delta.toFixed(3));
 }
 
 function ratingNumeric(rating: string | null | undefined): number | null {
@@ -237,6 +279,8 @@ export async function applyArchetypeCandidateFeedback(
     choice: "accept" | "almost_right" | "miss";
     stage: string;
     postAcceptRating?: string | null;
+    rerollVerdict?: "totally_off" | "close_but_off" | "resolved" | null;
+    parsedSignalJson?: Record<string, unknown> | null;
   },
 ): Promise<void> {
   const drizzle = getDb(db);
@@ -258,13 +302,37 @@ export async function applyArchetypeCandidateFeedback(
     if (params.stage === "reroll_gate" && params.choice === "accept") {
       await drizzle
         .update(archetypeCandidates)
-        .set({ acceptCount: sql`${archetypeCandidates.acceptCount} + 1` })
+        .set({
+          acceptCount: sql`${archetypeCandidates.acceptCount} + 1`,
+          promotionScore: sql`${archetypeCandidates.promotionScore} + ${scoreDelta(params)}`,
+        })
+        .where(candidateOnly);
+    }
+    if (params.stage === "reroll_gate" && params.rerollVerdict === "close_but_off") {
+      await drizzle
+        .update(archetypeCandidates)
+        .set({
+          rerollCloseCount: sql`${archetypeCandidates.rerollCloseCount} + 1`,
+          promotionScore: sql`${archetypeCandidates.promotionScore} + ${scoreDelta(params)}`,
+        })
+        .where(candidateOnly);
+    }
+    if (params.stage === "reroll_gate" && params.rerollVerdict === "totally_off") {
+      await drizzle
+        .update(archetypeCandidates)
+        .set({
+          rerollOffCount: sql`${archetypeCandidates.rerollOffCount} + 1`,
+          promotionScore: sql`${archetypeCandidates.promotionScore} + ${scoreDelta(params)}`,
+        })
         .where(candidateOnly);
     }
     if (params.stage === "reroll_gate" && params.choice === "miss") {
       await drizzle
         .update(archetypeCandidates)
-        .set({ missCount: sql`${archetypeCandidates.missCount} + 1` })
+        .set({
+          missCount: sql`${archetypeCandidates.missCount} + 1`,
+          promotionScore: sql`${archetypeCandidates.promotionScore} + ${scoreDelta(params)}`,
+        })
         .where(candidateOnly);
       const row = await db
         .prepare(
@@ -287,6 +355,7 @@ export async function applyArchetypeCandidateFeedback(
           .set({
             ratingSum: sql`${archetypeCandidates.ratingSum} + ${n}`,
             ratingN: sql`${archetypeCandidates.ratingN} + 1`,
+            promotionScore: sql`${archetypeCandidates.promotionScore} + ${scoreDelta(params)}`,
           })
           .where(candidateOnly);
       }
@@ -294,7 +363,7 @@ export async function applyArchetypeCandidateFeedback(
       if (good) {
         await drizzle
           .update(archetypeCandidates)
-          .set({ status: "promoted", promotedAt: new Date() })
+          .set({ status: "promoted", displayStatus: "promoted_core", promotedAt: new Date() })
           .where(candidateOnly);
       }
       if (params.postAcceptRating === "not_this") {
@@ -304,6 +373,67 @@ export async function applyArchetypeCandidateFeedback(
           .where(eq(archetypeCandidates.archetypeKey, archetypeKey));
       }
     }
+    if (params.parsedSignalJson) {
+      await drizzle
+        .update(archetypeCandidates)
+        .set({
+          freeformSignalJson: JSON.stringify(params.parsedSignalJson),
+        })
+        .where(eq(archetypeCandidates.archetypeKey, archetypeKey));
+    }
+    await drizzle.insert(candidateEvents).values({
+      id: crypto.randomUUID(),
+      candidateId: crypto.randomUUID(),
+      archetypeKey,
+      destinyId: params.destinyId,
+      sessionId: null,
+      eventType: "feedback",
+      payloadJson: JSON.stringify(params),
+      createdAt: new Date(),
+    });
+  } catch {
+    /* non-fatal */
+  }
+}
+
+export async function applyArchetypeCandidateCommitSignal(db: D1Database, destinyId: string, sessionId: string): Promise<void> {
+  try {
+    const row = await db
+      .prepare("SELECT archetype_key AS archetypeKey FROM destinies WHERE id = ?1 LIMIT 1")
+      .bind(destinyId)
+      .first<{ archetypeKey: string }>();
+    if (!row?.archetypeKey?.startsWith("exp_")) return;
+    const drizzle = getDb(db);
+    await drizzle
+      .update(archetypeCandidates)
+      .set({
+        commitCount: sql`${archetypeCandidates.commitCount} + 1`,
+        promotionScore: sql`${archetypeCandidates.promotionScore} + ${scoreDelta({ committed: true })}`,
+      })
+      .where(eq(archetypeCandidates.archetypeKey, row.archetypeKey));
+    await drizzle.insert(candidateEvents).values({
+      id: crypto.randomUUID(),
+      candidateId: crypto.randomUUID(),
+      archetypeKey: row.archetypeKey,
+      destinyId,
+      sessionId,
+      eventType: "commit",
+      payloadJson: JSON.stringify({ delta: scoreDelta({ committed: true }) }),
+      createdAt: new Date(),
+    });
+  } catch {
+    /* non-fatal */
+  }
+}
+
+export async function markArchetypeCandidateExposed(db: D1Database, archetypeKey: string): Promise<void> {
+  if (!archetypeKey.startsWith("exp_")) return;
+  try {
+    const drizzle = getDb(db);
+    await drizzle
+      .update(archetypeCandidates)
+      .set({ exposureCount: sql`${archetypeCandidates.exposureCount} + 1` })
+      .where(eq(archetypeCandidates.archetypeKey, archetypeKey));
   } catch {
     /* non-fatal */
   }

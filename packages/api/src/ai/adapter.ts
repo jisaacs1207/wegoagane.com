@@ -163,13 +163,13 @@ export async function enrichDestiny(
     Boolean(input.signals.intent?.toLowerCase().includes("new"));
 
   const basePrompt = [
-    "Return valid JSON only with keys: headline,subline,classId,tierProse,bullets,rationale,sourceType.",
+    "Return valid JSON only with keys: headline,subline,classId,raceSuggestion,factionSuggestion,genderLean,tierProse,bullets,rationale,sourceType.",
     "Keep classId unchanged and preserve deterministic selection.",
     `classId=${template.classId}, headline=${template.headline}, subline=${template.subline}`,
     `tierProse=${template.tierProse}, bullets=${template.bullets.join(" | ")}`,
     `rationale=${template.rationale}`,
     `signals=${JSON.stringify(input.signals)}`,
-    "sourceType must be 'ai'. bullets length must stay 3 to 6.",
+    "sourceType must be 'ai'. bullets length must stay 3 to 6. factionSuggestion must be horde/alliance/neutral. genderLean must be masculine/feminine/neutral.",
   ];
   const creativePrompt = [
     ...basePrompt,
@@ -202,6 +202,14 @@ export async function enrichDestiny(
       ...template,
       ...parsed,
       classId: template.classId,
+      factionSuggestion:
+        parsed.factionSuggestion === "horde" || parsed.factionSuggestion === "alliance" || parsed.factionSuggestion === "neutral"
+          ? parsed.factionSuggestion
+          : template.factionSuggestion,
+      genderLean:
+        parsed.genderLean === "masculine" || parsed.genderLean === "feminine" || parsed.genderLean === "neutral"
+          ? parsed.genderLean
+          : template.genderLean,
       sourceType: "ai",
     };
     const failures = validateTemplateOutput(candidate, input.signals.factionPreference);

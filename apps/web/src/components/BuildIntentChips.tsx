@@ -708,6 +708,44 @@ export function BuildIntentChips({
               No extra filters selected. We&apos;ll generate from your core preferences.
             </p>
           )}
+          <div className="card" style={{ marginBottom: 12, padding: 10 }}>
+            <p className="step-label" style={{ marginBottom: 6 }}>
+              Identity preference (optional)
+            </p>
+            <div className="flow-nav flow-nav--wrap">
+              <select
+                value={value.factionPreference ?? ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  persist({ ...value, factionPreference: v === "horde" || v === "alliance" ? v : undefined });
+                }}
+              >
+                <option value="">Faction: any</option>
+                <option value="alliance">Alliance</option>
+                <option value="horde">Horde</option>
+              </select>
+              <input
+                value={value.pickedRace ?? ""}
+                onChange={(e) => persist({ ...value, pickedRace: e.target.value.slice(0, 24), raceMode: "user_pick" })}
+                placeholder="Race (e.g. human, undead)"
+              />
+              <select
+                value={value.genderLean ?? ""}
+                onChange={(e) => {
+                  const g = e.target.value;
+                  persist({
+                    ...value,
+                    genderLean: g === "masculine" || g === "feminine" || g === "neutral" ? g : undefined,
+                  });
+                }}
+              >
+                <option value="">Gender lean: any</option>
+                <option value="masculine">Masculine</option>
+                <option value="feminine">Feminine</option>
+                <option value="neutral">Neutral</option>
+              </select>
+            </div>
+          </div>
           {filterRecoveryAction ? (
             <div style={{ marginTop: 10 }}>
               <button type="button" className="btn-ghost" onClick={filterRecoveryAction.onSoften}>

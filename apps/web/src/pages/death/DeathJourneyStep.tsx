@@ -126,6 +126,7 @@ export function DeathJourneyStep() {
         output: result.output,
         intentSnapshot: { ...promptBias, ...signals },
         experimentalLane: result.experimentalLane,
+        experimentalCandidate: result.experimentalCandidate,
       });
       if (result.filterRelaxedForAi) {
         try {

@@ -15,8 +15,6 @@ export function LuckyResultStep() {
   const navigate = useNavigate();
   const [destiny, setDestiny] = useState<DestinyFixture | null>(null);
   const [destinyId, setDestinyId] = useState<string | null>(null);
-  const [feedbackChoice, setFeedbackChoice] = useState<"closer" | "off" | null>(null);
-  const [feedbackReason, setFeedbackReason] = useState<string>("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [commitName, setCommitName] = useState("");
   const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
@@ -47,7 +45,7 @@ export function LuckyResultStep() {
       setDestinyId(stored.destinyId);
       setSessionId(stored.sessionId);
       setCardIntentSignals(stored.intentSnapshot ?? null);
-      setShowExperimentalBanner(Boolean(stored.experimentalLane));
+      setShowExperimentalBanner(Boolean(stored.experimentalLane || stored.experimentalCandidate));
     }
   }, []);
 
@@ -140,7 +138,7 @@ export function LuckyResultStep() {
       <div className="result-page-grid__main">
         {showExperimentalBanner ? (
           <p className="ui-body-sm" style={{ marginTop: 0, marginBottom: 10 }} role="status">
-            <strong>Experimental lane</strong> — AI-drafted archetype row (class-locked, validated).
+            <strong>Experimental lane</strong> — generated from an AI candidate in normal rotation. Use with care, and rate/reroll so it can be promoted or retired automatically.
           </p>
         ) : null}
         {showRelaxBanner ? (
@@ -156,52 +154,16 @@ export function LuckyResultStep() {
       </div>
       <aside className="result-page-grid__side">
         <div className="card">
-        <p className="ui-caption">How close is this to what you wanted?</p>
+        <p className="ui-caption">Need a different result?</p>
         <div className="flow-nav" style={{ marginTop: 10 }}>
           <button
             type="button"
-            className={`btn-ghost ${feedbackChoice === "closer" ? "chip-btn--on" : ""}`}
-            onClick={() => {
-              setFeedbackChoice("closer");
-              trackEvent(AnalyticsEvent.IntentFeedbackSubmitted, {
-                flow: "lucky_roll",
-                destinyId,
-                feedback: "closer",
-              });
-            }}
+            className="btn-ghost"
+            onClick={() => navigate("/reroll/lucky")}
           >
-            Pretty close
-          </button>
-          <button
-            type="button"
-            className={`btn-ghost ${feedbackChoice === "off" ? "chip-btn--on" : ""}`}
-            onClick={() => setFeedbackChoice("off")}
-          >
-            Off target
+            Reroll and tell us why
           </button>
         </div>
-        {feedbackChoice === "off" ? (
-          <div className="chip-row" style={{ marginTop: 10 }}>
-            {["Too risky", "Wrong fantasy", "Wrong pace", "Wrong role"].map((reason) => (
-              <button
-                key={reason}
-                type="button"
-                className={`chip-btn ${feedbackReason === reason ? "chip-btn--on" : ""}`}
-                onClick={() => {
-                  setFeedbackReason(reason);
-                  trackEvent(AnalyticsEvent.IntentFeedbackSubmitted, {
-                    flow: "lucky_roll",
-                    destinyId,
-                    feedback: "off_target",
-                    reason,
-                  });
-                }}
-              >
-                {reason}
-              </button>
-            ))}
-          </div>
-        ) : null}
         </div>
         <div
           className="card icon-motif-card"

@@ -30,6 +30,7 @@ const rerollReasons: Array<{ value: RerollReason; label: string }> = [
   { value: "almost_right", label: "Almost right" },
   { value: "just_curious", label: "Just curious" },
 ];
+void rerollReasons;
 
 export function PlanResultStep() {
   const navigate = useNavigate();
@@ -38,7 +39,6 @@ export function PlanResultStep() {
   const [destinyId, setDestinyId] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string>("");
   const [note, setNote] = useState("");
-  const [showRerollGate, setShowRerollGate] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadError, setLoadError] = useState<string>("");
   const [recommendVariantId, setRecommendVariantId] = useState<string | null>(null);
@@ -75,7 +75,7 @@ export function PlanResultStep() {
     setDestinyId(stored.destinyId);
     setSessionId(stored.sessionId);
     setCardIntentSignals(stored.intentSnapshot ?? null);
-    setShowExperimentalBanner(Boolean(stored.experimentalLane));
+    setShowExperimentalBanner(Boolean(stored.experimentalLane || stored.experimentalCandidate));
 
     void fetchGrowthAssignment({
       sessionId: stored.sessionId,
@@ -229,18 +229,19 @@ export function PlanResultStep() {
         output: reroll.output,
         intentSnapshot: snapshot,
         experimentalLane: reroll.experimentalLane,
+        experimentalCandidate: reroll.experimentalCandidate,
       });
       setCardIntentSignals(snapshot);
       if (reroll.filterRelaxedForAi) setShowRelaxBanner(true);
       setShowExperimentalBanner(Boolean(reroll.experimentalLane));
       setNote("");
-      setShowRerollGate(false);
     } catch (e) {
       setActionMessage(flowApiErrorHint(e));
     } finally {
       setIsSubmitting(false);
     }
   }
+  void runRerollWithReason;
 
   async function acceptAndOpenPostRating() {
     if (!sessionId || !destinyId || !destiny || isSubmitting) return;
@@ -263,7 +264,6 @@ export function PlanResultStep() {
         memoryConfidence: buildMemoryHints().confidence ?? 0,
       });
       sessionStorage.setItem("last.acceptedClassId", destiny.classId);
-      setShowRerollGate(false);
       setActionMessage("Accepted. Opening share preview...");
       setNote("");
       navigate(`/share/${share.runId}`);
@@ -320,8 +320,7 @@ export function PlanResultStep() {
         <>
           {showExperimentalBanner ? (
             <p className="ui-body-sm" style={{ marginTop: 0, marginBottom: 10 }} role="status">
-              <strong>Experimental lane</strong> — this card used an AI-drafted archetype row (still class-locked and
-              validated). Downvote or reroll if it reads off; curated fixtures stay the default path.
+              <strong>Experimental lane</strong> — generated from an AI candidate in normal rotation. Use with care, and rate/reroll so it can be promoted or retired automatically.
             </p>
           ) : null}
           {showRelaxBanner ? (
@@ -514,27 +513,11 @@ export function PlanResultStep() {
             type="button"
             className="btn-ghost"
             disabled={isSubmitting || !destinyId}
-            onClick={() => setShowRerollGate((prev) => !prev)}
+            onClick={() => navigate("/reroll/plan")}
           >
-            Refine this result
+            Reroll and tell us why
           </button>
         </div>
-
-        {showRerollGate ? (
-          <div className="flow-nav" style={{ marginTop: 10 }}>
-            {rerollReasons.map((reason) => (
-              <button
-                key={reason.value}
-                type="button"
-                className="btn-ghost"
-                disabled={isSubmitting || !destinyId}
-                onClick={() => void runRerollWithReason(reason.value)}
-              >
-                {reason.label}
-              </button>
-            ))}
-          </div>
-        ) : null}
 
         {actionMessage ? (
           <p className="ui-caption" style={{ marginTop: 10, marginBottom: 0 }} role="status" aria-live="polite">
