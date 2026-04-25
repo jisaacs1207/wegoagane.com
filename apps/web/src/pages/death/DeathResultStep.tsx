@@ -9,6 +9,7 @@ import {
   fetchDestiny,
   fetchGrowthAssignment,
   fetchNameCandidates,
+  flowApiErrorHint,
   generateNameCandidates,
   type RerollReason,
   submitDestinyFeedback,
@@ -220,8 +221,8 @@ export function DeathResultStep() {
       sessionStorage.setItem("death.destinyId", reroll.destinyId);
       setNote("");
       setShowRerollGate(false);
-    } catch {
-      setActionMessage("Could not save this rating yet.");
+    } catch (e) {
+      setActionMessage(flowApiErrorHint(e));
     } finally {
       setIsSubmitting(false);
     }
@@ -252,8 +253,8 @@ export function DeathResultStep() {
       setActionMessage("Accepted. Opening share preview...");
       setNote("");
       navigate(`/share/${share.runId}`);
-    } catch {
-      setActionMessage("Could not save acceptance yet.");
+    } catch (e) {
+      setActionMessage(flowApiErrorHint(e));
     } finally {
       setIsSubmitting(false);
     }
@@ -276,8 +277,8 @@ export function DeathResultStep() {
         slug: committed.slug,
       });
       navigate(committed.path);
-    } catch {
-      setActionMessage("Could not commit this build yet.");
+    } catch (e) {
+      setActionMessage(flowApiErrorHint(e));
     } finally {
       setIsSubmitting(false);
     }

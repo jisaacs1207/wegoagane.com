@@ -1096,3 +1096,22 @@ textarea::placeholder {
   flex-wrap: wrap;
   gap: 8px;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .atmo-spark {
+    animation: none !important;
+  }
+
+  .forge-spinner {
+    animation: none !important;
+    border-top-color: rgba(196, 163, 90, 0.55);
+  }
+
+  .chip-btn {
+    transition: border-color 0.12s, background 0.12s;
+  }
+
+  .chip-btn:hover {
+    transform: none;
+  }
+}

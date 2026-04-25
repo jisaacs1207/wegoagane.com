@@ -1,14 +1,15 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { DestinyCard } from "../../components/cards/DestinyCard";
 import type { DestinyFixture } from "../../content/cardFixtures";
 import { wowPackUrl } from "../../content/identityAssets";
 import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
-import { commitJourneyBuild, fetchNameCandidates, generateNameCandidates } from "../../lib/recommendClient";
+import { commitJourneyBuild, fetchNameCandidates, flowApiErrorHint, generateNameCandidates } from "../../lib/recommendClient";
 import { readStoredDestiny } from "../../lib/flowDestinyState";
 import { readBuildIntent } from "../../lib/readBuildIntent";
 
 export function LuckyResultStep() {
+  const navigate = useNavigate();
   const [destiny, setDestiny] = useState<DestinyFixture | null>(null);
   const [destinyId, setDestinyId] = useState<string | null>(null);
   const [feedbackChoice, setFeedbackChoice] = useState<"closer" | "off" | null>(null);
@@ -68,8 +69,8 @@ export function LuckyResultStep() {
         context: nameContext,
       });
       setNameSuggestions(res.names.map((row) => row.name));
-    } catch {
-      setCommitMessage("Could not generate more names yet.");
+    } catch (e) {
+      setCommitMessage(flowApiErrorHint(e));
     } finally {
       setIsLoadingNames(false);
     }
@@ -88,9 +89,9 @@ export function LuckyResultStep() {
         destinyId,
         slug: committed.slug,
       });
-      window.location.assign(committed.path);
-    } catch {
-      setCommitMessage("Could not commit this build yet.");
+      navigate(committed.path);
+    } catch (e) {
+      setCommitMessage(flowApiErrorHint(e));
     }
   }
 
