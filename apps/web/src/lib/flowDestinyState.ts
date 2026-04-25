@@ -1,4 +1,5 @@
 import type { DestinyFixture } from "../content/cardFixtures";
+import { SessionKeys } from "./sessionKeys";
 
 type FlowKey = "death" | "plan" | "lucky";
 
@@ -9,7 +10,9 @@ export type StoredDestinyState = {
 };
 
 function key(flow: FlowKey) {
-  return `${flow}.generatedDestiny`;
+  if (flow === "plan") return SessionKeys.plan.generatedDestiny;
+  if (flow === "death") return SessionKeys.death.generatedDestiny;
+  return SessionKeys.lucky.generatedDestiny;
 }
 
 export function writeStoredDestiny(flow: FlowKey, value: StoredDestinyState) {
@@ -29,4 +32,3 @@ export function readStoredDestiny(flow: FlowKey): StoredDestinyState | null {
     return null;
   }
 }
-

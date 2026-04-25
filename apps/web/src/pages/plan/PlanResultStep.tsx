@@ -269,7 +269,9 @@ export function PlanResultStep() {
         <div className="card" style={{ marginTop: 14 }}>
           <p className="step-label">Draft a run</p>
           <h1 className="hero-question">Journey required</h1>
-          <p className="hero-sub">{loadError || "Complete your build journey first."}</p>
+          <p className="hero-sub" role="status" aria-live="polite">
+            {loadError || "Complete your build journey first."}
+          </p>
           <div className="flow-nav" style={{ marginTop: 12 }}>
             <Link to="/draft-a-run/intent" className="btn-primary">
               Go to journey

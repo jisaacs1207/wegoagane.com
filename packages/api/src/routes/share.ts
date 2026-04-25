@@ -158,7 +158,17 @@ function asClientResponse(row: ShareRow) {
 }
 
 export async function handleCreateShare(c: Context<ApiEnv>) {
-  const input = createShareSchema.parse(await c.req.json());
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "invalid_json" }, 400);
+  }
+  const parsed = createShareSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "invalid_input" }, 400);
+  }
+  const input = parsed.data;
   const existing = await getExistingByDestiny(c.env.DB, input.sessionId, input.destinyId);
   const row = existing;
   if (row) {

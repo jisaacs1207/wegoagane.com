@@ -241,7 +241,11 @@ export function LuckyResultStep() {
             Create build link
           </button>
         </div>
-        {commitMessage ? <p style={{ marginBottom: 0 }}>{commitMessage}</p> : null}
+        {commitMessage ? (
+          <p style={{ marginBottom: 0 }} role="status" aria-live="polite">
+            {commitMessage}
+          </p>
+        ) : null}
         </div>
         <div className="flow-nav flow-nav--wrap" style={{ marginTop: 16 }}>
           <Link to="/lucky-roll/journey" className="btn-ghost">
