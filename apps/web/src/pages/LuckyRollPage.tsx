@@ -8,7 +8,7 @@ import { SessionKeys } from "../lib/sessionKeys";
 import { readBuildIntent } from "../lib/readBuildIntent";
 import { buildMemoryHints } from "../lib/memoryProfile";
 import { BuildIntentChips } from "../components/BuildIntentChips";
-import type { BuildIntentSignals } from "../lib/buildIntentTypes";
+import type { BuildIntentSignals, IntentDepth } from "../lib/buildIntentTypes";
 import { AnalyticsEvent, trackEvent } from "../lib/analytics";
 import { debugClientIgnored } from "../lib/clientDebug";
 
@@ -46,8 +46,10 @@ export function LuckyRollPage() {
     setFeedbackReason("");
   }, [destinyId]);
 
-  async function generate(signals: BuildIntentSignals) {
+  async function generate(signals: BuildIntentSignals, depth: IntentDepth) {
     if (!sessionId) return;
+    const { intentDepth: _strip, ...intent } = signals;
+    void _strip;
     setIsLoading(true);
     setLoadError("");
     try {
@@ -58,7 +60,8 @@ export function LuckyRollPage() {
           nextSignal: augmentNextSignalWithPower("Surprise me", SessionKeys.lucky.buildIntent),
           memoryHints: buildMemoryHints(),
           recommendVariantId: variantId ?? undefined,
-          ...signals,
+          ...intent,
+          intentDepth: depth,
         },
       });
       setDestiny(result.output);
@@ -93,7 +96,7 @@ export function LuckyRollPage() {
         storageKey={SessionKeys.lucky.buildIntent}
         isGenerating={isLoading}
         hasGenerated={Boolean(destiny)}
-        onGenerate={(signals) => void generate(signals)}
+        onGenerate={(signals, depth) => void generate(signals, depth)}
       />
       {loadError ? (
         <p className="hero-sub" style={{ marginTop: 8 }}>

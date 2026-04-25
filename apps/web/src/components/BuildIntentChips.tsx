@@ -4,8 +4,10 @@ import { AnalyticsEvent, trackEvent } from "../lib/analytics";
 import {
   applyCorePreset,
   DEPTH_OPTIONS,
+  fillBalancedAssumptions,
   optionLabel,
   PROF_OPTIONS,
+  rollRandomQuickPickSignals,
   STAT_OPTIONS,
   toggleList,
   type CorePreset,
@@ -28,7 +30,7 @@ type Props = {
   recommendLane?: "curated" | "experimental" | null;
   onRecommendLaneChange?: (lane: "curated" | "experimental") => void;
 };
-type JourneyStep = "depth" | "vector" | "question" | "review";
+type JourneyStep = "depth" | "quick_roll" | "vector" | "question" | "review";
 type VectorKey = JourneyVectorKey;
 
 const VECTOR_ICON_GLIMPSE: Record<VectorKey, string[]> = {
@@ -99,7 +101,7 @@ function readDepth(key: string): IntentDepth {
   } catch {
     /* ignore */
   }
-  return "quick";
+  return "balanced";
 }
 
 function writeDepth(key: string, depth: IntentDepth) {
@@ -123,7 +125,7 @@ export function BuildIntentChips({
 }: Props) {
   const [value, setValue] = useState<BuildIntentSignals>(() => readStorage(storageKey));
   const [depth, setDepth] = useState<IntentDepth>(() => readDepth(storageKey));
-  const [step, setStep] = useState<JourneyStep>(() => (readDepth(storageKey) === "quick" ? "review" : "depth"));
+  const [step, setStep] = useState<JourneyStep>("depth");
   const [vector, setVector] = useState<VectorKey>("survivability");
   const [selectedVectors, setSelectedVectors] = useState<VectorKey[]>([]);
   const [vectorCursor, setVectorCursor] = useState(0);
@@ -138,22 +140,33 @@ export function BuildIntentChips({
     return () => window.clearTimeout(id);
   }, [pulseVector]);
 
+  /** Quick roll replaces intent chips but keeps identity fields the player may have set later. */
+  function mergeQuickRollPreserveIdentity(base: BuildIntentSignals, rolled: BuildIntentSignals): BuildIntentSignals {
+    return {
+      ...rolled,
+      factionPreference: base.factionPreference,
+      pickedRace: base.pickedRace,
+      genderLean: base.genderLean,
+    };
+  }
+
   function persist(next: BuildIntentSignals) {
+    const { intentDepth: _strip, ...rest } = next;
+    void _strip;
     try {
-      sessionStorage.setItem(storageKey, JSON.stringify(next));
+      sessionStorage.setItem(storageKey, JSON.stringify(rest));
     } catch {
       /* ignore */
     }
-    setValue(next);
+    setValue(rest);
   }
 
   function persistDepth(nextDepth: IntentDepth) {
     setDepth(nextDepth);
     writeDepth(storageKey, nextDepth);
-    if (nextDepth === "quick") {
-      setStep("review");
-    }
   }
+
+  const maxVectors = depth === "balanced" ? 2 : 3;
 
   const activeIds = useMemo(() => {
     const ids: string[] = [];
@@ -193,6 +206,23 @@ export function BuildIntentChips({
   );
 
   const depthHelper = DEPTH_OPTIONS.find((o) => o.id === depth)?.helper;
+  const depthFlowCaption =
+    depth === "quick"
+      ? "Roll a random bundle from every stat, profession, and playstyle filter. Remove anything you dislike, reroll for a fresh bundle, then review."
+      : depth === "balanced"
+        ? "Pick up to two focus pillars, answer one question each, and we infer the rest for a coherent profile."
+        : "Pick up to three pillars and answer the full question set for the tightest match before review.";
+
+  const { stepNumerator, stepDenominator } = useMemo(() => {
+    if (depth === "quick") {
+      const order: JourneyStep[] = ["depth", "quick_roll", "review"];
+      const idx = Math.max(0, order.indexOf(step));
+      return { stepNumerator: idx + 1, stepDenominator: 3 };
+    }
+    const order: JourneyStep[] = ["depth", "vector", "question", "review"];
+    const idx = Math.max(0, order.indexOf(step));
+    return { stepNumerator: idx + 1, stepDenominator: 4 };
+  }, [depth, step]);
 
   const questionsByVector: Record<VectorKey, Array<{ id: string; prompt: string; answers: string[]; apply: (a: string) => BuildIntentSignals }>> = {
     profession: [
@@ -386,8 +416,9 @@ export function BuildIntentChips({
     ],
   };
   const activeVector = selectedVectors[vectorCursor] ?? vector;
-  const currentQuestions = questionsByVector[activeVector];
-  const currentQuestion = currentQuestions[Math.min(questionIndex, Math.max(0, currentQuestions.length - 1))];
+  const fullQuestionsForVector = questionsByVector[activeVector];
+  const questionList = depth === "balanced" ? fullQuestionsForVector.slice(0, 1) : fullQuestionsForVector;
+  const currentQuestion = questionList[Math.min(questionIndex, Math.max(0, questionList.length - 1))]!;
 
   function removeActive(id: string) {
     if (value.statPhilosophy?.includes(id as never)) {
@@ -456,8 +487,9 @@ export function BuildIntentChips({
       /* ignore */
     }
     setValue({});
-    setDepth("quick");
-    setStep("review");
+    setDepth("balanced");
+    writeDepth(storageKey, "balanced");
+    setStep("depth");
     setVector("survivability");
     setSelectedVectors([]);
     setVectorCursor(0);
@@ -477,10 +509,10 @@ export function BuildIntentChips({
         </button>
       </div>
       <p className="ui-caption" style={{ marginTop: 0, marginBottom: 10 }}>
-        Fast path is ready now. Generate instantly, or tune with guided questions first.
+        Choose how much control you want, then follow the steps—every path ends on review before generate.
       </p>
       <p className="ui-caption" style={{ marginTop: 0, marginBottom: 12 }}>
-        Step {step === "depth" ? "1" : step === "vector" ? "2" : step === "question" ? "3" : "4"} of 4
+        Step {stepNumerator} of {stepDenominator}
       </p>
       {step === "depth" ? (
         <>
@@ -506,6 +538,9 @@ export function BuildIntentChips({
           </div>
           <p className="ui-caption" style={{ marginTop: 8, marginBottom: 12 }}>
             {depthHelper}
+          </p>
+          <p className="ui-caption ui-caption--xs" style={{ marginTop: -4, marginBottom: 12 }}>
+            {depthFlowCaption}
           </p>
           <fieldset style={{ border: "none", padding: 0, margin: "0 0 12px 0" }}>
             <legend className="ui-caption" style={{ marginBottom: 6 }}>
@@ -566,8 +601,16 @@ export function BuildIntentChips({
           </fieldset>
           <div className="flow-nav">
             {depth === "quick" ? (
-              <button type="button" className="btn-primary" onClick={() => setStep("review")}>
-                Review and generate
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => {
+                  const rolled = rollRandomQuickPickSignals(`${storageKey}|${crypto.randomUUID()}`);
+                  persist(mergeQuickRollPreserveIdentity(value, rolled));
+                  setStep("quick_roll");
+                }}
+              >
+                Roll random filters
               </button>
             ) : (
               <button type="button" className="btn-primary" onClick={() => setStep("vector")}>
@@ -577,8 +620,66 @@ export function BuildIntentChips({
           </div>
         </>
       ) : null}
+      {step === "quick_roll" ? (
+        <>
+          <p className="step-label" style={{ marginBottom: 6 }}>
+            Quick roll
+          </p>
+          <p className="ui-caption" style={{ marginTop: 0, marginBottom: 12 }}>
+            Tap × on anything you do not want. Roll again for a fresh random bundle from the full filter list.
+          </p>
+          {activeIds.length ? (
+            <div style={{ marginBottom: 12 }}>
+              <p className="step-label" style={{ marginBottom: 6 }}>
+                Rolled filters
+              </p>
+              <div className="chip-row" role="group" aria-label="Rolled filters, click to remove">
+                {activeIds.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className="chip-btn chip-btn--on"
+                    aria-pressed={true}
+                    aria-label={`${optionLabel(id)}, remove`}
+                    onClick={() => removeActive(id)}
+                  >
+                    {optionLabel(id)} ×
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="ui-caption" style={{ marginTop: 0, marginBottom: 12 }}>
+              No filters yet—use Roll again to sample the catalog.
+            </p>
+          )}
+          <div className="flow-nav flow-nav--wrap">
+            <button type="button" className="btn-ghost" onClick={() => setStep("depth")}>
+              Back
+            </button>
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => {
+                const rolled = rollRandomQuickPickSignals(`${storageKey}|${crypto.randomUUID()}`);
+                persist(mergeQuickRollPreserveIdentity(value, rolled));
+              }}
+            >
+              Roll again
+            </button>
+            <button type="button" className="btn-primary" onClick={() => setStep("review")}>
+              Continue to review
+            </button>
+          </div>
+        </>
+      ) : null}
       {step === "vector" ? (
         <>
+          <p className="ui-caption" style={{ marginTop: 0, marginBottom: 10 }}>
+            {depth === "balanced"
+              ? "Pick up to two focus areas (we ask one question each, then infer the rest)."
+              : "Pick up to three focus areas—each gets its own question stack."}
+          </p>
           <p className="ui-caption" style={{ marginTop: 0, marginBottom: 10 }}>
             What should lead this build?
           </p>
@@ -587,7 +688,7 @@ export function BuildIntentChips({
               Selected priorities: {selectedVectors.map((v) => VECTOR_ROWS.find((r) => r.id === v)?.title ?? v).join(" -> ")}
             </p>
           ) : null}
-          <div className="journey-vector-grid" role="group" aria-label="Build priority vectors, up to three">
+          <div className="journey-vector-grid" role="group" aria-label={`Build priority vectors, up to ${maxVectors}`}>
             {VECTOR_ROWS.map((row) => (
               <button
                 key={row.id}
@@ -599,7 +700,7 @@ export function BuildIntentChips({
                   setPulseVector(row.id);
                   setSelectedVectors((prev) => {
                     if (prev.includes(row.id)) return prev.filter((v) => v !== row.id);
-                    if (prev.length >= 3) return [...prev.slice(1), row.id];
+                    if (prev.length >= maxVectors) return [...prev.slice(1), row.id];
                     return [...prev, row.id];
                   });
                   trackEvent(AnalyticsEvent.VectorSelected, { ...eventContext, vector: row.id });
@@ -658,7 +759,7 @@ export function BuildIntentChips({
                 onClick={() => {
                   persist(currentQuestion.apply(answer));
                   trackEvent(AnalyticsEvent.QuestionAnswered, { ...eventContext, questionId: currentQuestion.id, answer });
-                  if (questionIndex >= currentQuestions.length - 1) {
+                  if (questionIndex >= questionList.length - 1) {
                     if (vectorCursor < selectedVectors.length - 1) {
                       setVectorCursor((prev) => prev + 1);
                       setQuestionIndex(0);
@@ -849,7 +950,7 @@ export function BuildIntentChips({
             </div>
           ) : null}
           <div className="flow-nav">
-            <button type="button" className="btn-ghost" onClick={() => setStep(depth === "quick" ? "depth" : "question")}>
+            <button type="button" className="btn-ghost" onClick={() => setStep(depth === "quick" ? "quick_roll" : "question")}>
               Back to tuning
             </button>
             <button
@@ -858,7 +959,8 @@ export function BuildIntentChips({
               disabled={isGenerating || (experimentalOffer === "cohort" && recommendLane === null)}
               onClick={() => {
                 trackEvent(hasGenerated ? AnalyticsEvent.IntentRegenerateClicked : AnalyticsEvent.GenerateClicked, eventContext);
-                onGenerate(value, depth);
+                const payload = depth === "balanced" ? fillBalancedAssumptions(value) : value;
+                onGenerate(payload, depth);
               }}
             >
               {isGenerating ? "Generating..." : hasGenerated ? "Regenerate build" : "Generate build"}

@@ -30,6 +30,7 @@ export type RecommendRequest = {
     memoryHints?: MemoryHints;
     recommendVariantId?: string;
     recommendLane?: "curated" | "experimental";
+    intentDepth?: "quick" | "balanced" | "dialed_in";
   } & BuildIntentSignals;
 };
 

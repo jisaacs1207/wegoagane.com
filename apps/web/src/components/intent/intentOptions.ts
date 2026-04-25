@@ -1,6 +1,6 @@
-import type { BuildIntentSignals } from "../../lib/buildIntentTypes";
+import type { BuildIntentSignals, IntentDepth } from "../../lib/buildIntentTypes";
 
-export type IntentDepth = "quick" | "balanced" | "dialed_in";
+export type { IntentDepth } from "../../lib/buildIntentTypes";
 export type CorePreset = "safe" | "balanced" | "bold";
 
 export const STAT_OPTIONS = [
@@ -98,6 +98,73 @@ export function applyCorePreset(value: BuildIntentSignals, preset: CorePreset): 
 export function optionLabel(id: string): string {
   const all = [...STAT_OPTIONS, ...PROF_OPTIONS, ...VECTOR_OPTIONS, ...RACE_MODES];
   return all.find((x) => x.id === id)?.label ?? id;
+}
+
+const STAT_IDS = STAT_OPTIONS.map((o) => o.id);
+const PROF_IDS = PROF_OPTIONS.map((o) => o.id);
+const VECTOR_IDS = VECTOR_OPTIONS.map((o) => o.id);
+const RACE_MODE_IDS = RACE_MODES.map((o) => o.id);
+
+function hashString(seed: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i += 1) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function mulberry32(seed: number): () => number {
+  return () => {
+    let t = (seed += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function pickDistinct<T>(pool: readonly T[], count: number, rng: () => number): T[] {
+  const copy = [...pool];
+  const out: T[] = [];
+  const n = Math.min(count, copy.length);
+  while (out.length < n && copy.length) {
+    const i = Math.floor(rng() * copy.length);
+    out.push(copy.splice(i, 1)[0]!);
+  }
+  return out;
+}
+
+/**
+ * Random intent slice from the full stat/prof/vector catalogs (lucky-roll quick path).
+ * Deterministic per `seedStr` so rerolls change when the seed changes.
+ */
+export function rollRandomQuickPickSignals(seedStr: string): BuildIntentSignals {
+  const rng = mulberry32(hashString(seedStr));
+  const nStats = 2 + Math.floor(rng() * 2);
+  const nProf = 2 + Math.floor(rng() * 3);
+  const nVec = 3 + Math.floor(rng() * 4);
+  return {
+    statPhilosophy: pickDistinct(STAT_IDS, nStats, rng) as BuildIntentSignals["statPhilosophy"],
+    professionIntents: pickDistinct(PROF_IDS, nProf, rng) as BuildIntentSignals["professionIntents"],
+    buildVectors: pickDistinct(VECTOR_IDS, nVec, rng) as BuildIntentSignals["buildVectors"],
+    raceMode: RACE_MODE_IDS[Math.floor(rng() * RACE_MODE_IDS.length)] as BuildIntentSignals["raceMode"],
+  };
+}
+
+/** After a short guided path, fill missing dimensions so the ranker always has a coherent profile. */
+export function fillBalancedAssumptions(s: BuildIntentSignals): BuildIntentSignals {
+  const out: BuildIntentSignals = { ...s };
+  if (!out.statPhilosophy?.length) {
+    out.statPhilosophy = ["balanced", "stamina_forward"];
+  }
+  if (!out.professionIntents?.length) {
+    out.professionIntents = ["engineering_outs", "first_aid_mandatory_mindset"];
+  }
+  if (!out.buildVectors?.length) {
+    out.buildVectors = ["solo", "hybrid", "group_ok"];
+  }
+  if (!out.raceMode) out.raceMode = "signal_inferred";
+  return out;
 }
 
 /** Human labels for chips the player picked in the build journey. */
