@@ -1,25 +1,26 @@
 # Route QA matrix
 
-**Doc index:** [Handbook hub](../handoff/README.md) · [STATUS / milestones](../handoff/STATUS.md) · [Root README](../README.md)
+**Doc index:** [Handbook hub](handoff/README.md) · [STATUS / milestones](handoff/STATUS.md) · [Root README](../README.md)
 
 ## Home entry routes
 
-- `/` -> `/release-spirit/mood`
+- `/` -> `/release-spirit/next`
 - `/` -> `/draft-a-run/intent`
 - `/` -> `/lucky-roll/journey`
 
 ## Release spirit
 
-- `/release-spirit/mood` -> `/release-spirit/next`
-- `/release-spirit/next` -> `/release-spirit/detail`
+- `/release-spirit/next` -> `/release-spirit/journey` (fast path)
+- `/release-spirit/next` -> `/release-spirit/detail` (optional)
 - `/release-spirit/detail` -> `/release-spirit/journey`
 - `/release-spirit/journey` -> `/release-spirit/result`
-- `/release-spirit/result` reroll -> `/reroll/death` -> (`totally_off` => `/release-spirit/mood`, `close_but_off` => reroll then `/release-spirit/result`)
-- `/release-spirit/result` retool -> `/release-spirit/mood`
+- `/release-spirit/result` reroll -> `/reroll/death` -> (`totally_off` => `/release-spirit/next`, `close_but_off` => reroll then `/release-spirit/result`)
+- `/release-spirit/result` retool -> `/release-spirit/next`
 
 ## Draft a run
 
-- `/draft-a-run/intent` -> `/draft-a-run/freeform`
+- `/draft-a-run/intent` -> `/draft-a-run/journey` (fast path)
+- `/draft-a-run/intent` -> `/draft-a-run/freeform` (optional view)
 - `/draft-a-run/freeform` -> `/draft-a-run/journey`
 - `/draft-a-run/journey` -> `/draft-a-run/result`
 - `/draft-a-run/result` reroll -> `/reroll/plan` -> (`totally_off` => `/draft-a-run/intent`, `close_but_off` => reroll then `/draft-a-run/result`)
@@ -64,7 +65,7 @@ Canonical string literals live in [`apps/web/src/lib/sessionKeys.ts`](../apps/we
 | `plan.buildIntent.depth` | `quick` \| `balanced` \| `dialed_in` |
 | `plan.buildIntent.powerCurve` | Optional power curve id |
 | `death.sessionId` | Release spirit recommend session |
-| `death.mood` / `death.nextSignal` | Mood + next-run signal labels |
+| `death.mood` / `death.nextSignal` | Mood + next-run signal ids |
 | `death.detail.zone` / `.cause` / `.level` / `.note` | Optional death context |
 | `death.destinyId` / `death.generatedDestiny` | Same shape as `plan.generatedDestiny` |
 | `death.buildIntent` (+ `.depth`, `.powerCurve`) | Build journey for spirit release |

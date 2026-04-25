@@ -1,6 +1,6 @@
 # Build status & iteration contract
 
-**Last updated:** 2026-04-24 (M17 web-hardening backlog landed on feature branch; merge to `main` when ready)
+**Last updated:** 2026-04-25 (AI closed-loop + friction-reduction + language unification shipped on feature branch and deployed to production)
 
 ---
 
@@ -8,10 +8,10 @@
 
 | Field | Value |
 |--------|--------|
-| **Current milestone** | **M14 (next)** — trust content expansion (wave 1) |
-| **Blocked by** | Confirm M14 archetype quality gate rubric + review owner per class cluster |
-| **Last build iteration** | **M13 shipped:** hybrid memory path (browser `localStorage` + API-derived session history) now biases deterministic ranking with configurable weights/clamps, balanced rollout defaults, degrade-mode controls, memory observability (`/api/v1/analytics/memory-health`), and deploy guard wiring for memory vars. **Feature branch:** client error surfacing (`flowApiErrorHint` / filter recovery), `SessionKeys`, API `invalid_json` on memorial/share/build/journey, Playwright smoke E2E in CI, typography tokens (`.ui-caption` / `.ui-body-sm`), dev-only `debugClientIgnored` on non-blocking fetches, skip link + a11y polish — aligns with **M17** checklist; merge PR to fold into `main`. |
-| **Next “request to move forward” criteria** | Start **M14** with trust-first expansion: ship additional archetypes only if each passes quality gate (mechanical correctness, First-10 quality, source-tag completeness, non-generic language) and validation/acceptance metrics remain healthy; run AI-first sprint mode (1-2 day build + 3-7 day validation soak). |
+| **Current milestone** | **M19 (next)** — autonomous growth foundation (set-and-forget Wave 1) |
+| **Blocked by** | Confirm promote/hold/retire thresholds + confidence tiers + dual-surface index policy (guest template vs locked player report) |
+| **Last build iteration** | Closed-loop archetype learning pass shipped: candidate event logging, promotion scoring fixes, prompt supplement loop, experimental candidate surfacing in normal recommendation flow, identity vector expansion (race/faction/gender), reroll triage route, and reduced-friction setup UX (fast path first + optional depth) with consistent hardcore-first language pass. |
+| **Next “request to move forward” criteria** | Execute sections 11-16 and 18 (Days 1-10) from [`docs/project-operating-plan.md`](../project-operating-plan.md): threshold policy, dual-surface architecture, index policy contract, trust block rollout, and baseline vs soak validation. |
 
 ### Autonomous growth engine baseline (implemented)
 
@@ -159,3 +159,4 @@ When the checklist is complete enough for the next milestone, update **Current m
 | 2026-04-23 | **M13 complete:** browser memory profile (`localStorage`) + memory hints in recommend requests, API history-derived memory features from `destiny_feedback` + `recommendation_logs`, weighted/clamped hybrid memory ranker, and memory degradation runbook (`reduce weights` then `disable`) with `/api/v1/analytics/memory-health` |
 | 2026-04-23 | Reassessed **M14–M18** to trust-first sequencing (content trust → ceremony language → share polish → modern web hardening → UAT) with explicit blockers and AI-first sprint cadence (1-2 day build + validation soak) |
 | 2026-04-23 | **Autonomous growth engine shipped + verified in production:** growth schema/routes/ops UI/smoke checks deployed; control-token auth validated (`403` unauth / `200` auth), manual tick seeded first active experiment (`experimentsRunning=1`, `variantsTotal=2`), and migration-drift follow-up resolved via Drizzle metadata reconciliation (`0006` no-op + snapshot/journal). |
+| 2026-04-25 | Closed-loop + friction-reduction release: experimental candidate lifecycle fixes (event integrity + scoring), reroll triage, identity vector end-to-end fields, reduced-step setup defaults, consolidated CTA language, and production deploy/migration/health verification. Added consolidated PM execution plan in [`docs/project-operating-plan.md`](../project-operating-plan.md). |

@@ -6,6 +6,8 @@ This folder is the **canonical** design and build specification for wegoagane.co
 
 **Iteration tracker:** [STATUS.md](STATUS.md) — current milestone, gates, MVP content slice, and open decisions.
 
+**Program plan (next-wave execution):** [../project-operating-plan.md](../project-operating-plan.md) — consolidated PM view of current state, game-theory operating model, and incremental wave plan.
+
 ---
 
 ## Reading order
