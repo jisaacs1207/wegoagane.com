@@ -68,6 +68,7 @@ export function DeathJourneyStep() {
         const pct = cfg.experimentalLane?.offerPercent ?? 0;
         if (experimentalCohortHit(sid, pct)) {
           setExperimentalOffer("cohort");
+          setRecommendLane("curated");
           trackEvent(AnalyticsEvent.ExperimentalLaneOfferShown, { flow: "release_spirit", offerPercent: pct });
         }
       })

@@ -51,6 +51,7 @@ export function PlanJourneyStep() {
         const pct = cfg.experimentalLane?.offerPercent ?? 0;
         if (experimentalCohortHit(sid, pct)) {
           setExperimentalOffer("cohort");
+          setRecommendLane("curated");
           trackEvent(AnalyticsEvent.ExperimentalLaneOfferShown, { flow: "draft_a_run", offerPercent: pct });
         }
       })

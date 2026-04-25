@@ -55,6 +55,7 @@ export function LuckyJourneyStep() {
         const pct = cfg.experimentalLane?.offerPercent ?? 0;
         if (experimentalCohortHit(sid, pct)) {
           setExperimentalOffer("cohort");
+          setRecommendLane("curated");
           trackEvent(AnalyticsEvent.ExperimentalLaneOfferShown, { flow: "lucky_roll", offerPercent: pct });
         }
       })
