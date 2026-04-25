@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { fetchDestiny, flowApiErrorHint, submitDestinyFeedback, type RecommendRequest } from "../lib/recommendClient";
+import { fetchAnalyticsConfig, fetchDestiny, flowApiErrorHint, submitDestinyFeedback, type RecommendRequest } from "../lib/recommendClient";
 import { readStoredDestiny, writeStoredDestiny } from "../lib/flowDestinyState";
 import { readBuildIntent } from "../lib/readBuildIntent";
 import { SessionKeys } from "../lib/sessionKeys";
@@ -23,7 +23,7 @@ function flowMeta(flow: Flow) {
     return {
       entryPath: "release_spirit" as const,
       storageKey: SessionKeys.death.buildIntent,
-      restartPath: "/release-spirit/mood",
+      restartPath: "/release-spirit/next",
       resultPath: "/release-spirit/result",
       sessionKey: SessionKeys.death.sessionId,
       destinyKey: SessionKeys.death.destinyId,
@@ -70,14 +70,40 @@ export function RerollTriagePage() {
       }
 
       const intentSnapshot = stored.intentSnapshot ?? readBuildIntent(meta.storageKey);
+      const cfg = await fetchAnalyticsConfig().catch(() => null);
+      const allowExperimental = (cfg?.experimentalLane?.offerPercent ?? 0) > 0;
+      const flowSignals =
+        flow === "plan"
+          ? {
+              intent: sessionStorage.getItem(SessionKeys.plan.intent) ?? undefined,
+              freeform: sessionStorage.getItem(SessionKeys.plan.freeform) ?? undefined,
+            }
+          : flow === "death"
+            ? {
+                mood: sessionStorage.getItem(SessionKeys.death.mood) ?? undefined,
+                nextSignal: sessionStorage.getItem(SessionKeys.death.nextSignal) ?? undefined,
+                freeform: [
+                  sessionStorage.getItem(SessionKeys.death.detailZone),
+                  sessionStorage.getItem(SessionKeys.death.detailCause),
+                  sessionStorage.getItem(SessionKeys.death.detailLevel),
+                  sessionStorage.getItem(SessionKeys.death.detailNote),
+                ]
+                  .filter(Boolean)
+                  .join(" | ")
+                  .slice(0, 240),
+              }
+            : {
+                nextSignal: "Surprise me",
+              };
       const request: RecommendRequest = {
         entryPath: meta.entryPath,
         sessionId: stored.sessionId,
         signals: {
+          ...flowSignals,
           ...(intentSnapshot ?? {}),
           freeform: note.trim() ? `retool request: ${note.trim()}`.slice(0, 240) : undefined,
           preferredClass: stored.output.classId,
-          recommendLane: "experimental",
+          recommendLane: allowExperimental ? "experimental" : undefined,
           memoryHints: buildMemoryHints(),
         },
       };
@@ -128,13 +154,13 @@ export function RerollTriagePage() {
     <div className="card">
       <p className="step-label">Reroll triage</p>
       <h1 className="hero-question">What felt off?</h1>
-      <p className="hero-sub">One reroll button, then tell us if it was close or totally off so we can tune future picks.</p>
+      <p className="hero-sub">Pick one: rework this result, or start over. Your note helps tune future picks.</p>
       <div className="flow-nav flow-nav--wrap" style={{ marginTop: 10 }}>
         <button type="button" className={`btn-ghost ${verdict === "close_but_off" ? "chip-btn--on" : ""}`} onClick={() => setVerdict("close_but_off")}>
-          Close, retool this
+          Retool this result
         </button>
         <button type="button" className={`btn-ghost ${verdict === "totally_off" ? "chip-btn--on" : ""}`} onClick={() => setVerdict("totally_off")}>
-          Totally off, restart
+          Start over
         </button>
       </div>
       <textarea
@@ -145,10 +171,10 @@ export function RerollTriagePage() {
       />
       <div className="flow-nav" style={{ marginTop: 12 }}>
         <button type="button" className="btn-primary" disabled={busy} onClick={() => void onContinue()}>
-          {busy ? "Working..." : "Continue"}
+          {busy ? "Working..." : verdict === "totally_off" ? "Restart run" : "Retool now"}
         </button>
         <button type="button" className="btn-ghost" onClick={() => navigate(meta.resultPath)} disabled={busy}>
-          Back
+          Back to result
         </button>
       </div>
       {message ? (

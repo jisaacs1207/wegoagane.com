@@ -160,9 +160,9 @@ export function LuckyJourneyStep() {
     <div>
       <div className="card" style={{ marginBottom: 12 }}>
         <p className="step-label">Lucky roll</p>
-        <h1 className="hero-question">Set your lucky roll profile</h1>
+        <h1 className="hero-question">Set your run priorities</h1>
         <p className="hero-sub" style={{ marginBottom: 0 }}>
-          Fastest route: pick a priority and generate a commit-ready run in a few taps.
+          Fast path: pick priorities and generate a commit-ready run.
         </p>
         <div className="entry-icon-row entry-icon-row--overlap" style={{ marginTop: 10 }}>
           <IdentityPortrait src={wowPackUrl("Miscellaneous", "Dice_02.png")} alt="" className="entry-icon" />

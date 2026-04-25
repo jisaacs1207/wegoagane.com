@@ -143,7 +143,7 @@ export function BuildPlanPage() {
               window.location.assign("/draft-a-run/journey");
             }}
           >
-            Retool from this run
+            Start new run from this
           </button>
           <Link to="/" className="btn-ghost">
             Home

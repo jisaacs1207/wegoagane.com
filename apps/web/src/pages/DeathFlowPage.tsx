@@ -8,13 +8,13 @@ import { DeathResultStep } from "./death/DeathResultStep";
 export function DeathFlowPage() {
   return (
     <Routes>
-      <Route index element={<Navigate to="mood" replace />} />
+      <Route index element={<Navigate to="next" replace />} />
       <Route path="mood" element={<DeathMoodStep />} />
       <Route path="next" element={<DeathNextSignalStep />} />
       <Route path="detail" element={<DeathDetailStep />} />
       <Route path="journey" element={<DeathJourneyStep />} />
       <Route path="result" element={<DeathResultStep />} />
-      <Route path="*" element={<Navigate to="mood" replace />} />
+      <Route path="*" element={<Navigate to="next" replace />} />
     </Routes>
   );
 }

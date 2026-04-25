@@ -86,6 +86,18 @@ async function upsertRuntimeKv(db: D1Database, key: string, value: string, now =
     .run();
 }
 
+async function candidateIdByKey(db: D1Database, archetypeKey: string): Promise<string | null> {
+  try {
+    const row = await db
+      .prepare("SELECT id FROM archetype_candidates WHERE archetype_key = ?1 LIMIT 1")
+      .bind(archetypeKey)
+      .first<{ id: string }>();
+    return row?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function supplementFromExperimentalRates(accepts: number, misses: number): { supplement: string; label: string } {
   const decisions = accepts + misses;
   if (decisions < 8) return { supplement: "", label: "insufficient_sample" };
@@ -198,8 +210,9 @@ export async function recordExperimentalArchetypeCandidate(
   const now = Date.now();
   const drizzle = getDb(db);
   try {
+    const candidateId = crypto.randomUUID();
     await drizzle.insert(archetypeCandidates).values({
-      id: crypto.randomUUID(),
+      id: candidateId,
       archetypeKey: params.archetype.key,
       classId: params.archetype.classId,
       raceSuggestion: params.archetype.raceSuggestion ?? null,
@@ -211,7 +224,7 @@ export async function recordExperimentalArchetypeCandidate(
       destinyId: params.destinyId,
       status: "candidate",
       displayStatus: "experimental_live",
-      exposureCount: 1,
+      exposureCount: 0,
       acceptCount: 0,
       commitCount: 0,
       missCount: 0,
@@ -228,7 +241,7 @@ export async function recordExperimentalArchetypeCandidate(
     });
     await drizzle.insert(candidateEvents).values({
       id: crypto.randomUUID(),
-      candidateId: crypto.randomUUID(),
+      candidateId,
       archetypeKey: params.archetype.key,
       destinyId: params.destinyId,
       sessionId: params.sessionId,
@@ -298,13 +311,14 @@ export async function applyArchetypeCandidateFeedback(
 
   try {
     const candidateOnly = and(eq(archetypeCandidates.archetypeKey, archetypeKey), eq(archetypeCandidates.status, "candidate"));
+    const delta = scoreDelta(params);
+    const eventCandidateId = await candidateIdByKey(db, archetypeKey);
 
     if (params.stage === "reroll_gate" && params.choice === "accept") {
       await drizzle
         .update(archetypeCandidates)
         .set({
           acceptCount: sql`${archetypeCandidates.acceptCount} + 1`,
-          promotionScore: sql`${archetypeCandidates.promotionScore} + ${scoreDelta(params)}`,
         })
         .where(candidateOnly);
     }
@@ -313,7 +327,6 @@ export async function applyArchetypeCandidateFeedback(
         .update(archetypeCandidates)
         .set({
           rerollCloseCount: sql`${archetypeCandidates.rerollCloseCount} + 1`,
-          promotionScore: sql`${archetypeCandidates.promotionScore} + ${scoreDelta(params)}`,
         })
         .where(candidateOnly);
     }
@@ -322,7 +335,6 @@ export async function applyArchetypeCandidateFeedback(
         .update(archetypeCandidates)
         .set({
           rerollOffCount: sql`${archetypeCandidates.rerollOffCount} + 1`,
-          promotionScore: sql`${archetypeCandidates.promotionScore} + ${scoreDelta(params)}`,
         })
         .where(candidateOnly);
     }
@@ -331,7 +343,6 @@ export async function applyArchetypeCandidateFeedback(
         .update(archetypeCandidates)
         .set({
           missCount: sql`${archetypeCandidates.missCount} + 1`,
-          promotionScore: sql`${archetypeCandidates.promotionScore} + ${scoreDelta(params)}`,
         })
         .where(candidateOnly);
       const row = await db
@@ -355,7 +366,6 @@ export async function applyArchetypeCandidateFeedback(
           .set({
             ratingSum: sql`${archetypeCandidates.ratingSum} + ${n}`,
             ratingN: sql`${archetypeCandidates.ratingN} + 1`,
-            promotionScore: sql`${archetypeCandidates.promotionScore} + ${scoreDelta(params)}`,
           })
           .where(candidateOnly);
       }
@@ -381,16 +391,26 @@ export async function applyArchetypeCandidateFeedback(
         })
         .where(eq(archetypeCandidates.archetypeKey, archetypeKey));
     }
-    await drizzle.insert(candidateEvents).values({
-      id: crypto.randomUUID(),
-      candidateId: crypto.randomUUID(),
-      archetypeKey,
-      destinyId: params.destinyId,
-      sessionId: null,
-      eventType: "feedback",
-      payloadJson: JSON.stringify(params),
-      createdAt: new Date(),
-    });
+    if (delta !== 0) {
+      await drizzle
+        .update(archetypeCandidates)
+        .set({
+          promotionScore: sql`${archetypeCandidates.promotionScore} + ${delta}`,
+        })
+        .where(eq(archetypeCandidates.archetypeKey, archetypeKey));
+    }
+    if (eventCandidateId) {
+      await drizzle.insert(candidateEvents).values({
+        id: crypto.randomUUID(),
+        candidateId: eventCandidateId,
+        archetypeKey,
+        destinyId: params.destinyId,
+        sessionId: null,
+        eventType: "feedback",
+        payloadJson: JSON.stringify(params),
+        createdAt: new Date(),
+      });
+    }
   } catch {
     /* non-fatal */
   }
@@ -404,6 +424,8 @@ export async function applyArchetypeCandidateCommitSignal(db: D1Database, destin
       .first<{ archetypeKey: string }>();
     if (!row?.archetypeKey?.startsWith("exp_")) return;
     const drizzle = getDb(db);
+    const candidateId = await candidateIdByKey(db, row.archetypeKey);
+    if (!candidateId) return;
     await drizzle
       .update(archetypeCandidates)
       .set({
@@ -413,7 +435,7 @@ export async function applyArchetypeCandidateCommitSignal(db: D1Database, destin
       .where(eq(archetypeCandidates.archetypeKey, row.archetypeKey));
     await drizzle.insert(candidateEvents).values({
       id: crypto.randomUUID(),
-      candidateId: crypto.randomUUID(),
+      candidateId,
       archetypeKey: row.archetypeKey,
       destinyId,
       sessionId,

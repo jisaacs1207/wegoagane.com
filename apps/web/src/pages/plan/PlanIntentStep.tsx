@@ -11,12 +11,13 @@ const INTENTS = [
   { id: "social_value", label: "Social / group value", hint: "Bring utility and resilience to party play.", icon: wowPackUrl("Miscellaneous", "Tournaments_banner_Human.png") },
   { id: "solo_comfort", label: "Solo comfort", hint: "Self-sufficient loop with safer pull plans.", icon: wowPackUrl("Abilities", "HealingInstincts.png") },
   { id: "fast_aggressive", label: "Fast and aggressive", hint: "Higher tempo with controlled risk.", icon: wowPackUrl("Spells", "BurningSpeed.png") },
-  { id: "just_fun", label: "Fun-first", hint: "Style-first recommendation with HC guardrails.", icon: wowPackUrl("Miscellaneous", "Dice_01.png") },
+  { id: "just_fun", label: "Comfort-first", hint: "Personal fit first, while keeping HC guardrails.", icon: wowPackUrl("Miscellaneous", "Dice_01.png") },
 ] as const;
 
 export function PlanIntentStep() {
   const navigate = useNavigate();
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(sessionStorage.getItem(SessionKeys.plan.intent));
+  const [note, setNote] = useState(sessionStorage.getItem(SessionKeys.plan.freeform) ?? "");
 
   useEffect(() => {
     sessionStorage.removeItem(SessionKeys.plan.generatedDestiny);
@@ -25,9 +26,9 @@ export function PlanIntentStep() {
 
   return (
     <div className="card">
-      <p className="step-label">Draft a run · step 1 of 3</p>
+      <p className="step-label">Draft a run · step 1 of 2</p>
       <h1 className="hero-question">What is this run trying to achieve?</h1>
-      <p className="hero-sub">Pick the primary win condition for this run. We tune around this first.</p>
+      <p className="hero-sub">Pick the main goal for this run. We tune around this first.</p>
       <div className="ritual-option-grid">
         {INTENTS.map((i) => (
           <button
@@ -53,6 +54,20 @@ export function PlanIntentStep() {
           </button>
         ))}
       </div>
+      <label className="ui-caption" style={{ marginTop: 12, display: "block" }}>
+        Optional constraints
+        <textarea
+          value={note}
+          onChange={(e) => {
+            const next = e.target.value.slice(0, 120);
+            setNote(next);
+            sessionStorage.setItem(SessionKeys.plan.freeform, next);
+          }}
+          placeholder="e.g. no pet micromanagement, avoid mage, prioritize sustain"
+          rows={3}
+          style={{ width: "100%", marginTop: 6 }}
+        />
+      </label>
       <div className="flow-nav">
         <button
           type="button"
@@ -70,8 +85,8 @@ export function PlanIntentStep() {
         >
           Back
         </button>
-        <button type="button" className="btn-primary" onClick={() => navigate("/draft-a-run/freeform")}>
-          Continue
+        <button type="button" className="btn-primary" onClick={() => navigate("/draft-a-run/journey")} disabled={!selected}>
+          Generate setup
         </button>
       </div>
     </div>

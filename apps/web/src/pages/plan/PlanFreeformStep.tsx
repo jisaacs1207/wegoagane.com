@@ -6,11 +6,11 @@ import { SessionKeys } from "../../lib/sessionKeys";
 
 export function PlanFreeformStep() {
   const navigate = useNavigate();
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState(sessionStorage.getItem(SessionKeys.plan.freeform) ?? "");
 
   return (
     <div className="card">
-      <p className="step-label">Draft a run · step 2 of 3</p>
+      <p className="step-label">Draft a run · optional constraints view</p>
       <h1 className="hero-question">Add constraints (optional)</h1>
       <p className="hero-sub">Add dealbreakers or must-haves so the result is usable right away.</p>
       <div className="ritual-constraint-row">

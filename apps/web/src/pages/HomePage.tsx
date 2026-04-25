@@ -18,6 +18,7 @@ export function HomePage() {
   const [heroQuestion, setHeroQuestion] = useState("One clean decision, no noise");
   const [heroSub, setHeroSub] = useState("Pick your ritual: recover from a death, plan a run, or roll a wildcard.");
   const [assignmentId, setAssignmentId] = useState<string | null>(null);
+  const [activeEntry, setActiveEntry] = useState<"death" | "plan" | "lucky" | null>(null);
 
   useEffect(() => {
     const sessionId = sessionStorage.getItem(SessionKeys.home.sessionId) ?? crypto.randomUUID();
@@ -55,9 +56,13 @@ export function HomePage() {
         <p className="hero-sub">{heroSub}</p>
         <div className="entry-grid">
           <Link
-            to="/release-spirit/mood"
-            className="entry-btn"
+            to="/release-spirit/next"
+            className={`entry-btn ${activeEntry === "death" ? "entry-btn--active" : ""}`}
             style={{ ["--entry-motif-url" as string]: `url(${wowPackUrl("Spells", "HellifrePVPThrallmarFavor.png")})` }}
+            onMouseEnter={() => setActiveEntry("death")}
+            onMouseLeave={() => setActiveEntry(null)}
+            onFocus={() => setActiveEntry("death")}
+            onBlur={() => setActiveEntry(null)}
             onClick={() => {
               sessionStorage.removeItem(SessionKeys.death.buildIntent);
               sessionStorage.removeItem(SessionKeys.death.buildIntentDepth);
@@ -76,17 +81,21 @@ export function HomePage() {
               <IdentityPortrait src={wowPackUrl("Spells", "Slow.png")} alt="" className="entry-badge" />
             </span>
             <span className="entry-btn-title">Release Spirit</span>
-            <span className="entry-btn-desc">I died — capture what happened, then tune the next run with intent.</span>
+            <span className="entry-btn-desc">I died - fast re-entry now, with optional context if I want to tune.</span>
             <span className="entry-pill-row">
-              <span className="entry-pill">Process the death</span>
+              <span className="entry-pill">Fast restart</span>
               <span className="entry-pill">Set next priority</span>
-              <span className="entry-pill">Retool + commit</span>
+              <span className="entry-pill">Optional detail tuning</span>
             </span>
           </Link>
           <Link
             to="/draft-a-run/intent"
-            className="entry-btn"
+            className={`entry-btn ${activeEntry === "plan" ? "entry-btn--active" : ""}`}
             style={{ ["--entry-motif-url" as string]: `url(${wowPackUrl("Trade", "engineering.png")})` }}
+            onMouseEnter={() => setActiveEntry("plan")}
+            onMouseLeave={() => setActiveEntry(null)}
+            onFocus={() => setActiveEntry("plan")}
+            onBlur={() => setActiveEntry(null)}
             onClick={() => {
               sessionStorage.removeItem(SessionKeys.plan.buildIntent);
               sessionStorage.removeItem(SessionKeys.plan.buildIntentDepth);
@@ -105,17 +114,21 @@ export function HomePage() {
               <IdentityPortrait src={wowPackUrl("Trade", "herbalism.png")} alt="" className="entry-badge" />
             </span>
             <span className="entry-btn-title">Draft a Run</span>
-            <span className="entry-btn-desc">I&apos;m planning — set constraints first, then generate against them.</span>
+            <span className="entry-btn-desc">I&apos;m planning - instant generate first, then tune deeper only if needed.</span>
             <span className="entry-pill-row">
-              <span className="entry-pill">Intent first</span>
-              <span className="entry-pill">Priority switching</span>
+              <span className="entry-pill">Instant first draft</span>
+              <span className="entry-pill">Persona-aware tuning</span>
               <span className="entry-pill">Commit artifact</span>
             </span>
           </Link>
           <Link
             to="/lucky-roll/journey"
-            className="entry-btn"
+            className={`entry-btn ${activeEntry === "lucky" ? "entry-btn--active" : ""}`}
             style={{ ["--entry-motif-url" as string]: `url(${wowPackUrl("Miscellaneous", "Dice_01.png")})` }}
+            onMouseEnter={() => setActiveEntry("lucky")}
+            onMouseLeave={() => setActiveEntry(null)}
+            onFocus={() => setActiveEntry("lucky")}
+            onBlur={() => setActiveEntry(null)}
             onClick={() => {
               sessionStorage.removeItem(SessionKeys.lucky.buildIntent);
               sessionStorage.removeItem(SessionKeys.lucky.buildIntentDepth);
@@ -134,7 +147,7 @@ export function HomePage() {
               <IdentityPortrait src={wowPackUrl("Abilities", "BloodFrenzy.png")} alt="" className="entry-badge" />
             </span>
             <span className="entry-btn-title">Lucky roll</span>
-            <span className="entry-btn-desc">Surprise me — shortest ritual with controlled chaos.</span>
+            <span className="entry-btn-desc">Surprise me - shortest path with safe variance.</span>
             <span className="entry-pill-row">
               <span className="entry-pill">Fastest path</span>
               <span className="entry-pill">Power curve aware</span>

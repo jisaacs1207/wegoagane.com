@@ -79,6 +79,10 @@ export function SharePlaceholderPage() {
         }
       } catch {
         if (!cancelled) {
+          pollFailCountRef.current += 1;
+          if (pollFailCountRef.current >= 3) {
+            setPollError("Share rendering is taking longer than expected. You can retry or come back in a moment.");
+          }
           timer = setTimeout(() => {
             void tick();
           }, 2500);
@@ -111,7 +115,7 @@ export function SharePlaceholderPage() {
         destinyId: share.destinyId,
         rating,
       });
-      const classId = sessionStorage.getItem("last.acceptedClassId");
+      const classId = sessionStorage.getItem(SessionKeys.home.lastAcceptedClassId);
       if (
         classId === "mage" ||
         classId === "hunter" ||
@@ -150,6 +154,21 @@ export function SharePlaceholderPage() {
           <p className="hero-sub" style={{ marginTop: 8, color: "#ef4444" }} role="status" aria-live="polite">
             {pollError}
           </p>
+        ) : null}
+        {pollError ? (
+          <div className="flow-nav" style={{ marginTop: 8 }}>
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => {
+                pollFailCountRef.current = 0;
+                setPollError("");
+                window.location.reload();
+              }}
+            >
+              Retry now
+            </button>
+          </div>
         ) : null}
       </div>
       <div className="card" style={{ marginTop: 14 }}>

@@ -30,12 +30,12 @@ function buildDeathContextFreeform() {
 
 function deriveSignalBias(mood?: string, nextSignal?: string): BuildIntentSignals {
   const base: BuildIntentSignals = {};
-  if (mood === "Bullshit death" || mood === "First time") base.statPhilosophy = ["stamina_forward", "balanced"];
-  if (mood === "Long time coming") base.buildVectors = ["hybrid", "group_ok"];
-  if (nextSignal === "Safer") base.buildVectors = [...(base.buildVectors ?? []), "tank", "solo"];
-  if (nextSignal === "Faster") base.statPhilosophy = ["agility_forward", ...(base.statPhilosophy ?? [])];
-  if (nextSignal === "Different" || nextSignal === "Different playstyle") base.raceMode = "surprise";
-  if (nextSignal === "No pet class" || nextSignal === "No pet classes") base.buildVectors = [...(base.buildVectors ?? []), "melee"];
+  if (mood === "bullshit" || mood === "first_time") base.statPhilosophy = ["stamina_forward", "balanced"];
+  if (mood === "long_time_coming") base.buildVectors = ["hybrid", "group_ok"];
+  if (nextSignal === "safer") base.buildVectors = [...(base.buildVectors ?? []), "tank", "solo"];
+  if (nextSignal === "faster") base.statPhilosophy = ["agility_forward", ...(base.statPhilosophy ?? [])];
+  if (nextSignal === "different") base.raceMode = "surprise";
+  if (nextSignal === "no_pet") base.buildVectors = [...(base.buildVectors ?? []), "melee"];
   return base;
 }
 
@@ -180,7 +180,7 @@ export function DeathJourneyStep() {
   return (
     <div>
       <p className="step-label" style={{ marginBottom: 8 }}>
-        Release spirit · step 4 of 4
+        Release spirit · step 2 of 2
       </p>
       <BuildIntentChips
         key={chipNonce}

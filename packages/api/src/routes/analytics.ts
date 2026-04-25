@@ -2,12 +2,15 @@ import { type Context, Hono } from "hono";
 import type { ApiEnv } from "../db/client";
 import { AnalyticsEvent } from "../analytics/events";
 import { captureServerEvent } from "../analytics/posthog";
+import { getAiGateStatus } from "../ai/adapter";
 
 export const analyticsRouter = new Hono<ApiEnv>();
 
 export async function handleAnalyticsConfig(c: Context<ApiEnv>) {
   const enabled = String(c.env.POSTHOG_ENABLED ?? "false").toLowerCase() === "true";
   const memoryEnabled = String(c.env.MEMORY_BIAS_ENABLED ?? "true").toLowerCase() === "true";
+  const aiReady = getAiGateStatus(c.env).ready;
+  const rawOfferPercent = Math.min(100, Math.max(0, Number(c.env.EXPERIMENTAL_LANE_OFFER_PERCENT ?? "0")));
   return c.json({
     posthog: {
       enabled,
@@ -32,7 +35,7 @@ export async function handleAnalyticsConfig(c: Context<ApiEnv>) {
       minSampleSize: Number(c.env.GROWTH_MIN_SAMPLE_SIZE ?? "48"),
     },
     experimentalLane: {
-      offerPercent: Math.min(100, Math.max(0, Number(c.env.EXPERIMENTAL_LANE_OFFER_PERCENT ?? "0"))),
+      offerPercent: aiReady ? rawOfferPercent : 0,
     },
   });
 }
@@ -79,6 +82,35 @@ export async function handleMemoryHealth(c: Context<ApiEnv>) {
     counts: { accept, almostRight, miss },
     rerollReasonCounts,
     recommendedAction,
+  });
+}
+
+export async function handleExperimentalHealth(c: Context<ApiEnv>) {
+  const counts = await c.env.DB.prepare(
+    `SELECT
+      SUM(CASE WHEN status='promoted' THEN 1 ELSE 0 END) AS promoted,
+      SUM(CASE WHEN status='retired' THEN 1 ELSE 0 END) AS retired,
+      SUM(CASE WHEN display_status='experimental_live' THEN 1 ELSE 0 END) AS live,
+      COUNT(*) AS total
+     FROM archetype_candidates`,
+  ).first<{ promoted: number | null; retired: number | null; live: number | null; total: number | null }>();
+  const metricsKv = await c.env.DB
+    .prepare("SELECT value FROM runtime_kv WHERE key = 'experimental_archetype_learning_metrics_json' LIMIT 1")
+    .first<{ value: string }>();
+  let metrics: Record<string, unknown> | null = null;
+  try {
+    metrics = metricsKv?.value ? (JSON.parse(metricsKv.value) as Record<string, unknown>) : null;
+  } catch {
+    metrics = null;
+  }
+  return c.json({
+    candidates: {
+      total: Number(counts?.total ?? 0),
+      live: Number(counts?.live ?? 0),
+      promoted: Number(counts?.promoted ?? 0),
+      retired: Number(counts?.retired ?? 0),
+    },
+    metrics,
   });
 }
 

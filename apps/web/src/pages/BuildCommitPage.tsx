@@ -64,17 +64,17 @@ export function BuildCommitPage() {
     warnings?: string[];
     aiRaw?: { generatorJson?: string; reviewerJson?: string };
   } | null, [record?.payload]);
-  const raceFromPlan = buildPlan?.identity?.raceSuggestion ?? buildPlan?.race?.suggestion;
   const effectivePlan = (buildPlan ?? (livePlan as typeof buildPlan)) ?? null;
+  const raceFromPlan = effectivePlan?.identity?.raceSuggestion ?? effectivePlan?.race?.suggestion;
   const raceId = useMemo(() => {
     if (raceFromPlan) return inferRaceFromHeadline(raceFromPlan);
     return destiny ? inferRaceFromHeadline(destiny.headline) : "neutral";
   }, [destiny, raceFromPlan]);
   const factionId = useMemo(
-    () => buildPlan?.identity?.factionSuggestion ?? inferFactionFromRace(raceId),
-    [buildPlan?.identity?.factionSuggestion, raceId],
+    () => effectivePlan?.identity?.factionSuggestion ?? inferFactionFromRace(raceId),
+    [effectivePlan?.identity?.factionSuggestion, raceId],
   );
-  const genderLean = buildPlan?.identity?.genderLean ?? "neutral";
+  const genderLean = effectivePlan?.identity?.genderLean ?? "neutral";
 
   useEffect(() => {
     if (!record?.destinyId || buildPlan) return;
@@ -164,7 +164,7 @@ export function BuildCommitPage() {
                   trackEvent(AnalyticsEvent.BuildBookmarkCopied, { slug: record.slug });
                 }}
               >
-                Copy link
+                Copy build URL
               </button>
               <button
                 type="button"
@@ -175,25 +175,30 @@ export function BuildCommitPage() {
                   navigate("/draft-a-run/intent");
                 }}
               >
-                Retool from this run
+                Start new run from this
               </button>
               <Link to={`/build/${record.destinyId}`} className="btn-ghost">
-                Open technical sheet
+                Open build details
               </Link>
             </div>
           </div>
           <div className="card" style={{ marginTop: 12 }}>
             <p style={{ marginTop: 0 }}>Mark character dead</p>
             <div className="chip-row">
-              <input value={level} onChange={(e) => setLevel(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))} placeholder="Level" />
               <input value={zone} onChange={(e) => setZone(e.target.value)} placeholder="Zone" />
               <input value={cause} onChange={(e) => setCause(e.target.value)} placeholder="Cause of death" />
-              <input value={killer} onChange={(e) => setKiller(e.target.value)} placeholder="Killed by (optional)" />
             </div>
-            <div className="chip-row" style={{ marginTop: 8 }}>
-              <input value={rating} onChange={(e) => setRating(e.target.value)} placeholder="Run rating (optional)" />
-              <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Memorial note (optional)" />
-            </div>
+            <details style={{ marginTop: 10 }}>
+              <summary className="ui-caption" style={{ cursor: "pointer" }}>
+                Add optional details
+              </summary>
+              <div className="chip-row" style={{ marginTop: 8 }}>
+                <input value={level} onChange={(e) => setLevel(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))} placeholder="Level (optional)" />
+                <input value={killer} onChange={(e) => setKiller(e.target.value)} placeholder="Killed by (optional)" />
+                <input value={rating} onChange={(e) => setRating(e.target.value)} placeholder="Run rating (optional)" />
+                <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Memorial note (optional)" />
+              </div>
+            </details>
             <div className="flow-nav" style={{ marginTop: 10 }}>
               <button type="button" className="btn-primary" disabled={busy || !zone.trim() || !cause.trim()} onClick={() => void onMemorialSubmit()}>
                 Submit memorial

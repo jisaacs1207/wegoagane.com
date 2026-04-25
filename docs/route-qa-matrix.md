@@ -59,16 +59,17 @@ Canonical string literals live in [`apps/web/src/lib/sessionKeys.ts`](../apps/we
 | `plan.freeform` | Optional note (step 2) |
 | `plan.destinyId` | Latest destiny row id for this draft |
 | `plan.seedDestinyId` | Seed class/faction from a prior commit when re-drafting |
-| `plan.generatedDestiny` | JSON blob: `{ sessionId, destinyId, output }` for result page |
+| `plan.generatedDestiny` | JSON blob: `{ sessionId, destinyId, output, intentSnapshot?, experimentalLane?, experimentalCandidate? }` |
 | `plan.buildIntent` | JSON `BuildIntentSignals` |
 | `plan.buildIntent.depth` | `quick` \| `balanced` \| `dialed_in` |
 | `plan.buildIntent.powerCurve` | Optional power curve id |
 | `death.sessionId` | Release spirit recommend session |
 | `death.mood` / `death.nextSignal` | Mood + next-run signal labels |
 | `death.detail.zone` / `.cause` / `.level` / `.note` | Optional death context |
-| `death.destinyId` / `death.generatedDestiny` | Same pattern as plan |
+| `death.destinyId` / `death.generatedDestiny` | Same shape as `plan.generatedDestiny` |
 | `death.buildIntent` (+ `.depth`, `.powerCurve`) | Build journey for spirit release |
-| `lucky.sessionId` / `lucky.destinyId` / `lucky.generatedDestiny` / `lucky.buildIntent` (+ aux) | Lucky roll |
+| `lucky.sessionId` / `lucky.destinyId` / `lucky.generatedDestiny` / `lucky.buildIntent` (+ aux) | Lucky roll (same generatedDestiny shape) |
+| `last.acceptedClassId` | Last accepted class for post-accept memory updates |
 | `wegoagane.memory.v1` | `localStorage` — recommend bias (see `memoryProfile.ts`) |
 
 Clearing rules: **Home** clears the flow being entered; **plan intent** clears build intent + destiny when picking a new intent; **death mood / next / detail** clear downstream keys per step comments in those components.

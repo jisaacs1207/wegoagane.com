@@ -173,7 +173,15 @@ function weightedPick(rows: Array<{ variantId: string; weight: number }>): strin
 }
 
 export async function handleAssignVariant(c: Context<ApiEnv>) {
-  const input = growthAssignInputSchema.parse(await c.req.json());
+  let payload: unknown;
+  try {
+    payload = await c.req.json();
+  } catch {
+    return c.json({ error: "invalid_json" }, 400);
+  }
+  const parsed = growthAssignInputSchema.safeParse(payload);
+  if (!parsed.success) return c.json({ error: "invalid_input" }, 400);
+  const input = parsed.data;
   const db = getDb(c.env.DB);
   const now = new Date();
   const experiment = await ensureRunningExperiment(db, input.surface, c.env);
@@ -194,13 +202,29 @@ export async function handleAssignVariant(c: Context<ApiEnv>) {
     createdAt: now,
   });
   const row = variantId ? (await db.select({ payloadJson: growthVariants.payloadJson }).from(growthVariants).where(eq(growthVariants.id, variantId)).limit(1))[0] : null;
-  const payload = row ? jsonParse<GrowthVariantPayload>(row.payloadJson, {}) : null;
+  const responsePayload = row ? jsonParse<GrowthVariantPayload>(row.payloadJson, {}) : null;
   c.executionCtx.waitUntil(captureServerEvent(c.env, AnalyticsEvent.GrowthAssignmentServed, input.sessionId, { assignmentId, surface: input.surface, experimentId: experiment.id, variantId, holdout, inTraffic }));
-  return c.json({ assignmentId, sessionId: input.sessionId, surface: input.surface, variantId, experimentId: experiment.id, payload, holdout });
+  return c.json({
+    assignmentId,
+    sessionId: input.sessionId,
+    surface: input.surface,
+    variantId,
+    experimentId: experiment.id,
+    payload: responsePayload,
+    holdout,
+  });
 }
 
 export async function handleGrowthOutcome(c: Context<ApiEnv>) {
-  const input = growthOutcomeInputSchema.parse(await c.req.json());
+  let payload: unknown;
+  try {
+    payload = await c.req.json();
+  } catch {
+    return c.json({ error: "invalid_json" }, 400);
+  }
+  const parsed = growthOutcomeInputSchema.safeParse(payload);
+  if (!parsed.success) return c.json({ error: "invalid_input" }, 400);
+  const input = parsed.data;
   const now = new Date();
   const db = getDb(c.env.DB);
   await db.update(growthAssignments).set({ convertedAt: input.converted ? now : null, outcomeJson: input.outcome ? JSON.stringify(input.outcome) : null }).where(eq(growthAssignments.id, input.assignmentId));

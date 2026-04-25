@@ -123,7 +123,7 @@ export function LuckyResultStep() {
         <p className="hero-sub">Complete your setup journey first.</p>
         <div className="flow-nav" style={{ marginTop: 12 }}>
           <Link to="/lucky-roll/journey" className="btn-primary">
-            Go to journey
+            Open setup
           </Link>
           <Link to="/" className="btn-ghost">
             Home
@@ -161,7 +161,7 @@ export function LuckyResultStep() {
             className="btn-ghost"
             onClick={() => navigate("/reroll/lucky")}
           >
-            Reroll and tell us why
+            Reroll with feedback
           </button>
         </div>
         </div>
@@ -207,13 +207,13 @@ export function LuckyResultStep() {
         </div>
         <div className="flow-nav flow-nav--wrap" style={{ marginTop: 8 }}>
           <button type="button" className={`btn-ghost ${nameMode === "reflective" ? "chip-btn--on" : ""}`} onClick={() => setNameMode("reflective")}>
-            Reflect choices
+            Match this build
           </button>
           <button type="button" className={`btn-ghost ${nameMode === "high_variance" ? "chip-btn--on" : ""}`} onClick={() => setNameMode("high_variance")}>
-            More unique
+            Higher variance
           </button>
           <button type="button" className={`btn-ghost ${nameMode === "humor" ? "chip-btn--on" : ""}`} onClick={() => setNameMode("humor")}>
-            Humor
+            Light humor
           </button>
         </div>
         <label className="ui-caption" style={{ display: "block", marginTop: 8 }}>
@@ -229,13 +229,13 @@ export function LuckyResultStep() {
         </label>
         <div className="flow-nav" style={{ marginTop: 10 }}>
           <button type="button" className="btn-ghost" disabled={isLoadingNames || !sessionId} onClick={() => void loadGeneratedNames(false)}>
-            {isLoadingNames ? "Loading..." : "Generate more names"}
+            {isLoadingNames ? "Loading..." : "New name set"}
           </button>
           <button type="button" className="btn-ghost" disabled={isLoadingNames || !sessionId} onClick={() => void loadGeneratedNames(true)}>
-            Reroll names
+            Shuffle names
           </button>
           <button type="button" className="btn-primary" onClick={() => void commitBuild()}>
-            Create build link
+            Save build URL
           </button>
         </div>
         {commitMessage ? (
@@ -246,7 +246,7 @@ export function LuckyResultStep() {
         </div>
         <div className="flow-nav flow-nav--wrap" style={{ marginTop: 16 }}>
           <Link to="/lucky-roll/journey" className="btn-ghost">
-            Adjust journey
+            Edit setup
           </Link>
           <Link to="/" className="btn-ghost">
             Home

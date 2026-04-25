@@ -233,7 +233,7 @@ export function PlanResultStep() {
       });
       setCardIntentSignals(snapshot);
       if (reroll.filterRelaxedForAi) setShowRelaxBanner(true);
-      setShowExperimentalBanner(Boolean(reroll.experimentalLane));
+      setShowExperimentalBanner(Boolean(reroll.experimentalLane || reroll.experimentalCandidate));
       setNote("");
     } catch (e) {
       setActionMessage(flowApiErrorHint(e));
@@ -263,7 +263,7 @@ export function PlanResultStep() {
         classId: destiny.classId,
         memoryConfidence: buildMemoryHints().confidence ?? 0,
       });
-      sessionStorage.setItem("last.acceptedClassId", destiny.classId);
+      sessionStorage.setItem(SessionKeys.home.lastAcceptedClassId, destiny.classId);
       setActionMessage("Accepted. Opening share preview...");
       setNote("");
       navigate(`/share/${share.runId}`);
@@ -309,7 +309,7 @@ export function PlanResultStep() {
           </p>
           <div className="flow-nav" style={{ marginTop: 12 }}>
             <Link to="/draft-a-run/intent" className="btn-primary">
-              Go to journey
+              Open setup
             </Link>
             <Link to="/" className="btn-ghost">
               Home
@@ -387,7 +387,7 @@ export function PlanResultStep() {
           {destinyId ? (
             <div className="flow-nav" style={{ marginTop: 12 }}>
               <Link to="/draft-a-run/intent" className="btn-ghost">
-                Adjust journey
+                Edit setup
               </Link>
             </div>
           ) : null}
@@ -434,13 +434,13 @@ export function PlanResultStep() {
             </div>
             <div className="flow-nav flow-nav--wrap" style={{ marginTop: 8 }}>
               <button type="button" className={`btn-ghost ${nameMode === "reflective" ? "chip-btn--on" : ""}`} onClick={() => setNameMode("reflective")}>
-                Reflect choices
+                Match this build
               </button>
               <button type="button" className={`btn-ghost ${nameMode === "high_variance" ? "chip-btn--on" : ""}`} onClick={() => setNameMode("high_variance")}>
-                More unique
+                Higher variance
               </button>
               <button type="button" className={`btn-ghost ${nameMode === "humor" ? "chip-btn--on" : ""}`} onClick={() => setNameMode("humor")}>
-                Humor
+                Light humor
               </button>
             </div>
             <label className="ui-caption" style={{ display: "block", marginTop: 8 }}>
@@ -461,7 +461,7 @@ export function PlanResultStep() {
                 disabled={isLoadingNames || !sessionId}
                 onClick={() => void loadGeneratedNames(false)}
               >
-                {isLoadingNames ? "Loading..." : "Generate more names"}
+                {isLoadingNames ? "Loading..." : "New name set"}
               </button>
               <button
                 type="button"
@@ -469,10 +469,10 @@ export function PlanResultStep() {
                 disabled={isLoadingNames || !sessionId}
                 onClick={() => void loadGeneratedNames(true)}
               >
-                Reroll names
+                Shuffle names
               </button>
               <button type="button" className="btn-primary" disabled={isSubmitting} onClick={() => void commitBuild()}>
-                Create build link
+                Save build URL
               </button>
             </div>
           </div>
@@ -507,7 +507,7 @@ export function PlanResultStep() {
         </label>
         <div className="flow-nav" style={{ marginTop: 12 }}>
           <button type="button" className="btn-primary" disabled={isSubmitting || !destinyId} onClick={() => void acceptAndOpenPostRating()}>
-            Keep this result
+            Accept result
           </button>
           <button
             type="button"
@@ -515,7 +515,7 @@ export function PlanResultStep() {
             disabled={isSubmitting || !destinyId}
             onClick={() => navigate("/reroll/plan")}
           >
-            Reroll and tell us why
+            Reroll with feedback
           </button>
         </div>
 

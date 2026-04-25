@@ -3,7 +3,7 @@ import { handleRecommend } from "./routes/recommend";
 import { handleMemorial } from "./routes/memorial";
 import { handleFeedback, handleFeedbackSummary } from "./routes/feedback";
 import { handleCreateShare, handleGetShare, handleGetShareImage, handleGetShareOg, handleShareSummary } from "./routes/share";
-import { handleAnalyticsConfig, handleMemoryHealth } from "./routes/analytics";
+import { handleAnalyticsConfig, handleExperimentalHealth, handleMemoryHealth } from "./routes/analytics";
 import { growthRouter } from "./routes/growth";
 import { buildRouter } from "./routes/build";
 import { journeyRouter } from "./routes/journey";
@@ -29,6 +29,7 @@ app.get("/", (c) =>
       "GET /v1/share/summary/health",
       "GET /v1/analytics/config",
       "GET /v1/analytics/memory-health",
+      "GET /v1/analytics/experimental-health",
       "POST /v1/growth/generate",
       "POST /v1/growth/assign",
       "POST /v1/growth/outcome",
@@ -61,6 +62,7 @@ app.get("/v1/share/:runId/image", handleGetShareImage);
 app.get("/v1/share/:runId/og", handleGetShareOg);
 app.get("/v1/analytics/config", handleAnalyticsConfig);
 app.get("/v1/analytics/memory-health", handleMemoryHealth);
+app.get("/v1/analytics/experimental-health", handleExperimentalHealth);
 app.route("/v1/growth", growthRouter);
 app.route("/v1/build", buildRouter);
 app.route("/v1/journey", journeyRouter);
@@ -78,6 +80,7 @@ app.get("/api/v1/share/:runId/image", handleGetShareImage);
 app.get("/api/v1/share/:runId/og", handleGetShareOg);
 app.get("/api/v1/analytics/config", handleAnalyticsConfig);
 app.get("/api/v1/analytics/memory-health", handleMemoryHealth);
+app.get("/api/v1/analytics/experimental-health", handleExperimentalHealth);
 app.route("/api/v1/growth", growthRouter);
 app.route("/api/v1/build", buildRouter);
 app.route("/api/v1/journey", journeyRouter);

@@ -11,7 +11,7 @@ export function DeathDetailStep() {
 
   return (
     <div className="card">
-      <p className="step-label">Release spirit · step 3 of 4</p>
+      <p className="step-label">Release spirit · optional details</p>
       <h1 className="hero-question">Add optional context</h1>
       <p className="hero-sub">Add quick details from the death to fine-tune your next recommendation.</p>
       <div className="ritual-detail-grid">
