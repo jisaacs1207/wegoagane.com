@@ -23,6 +23,7 @@ const classValues = [
 const factionValues = ["horde", "alliance"] as const;
 const entryPathValues = ["release_spirit", "draft_a_run", "lucky_roll"] as const;
 const rerollReasonValues = ["wrong_class", "wrong_energy", "wrong_goals", "almost_right", "just_curious"] as const;
+const rerollVerdictValues = ["totally_off", "close_but_off", "resolved"] as const;
 const growthSurfaceValues = ["content", "recommendation", "ui", "share", "onboarding"] as const;
 
 const statPhilosophyValues = [
@@ -91,6 +92,7 @@ export const recommendInputSchema = z.object({
     buildVectors: z.array(z.enum(buildVectorValues)).max(16).optional(),
     raceMode: z.enum(raceModeValues).optional(),
     pickedRace: z.string().min(2).max(24).optional(),
+    genderLean: z.enum(["masculine", "feminine", "neutral"]).optional(),
     recommendLane: z.enum(["curated", "experimental"]).optional(),
     memoryHints: z
       .object({
@@ -138,6 +140,8 @@ export const destinyFeedbackInputSchema = z.object({
     .optional(),
   postAcceptRating: z.enum(["not_this", "itll_do", "good_pick", "this_is_it", "perfect"]).optional(),
   note: z.string().max(240).optional(),
+  rerollVerdict: z.enum(rerollVerdictValues).optional(),
+  parsedSignalJson: z.record(z.string(), z.unknown()).optional(),
   rerollFromClassId: z.enum(classValues).optional(),
   rerollToClassId: z.enum(classValues).optional(),
 });
@@ -162,6 +166,9 @@ export function validateTemplateOutput(
 
   if (!output.headline || output.headline.length > 120) failures.push("invalid_headline");
   if (output.bullets.length < 3 || output.bullets.length > 6) failures.push("invalid_bullet_count");
+  if (output.genderLean && !["masculine", "feminine", "neutral"].includes(output.genderLean)) failures.push("invalid_gender_lean");
+  if (output.factionSuggestion && !["horde", "alliance", "neutral"].includes(output.factionSuggestion)) failures.push("invalid_faction_suggestion");
+  if (output.raceSuggestion && output.raceSuggestion.length > 40) failures.push("invalid_race_suggestion");
 
   const classFaction = classFactionMap[output.classId];
   if (!classFaction) failures.push("unknown_class");

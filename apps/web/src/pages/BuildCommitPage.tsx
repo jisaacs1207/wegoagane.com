@@ -14,7 +14,7 @@ import {
   inferRaceFromHeadline,
 } from "../content/identityAssets";
 import { debugClient, debugClientIgnored } from "../lib/clientDebug";
-import { fetchBuildCommit, flowApiErrorHint, submitBuildCommitMemorial, type BuildCommitRecord } from "../lib/recommendClient";
+import { fetchBuildCommit, fetchBuildPlan, flowApiErrorHint, submitBuildCommitMemorial, type BuildCommitRecord } from "../lib/recommendClient";
 import { AnalyticsEvent, trackEvent } from "../lib/analytics";
 import { SessionKeys } from "../lib/sessionKeys";
 
@@ -32,6 +32,7 @@ export function BuildCommitPage() {
   const [rating, setRating] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [livePlan, setLivePlan] = useState<unknown | null>(null);
 
   useEffect(() => {
     if (!slug) return;
@@ -64,6 +65,7 @@ export function BuildCommitPage() {
     aiRaw?: { generatorJson?: string; reviewerJson?: string };
   } | null, [record?.payload]);
   const raceFromPlan = buildPlan?.identity?.raceSuggestion ?? buildPlan?.race?.suggestion;
+  const effectivePlan = (buildPlan ?? (livePlan as typeof buildPlan)) ?? null;
   const raceId = useMemo(() => {
     if (raceFromPlan) return inferRaceFromHeadline(raceFromPlan);
     return destiny ? inferRaceFromHeadline(destiny.headline) : "neutral";
@@ -73,6 +75,24 @@ export function BuildCommitPage() {
     [buildPlan?.identity?.factionSuggestion, raceId],
   );
   const genderLean = buildPlan?.identity?.genderLean ?? "neutral";
+
+  useEffect(() => {
+    if (!record?.destinyId || buildPlan) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await fetchBuildPlan(record.destinyId);
+        if (!cancelled && res.plan) setLivePlan(res.plan);
+        if (!cancelled && res.status !== "ready") window.setTimeout(() => void poll(), 1800);
+      } catch {
+        /* ignore */
+      }
+    };
+    void poll();
+    return () => {
+      cancelled = true;
+    };
+  }, [record?.destinyId, buildPlan]);
 
   if (loading) {
     return <div className="card">Loading committed build...</div>;
@@ -230,7 +250,7 @@ export function BuildCommitPage() {
               <li>Race suggestion: {raceFromPlan ?? formatRaceLabel(raceId)}</li>
               <li>Faction suggestion: {factionId}</li>
               <li>Gender lean: {genderLean}</li>
-              <li>Build identity: {buildPlan?.identity?.buildFantasy ?? destiny.subline}</li>
+              <li>Build identity: {effectivePlan?.identity?.buildFantasy ?? destiny.subline}</li>
             </ul>
           </div>
           <div className="card">
@@ -241,18 +261,18 @@ export function BuildCommitPage() {
             <ul className="ui-body-sm ui-body-sm--tp" style={{ margin: "10px 0 0", paddingLeft: 18 }}>
               <li>Playstyle: {destiny.bullets.join(" · ")}</li>
               <li>
-                Professions: {buildPlan?.professions?.primary ?? "TBD"} + {buildPlan?.professions?.secondary ?? "TBD"}
+                Professions: {effectivePlan?.professions?.primary ?? "TBD"} + {effectivePlan?.professions?.secondary ?? "TBD"}
               </li>
-              <li>Race rationale: {buildPlan?.race?.rationale ?? "Based on destiny and signal constraints."}</li>
-              <li>Warnings: {(buildPlan?.warnings ?? []).slice(0, 2).join(" · ") || "No critical warnings."}</li>
+              <li>Race rationale: {effectivePlan?.race?.rationale ?? "Based on destiny and signal constraints."}</li>
+              <li>Warnings: {(effectivePlan?.warnings ?? []).slice(0, 2).join(" · ") || "No critical warnings."}</li>
             </ul>
-            {(buildPlan?.forks?.length ?? 0) > 0 ? (
+            {(effectivePlan?.forks?.length ?? 0) > 0 ? (
               <div style={{ marginTop: 10 }}>
                 <p className="step-label" style={{ marginBottom: 6 }}>
                   Decision forks
                 </p>
                 <ul className="ui-caption" style={{ margin: 0, paddingLeft: 18, lineHeight: 1.45 }}>
-                  {buildPlan?.forks?.slice(0, 2).map((fork, idx) => (
+                  {effectivePlan?.forks?.slice(0, 2).map((fork, idx) => (
                     <li key={`${fork.title ?? "fork"}-${idx}`}>
                       {fork.title}: {fork.optionA} / {fork.optionB}
                     </li>
@@ -260,13 +280,13 @@ export function BuildCommitPage() {
                 </ul>
               </div>
             ) : null}
-            {buildPlan?.aiRaw?.generatorJson ? (
+            {effectivePlan?.aiRaw?.generatorJson ? (
               <details style={{ marginTop: 10 }}>
                 <summary style={{ cursor: "pointer", color: "var(--gold-bright)" }}>Raw AI output (full)</summary>
                 <pre className="ui-caption ui-caption--xs" style={{ marginTop: 8, maxHeight: 260, overflow: "auto" }}>
-                  {buildPlan.aiRaw.generatorJson}
+                  {effectivePlan.aiRaw.generatorJson}
                   {"\n\n-- reviewer --\n"}
-                  {buildPlan.aiRaw.reviewerJson ?? ""}
+                  {effectivePlan.aiRaw.reviewerJson ?? ""}
                 </pre>
               </details>
             ) : null}

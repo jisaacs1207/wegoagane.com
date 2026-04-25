@@ -45,4 +45,7 @@ export type BuildIntentSignals = {
     | "group_ok"
   >;
   raceMode?: "user_pick" | "signal_inferred" | "optimize_theme" | "surprise";
+  pickedRace?: string;
+  factionPreference?: "horde" | "alliance";
+  genderLean?: "masculine" | "feminine" | "neutral";
 };

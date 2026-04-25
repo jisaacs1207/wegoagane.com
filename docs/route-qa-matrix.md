@@ -14,6 +14,7 @@
 - `/release-spirit/next` -> `/release-spirit/detail`
 - `/release-spirit/detail` -> `/release-spirit/journey`
 - `/release-spirit/journey` -> `/release-spirit/result`
+- `/release-spirit/result` reroll -> `/reroll/death` -> (`totally_off` => `/release-spirit/mood`, `close_but_off` => reroll then `/release-spirit/result`)
 - `/release-spirit/result` retool -> `/release-spirit/mood`
 
 ## Draft a run
@@ -21,11 +22,13 @@
 - `/draft-a-run/intent` -> `/draft-a-run/freeform`
 - `/draft-a-run/freeform` -> `/draft-a-run/journey`
 - `/draft-a-run/journey` -> `/draft-a-run/result`
+- `/draft-a-run/result` reroll -> `/reroll/plan` -> (`totally_off` => `/draft-a-run/intent`, `close_but_off` => reroll then `/draft-a-run/result`)
 - `/draft-a-run/result` retool -> `/draft-a-run/intent`
 
 ## Lucky roll
 
 - `/lucky-roll/journey` -> `/lucky-roll/result`
+- `/lucky-roll/result` reroll -> `/reroll/lucky` -> (`totally_off` => `/lucky-roll/journey`, `close_but_off` => reroll then `/lucky-roll/result`)
 - `/lucky-roll/result` retool -> `/lucky-roll/journey`
 
 ## Commit/build loop

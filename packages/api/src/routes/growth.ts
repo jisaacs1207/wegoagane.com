@@ -83,7 +83,14 @@ function buildFallbackCandidates(surface: GrowthSurface): GrowthVariantPayload[]
   return [{ personaCombo: { playstyle: "safe_grinder", professionFocus: "alchemy_herbalism" } }, { personaCombo: { playstyle: "social_anchor", professionFocus: "tailoring_enchanting" } }];
 }
 
-async function ensureRunningExperiment(db: ReturnType<typeof getDb>, surface: GrowthSurface) {
+function growthExperimentDefaultsFromEnv(env: ApiEnv["Bindings"] | undefined) {
+  const traffic = Math.min(100, Math.max(0, Math.floor(Number(env?.GROWTH_DEFAULT_TRAFFIC_PERCENT ?? "25"))));
+  const holdout = Math.min(100, Math.max(0, Math.floor(Number(env?.GROWTH_DEFAULT_HOLDOUT_PERCENT ?? "10"))));
+  const minSample = Math.min(500, Math.max(5, Math.floor(Number(env?.GROWTH_MIN_SAMPLE_SIZE ?? "40"))));
+  return { traffic, holdout, minSample };
+}
+
+async function ensureRunningExperiment(db: ReturnType<typeof getDb>, surface: GrowthSurface, env?: ApiEnv["Bindings"]) {
   const active = await db
     .select()
     .from(growthExperiments)
@@ -92,11 +99,15 @@ async function ensureRunningExperiment(db: ReturnType<typeof getDb>, surface: Gr
   if (active[0]) return active[0];
   const id = crypto.randomUUID();
   const now = new Date();
+  const d = growthExperimentDefaultsFromEnv(env);
   await db.insert(growthExperiments).values({
     id,
     surface,
     name: `${surface}-autogen`,
     status: "running",
+    holdoutPercent: d.holdout,
+    trafficPercent: d.traffic,
+    minSampleSize: d.minSample,
     startedAt: now,
     createdAt: now,
     updatedAt: now,
@@ -141,7 +152,7 @@ export async function handleGenerateCandidates(c: Context<ApiEnv>) {
     });
     insertedIds.push(id);
   }
-  const experiment = await ensureRunningExperiment(db, surface);
+  const experiment = await ensureRunningExperiment(db, surface, c.env);
   for (const variantId of insertedIds) {
     await db.insert(growthExperimentVariants).values({ experimentId: experiment.id, variantId, weight: 1, createdAt: now });
   }
@@ -165,7 +176,7 @@ export async function handleAssignVariant(c: Context<ApiEnv>) {
   const input = growthAssignInputSchema.parse(await c.req.json());
   const db = getDb(c.env.DB);
   const now = new Date();
-  const experiment = await ensureRunningExperiment(db, input.surface);
+  const experiment = await ensureRunningExperiment(db, input.surface, c.env);
   const links = await db.select({ variantId: growthExperimentVariants.variantId, weight: growthExperimentVariants.weight }).from(growthExperimentVariants).where(eq(growthExperimentVariants.experimentId, experiment.id));
   const holdout = Math.random() * 100 < experiment.holdoutPercent;
   const inTraffic = Math.random() * 100 < experiment.trafficPercent;
@@ -220,11 +231,12 @@ function decide(
   postAcceptRatingAvg: number,
   validationFailureRate: number,
   baseline: { sampleSize: number; acceptRate: number } | null,
+  minSampleSize: number,
 ): { action: GrowthDecisionAction; reason: string } {
-  if (sampleSize < 40) return { action: "hold", reason: "under_sampled" };
+  if (sampleSize < minSampleSize) return { action: "hold", reason: "under_sampled" };
   if (validationFailureRate > 0.12) return { action: "retire", reason: "validation_failures_high" };
   if (acceptRate >= 0.56 && rerollsPerSession <= 0.55 && postAcceptRatingAvg >= 3.2) {
-    if (baseline && baseline.sampleSize >= 40) {
+    if (baseline && baseline.sampleSize >= minSampleSize) {
       const pValue = twoPropPValue(Math.round(acceptRate * sampleSize), sampleSize, Math.round(baseline.acceptRate * baseline.sampleSize), baseline.sampleSize);
       if (acceptRate <= baseline.acceptRate || pValue > 0.1) return { action: "hold", reason: "not_significant_vs_baseline" };
     }
@@ -240,6 +252,7 @@ export async function handlePromoteTick(c: Context<ApiEnv>) {
   }
   const db = getDb(c.env.DB);
   const hardStopEnabled = isTruthy(c.env.GROWTH_HARD_STOP_ENABLED, true);
+  const minSampleSize = Math.min(500, Math.max(5, Math.floor(Number(c.env.GROWTH_MIN_SAMPLE_SIZE ?? "40"))));
   const now = new Date();
   const active = await db
     .select({ id: growthVariants.id, surface: growthVariants.surface })
@@ -284,7 +297,7 @@ export async function handlePromoteTick(c: Context<ApiEnv>) {
       };
     }
 
-    const decision = decide(sampleSize, acceptRate, rerollsPerSession, postAcceptRatingAvg, validationFailureRate, baseline);
+    const decision = decide(sampleSize, acceptRate, rerollsPerSession, postAcceptRatingAvg, validationFailureRate, baseline, minSampleSize);
     decisions.push({ variantId: item.id, action: decision.action, reason: decision.reason });
     await db.update(growthVariants).set({
       status: decision.action === "promote" ? "promoted" : decision.action === "retire" ? "retired" : "active",
@@ -303,7 +316,12 @@ export async function handlePromoteTick(c: Context<ApiEnv>) {
       action: decision.action,
       reason: decision.reason,
       metricsJson: JSON.stringify({ sampleSize, acceptRate, rerollsPerSession, postAcceptRatingAvg, validationFailureRate }),
-      thresholdJson: JSON.stringify({ minSampleSize: 40, promote: { acceptRate: 0.56, rerollsPerSession: 0.55, postAcceptRatingAvg: 3.2 }, retire: { acceptRateFloor: 0.38, rerollsPerSessionCeiling: 1.2 }, maxValidationFailureRate: 0.12 }),
+      thresholdJson: JSON.stringify({
+        minSampleSize,
+        promote: { acceptRate: 0.56, rerollsPerSession: 0.55, postAcceptRatingAvg: 3.2 },
+        retire: { acceptRateFloor: 0.38, rerollsPerSessionCeiling: 1.2 },
+        maxValidationFailureRate: 0.12,
+      }),
       createdAt: now,
     });
     c.executionCtx.waitUntil(captureServerEvent(c.env, AnalyticsEvent.GrowthDecisionMade, "growth_engine", { variantId: item.id, action: decision.action, reason: decision.reason }));

@@ -39,12 +39,14 @@ export async function buildExperimentalRankedArchetype(
 
   const promptLines = [
     "You help generate ONE hardcore Classic WoW style archetype for a recommender.",
-    "Return JSON only with keys: title,subline,tier,safetyMechanism,first10,tags",
+    "Return JSON only with keys: title,subline,tier,safetyMechanism,first10,tags,raceSuggestion,factionSuggestion,genderLean",
     `tier must be one of: ${TIER_VALUES.join(",")}`,
     "first10: array of 3 to 5 strings, each <=100 chars — concrete HC pull/kit cadence, no slurs, no politics, no real-money RMT.",
     "tags: 2 to 8 short tokens (snake_case or single words); prefer tags from this hint list when they fit:",
     tagsHint || "safe,solo,steady",
     `class is fixed at ${classPick} — do not output classId.`,
+    "factionSuggestion must be one of: horde, alliance, neutral",
+    "genderLean must be one of: masculine, feminine, neutral",
     `Inspiration only (do not copy verbatim): title=${base.title}; subline=${base.subline}; mechanism=${base.safetyMechanism}`,
     `Player signals JSON: ${JSON.stringify(input.signals)}`,
   ];
@@ -64,6 +66,9 @@ export async function buildExperimentalRankedArchetype(
         safetyMechanism?: string;
         first10?: string[];
         tags?: string[];
+        raceSuggestion?: string;
+        factionSuggestion?: string;
+        genderLean?: string;
       };
       const tier = (TIER_VALUES.includes(parsed.tier as Tier) ? parsed.tier : "off_beaten") as Tier;
       const first10 = (parsed.first10 ?? [])
@@ -78,7 +83,15 @@ export async function buildExperimentalRankedArchetype(
       const archetype: Archetype = {
         key: `exp_${crypto.randomUUID().replace(/-/g, "").slice(0, 10)}`,
         classId: classPick,
-        faction: base.faction,
+        faction:
+          parsed.factionSuggestion === "horde" || parsed.factionSuggestion === "alliance"
+            ? parsed.factionSuggestion
+            : base.faction,
+        raceSuggestion: typeof parsed.raceSuggestion === "string" ? parsed.raceSuggestion.slice(0, 40) : "TBD",
+        genderLean:
+          parsed.genderLean === "masculine" || parsed.genderLean === "feminine" || parsed.genderLean === "neutral"
+            ? parsed.genderLean
+            : "neutral",
         title: (parsed.title ?? `${base.title} (experimental)`).slice(0, 80),
         subline: (parsed.subline ?? base.subline).slice(0, 120),
         tier,

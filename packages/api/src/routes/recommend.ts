@@ -3,7 +3,7 @@ import { captureServerEvent } from "../analytics/posthog";
 import { AnalyticsEvent } from "../analytics/events";
 import { buildExperimentalRankedArchetype } from "../ai/experimentalArchetype";
 import { enrichDestiny, getAiGateStatus } from "../ai/adapter";
-import { loadPromotedArchetypes, recordExperimentalArchetypeCandidate } from "../db/archetypeLearning";
+import { loadPromotedArchetypes, markArchetypeCandidateExposed, recordExperimentalArchetypeCandidate } from "../db/archetypeLearning";
 import { getDb, type ApiEnv } from "../db/client";
 import { archetypes } from "../domain/archetypes";
 import { buildPlans, destinies, questionAnswers, recommendationLogs, sessions } from "../db/schema";
@@ -423,6 +423,10 @@ export async function handleRecommend(c: Context<ApiEnv>) {
     }
 
     const confidenceScore = Math.min(1, Math.max(0.1, top.score / 10));
+    const experimentalCandidate = top.archetype.key.startsWith("exp_");
+    if (experimentalCandidate) {
+      c.executionCtx.waitUntil(markArchetypeCandidateExposed(c.env.DB, top.archetype.key));
+    }
     try {
       await db.insert(recommendationLogs).values({
         destinyId,
@@ -478,6 +482,7 @@ export async function handleRecommend(c: Context<ApiEnv>) {
       viabilityNotes: viability.notes,
       filterRelaxedForAi,
       experimentalLane,
+      experimentalCandidate,
       selectedArchetype: top.archetype.key,
       score: top.score,
       confidenceScore,

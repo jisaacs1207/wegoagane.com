@@ -1,12 +1,39 @@
 import { type Context, Hono } from "hono";
 import { captureServerEvent } from "../analytics/posthog";
 import { AnalyticsEvent } from "../analytics/events";
+import { callAiGateway, extractJsonPayload, getAiGateStatus } from "../ai/adapter";
 import { applyArchetypeCandidateFeedback } from "../db/archetypeLearning";
 import { getDb, type ApiEnv } from "../db/client";
 import { destinyFeedback } from "../db/schema";
 import { validateDestinyFeedbackInput } from "../domain/validator";
 
 export const feedbackRouter = new Hono<ApiEnv>();
+
+async function parseFreeformSignal(env: ApiEnv["Bindings"], note: string | null | undefined): Promise<Record<string, unknown> | null> {
+  if (!note || note.trim().length < 6) return null;
+  if (!getAiGateStatus(env).ready) {
+    return {
+      mood: note.length > 80 ? "detailed" : "brief",
+      mentionsClass: /\b(class|spec|paladin|shaman|mage|hunter|warrior|warlock|priest|rogue|druid)\b/i.test(note),
+      sentiment: /\b(great|good|love|perfect)\b/i.test(note) ? "positive" : /\b(bad|wrong|off|hate)\b/i.test(note) ? "negative" : "mixed",
+    };
+  }
+  const model = env.AI_MODEL_DESTINY ?? "openrouter/auto";
+  const prompt = [
+    "Return JSON only with keys: sentiment, issue_tags, user_goal_hint.",
+    "sentiment must be one of: positive, mixed, negative.",
+    "issue_tags should be array of short snake_case tokens.",
+    `note=${note.slice(0, 240)}`,
+  ].join("\n");
+  const res = await callAiGateway(env, model, prompt, 10_000);
+  if (!res.ok) return null;
+  try {
+    const parsed = JSON.parse(extractJsonPayload(res.content)) as Record<string, unknown>;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
 
 export async function handleFeedback(c: Context<ApiEnv>) {
   let payload: unknown;
@@ -31,6 +58,8 @@ export async function handleFeedback(c: Context<ApiEnv>) {
     rerollReason: input.rerollReason ?? null,
     postAcceptRating: input.postAcceptRating ?? null,
     note: input.note ?? null,
+    rerollVerdict: input.rerollVerdict ?? null,
+    parsedSignalJson: input.parsedSignalJson ? JSON.stringify(input.parsedSignalJson) : null,
     rerollFromClassId: input.rerollFromClassId ?? null,
     rerollToClassId: input.rerollToClassId ?? null,
     createdAt: new Date(Date.now()),
@@ -43,18 +72,24 @@ export async function handleFeedback(c: Context<ApiEnv>) {
       stage: input.stage ?? "reroll_gate",
       rerollReason: input.rerollReason ?? null,
       postAcceptRating: input.postAcceptRating ?? null,
+      rerollVerdict: input.rerollVerdict ?? null,
       rerollFromClassId: input.rerollFromClassId ?? null,
       rerollToClassId: input.rerollToClassId ?? null,
     }),
   );
 
   c.executionCtx.waitUntil(
-    applyArchetypeCandidateFeedback(c.env.DB, {
-      destinyId: input.destinyId,
-      choice: input.choice,
-      stage: input.stage ?? "reroll_gate",
-      postAcceptRating: input.postAcceptRating ?? null,
-    }).catch(() => {}),
+    (async () => {
+      const parsedSignals = input.parsedSignalJson ?? (await parseFreeformSignal(c.env, input.note ?? null));
+      await applyArchetypeCandidateFeedback(c.env.DB, {
+        destinyId: input.destinyId,
+        choice: input.choice,
+        stage: input.stage ?? "reroll_gate",
+        postAcceptRating: input.postAcceptRating ?? null,
+        rerollVerdict: input.rerollVerdict ?? null,
+        parsedSignalJson: parsedSignals ?? null,
+      });
+    })().catch(() => {}),
   );
 
   return c.json({ ok: true });

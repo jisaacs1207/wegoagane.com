@@ -27,9 +27,9 @@ export async function handleAnalyticsConfig(c: Context<ApiEnv>) {
     growth: {
       autopilotEnabled: String(c.env.GROWTH_AUTOPILOT_ENABLED ?? "false").toLowerCase() === "true",
       hardStopEnabled: String(c.env.GROWTH_HARD_STOP_ENABLED ?? "true").toLowerCase() === "true",
-      defaultTrafficPercent: Number(c.env.GROWTH_DEFAULT_TRAFFIC_PERCENT ?? "25"),
-      defaultHoldoutPercent: Number(c.env.GROWTH_DEFAULT_HOLDOUT_PERCENT ?? "10"),
-      minSampleSize: Number(c.env.GROWTH_MIN_SAMPLE_SIZE ?? "40"),
+      defaultTrafficPercent: Number(c.env.GROWTH_DEFAULT_TRAFFIC_PERCENT ?? "38"),
+      defaultHoldoutPercent: Number(c.env.GROWTH_DEFAULT_HOLDOUT_PERCENT ?? "6"),
+      minSampleSize: Number(c.env.GROWTH_MIN_SAMPLE_SIZE ?? "48"),
     },
     experimentalLane: {
       offerPercent: Math.min(100, Math.max(0, Number(c.env.EXPERIMENTAL_LANE_OFFER_PERCENT ?? "0"))),

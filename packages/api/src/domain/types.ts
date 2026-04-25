@@ -78,6 +78,7 @@ export type RecommendSignals = {
   raceMode?: RaceMode;
   /** When raceMode is user_pick: race id string e.g. orc, human */
   pickedRace?: string;
+  genderLean?: "masculine" | "feminine" | "neutral";
   /** Curated fixture ranker vs AI-prototyped archetype row (requires AI gateway). */
   recommendLane?: "curated" | "experimental";
 };
@@ -197,6 +198,8 @@ export type Archetype = {
   key: string;
   classId: ClassId;
   faction: Faction | "either";
+  raceSuggestion?: string;
+  genderLean?: "masculine" | "feminine" | "neutral";
   title: string;
   subline: string;
   tier: Tier;
@@ -216,6 +219,9 @@ export type DestinyOutput = {
   headline: string;
   subline: string;
   classId: ClassId;
+  raceSuggestion?: string;
+  factionSuggestion?: Faction | "neutral";
+  genderLean?: "masculine" | "feminine" | "neutral";
   tierProse: string;
   bullets: string[];
   rationale: string;
@@ -237,6 +243,7 @@ export type AiErrorType = "ai_timeout" | "ai_invalid_json" | "ai_provider_error"
 export type FeedbackChoice = "accept" | "almost_right" | "miss";
 
 export type FeedbackStage = "reroll_gate" | "post_accept";
+export type RerollVerdict = "totally_off" | "close_but_off" | "resolved";
 export type RerollReason =
   | "wrong_class"
   | "wrong_energy"
@@ -253,6 +260,8 @@ export type DestinyFeedbackInput = {
   rerollReason?: RerollReason;
   postAcceptRating?: PostAcceptRating;
   note?: string;
+  rerollVerdict?: RerollVerdict;
+  parsedSignalJson?: Record<string, unknown>;
   rerollFromClassId?: ClassId;
   rerollToClassId?: ClassId;
 };

@@ -6,6 +6,7 @@ import { buildMemoryHints, clearMemoryProfile } from "./memoryProfile";
 type EntryPath = "release_spirit" | "draft_a_run" | "lucky_roll";
 
 export type RerollReason = "wrong_class" | "wrong_energy" | "wrong_goals" | "almost_right" | "just_curious";
+export type RerollVerdict = "totally_off" | "close_but_off" | "resolved";
 export type PostAcceptRating = "not_this" | "itll_do" | "good_pick" | "this_is_it" | "perfect";
 export type MemoryHints = {
   version: number;
@@ -42,12 +43,17 @@ type RecommendResponse = {
   filterRelaxedForAi?: boolean;
   /** AI drafted a new archetype-shaped row before destiny enrich. */
   experimentalLane?: boolean;
+  /** Archetype came from experimental candidate pool in normal cycle. */
+  experimentalCandidate?: boolean;
   sourceType: "template" | "ai";
   fallbackUsed: boolean;
   output: {
     headline: string;
     subline: string;
     classId: ClassId;
+    raceSuggestion?: string;
+    factionSuggestion?: "horde" | "alliance" | "neutral";
+    genderLean?: "masculine" | "feminine" | "neutral";
     tierProse: string;
     bullets: string[];
   };
@@ -83,6 +89,7 @@ export type DestinyResult = {
   viabilityNotes?: string[];
   filterRelaxedForAi?: boolean;
   experimentalLane?: boolean;
+  experimentalCandidate?: boolean;
   sourceType: "template" | "ai";
   fallbackUsed: boolean;
   output: DestinyFixture;
@@ -136,6 +143,8 @@ type FeedbackRequest = {
   rerollReason?: RerollReason;
   postAcceptRating?: PostAcceptRating;
   note?: string;
+  rerollVerdict?: RerollVerdict;
+  parsedSignalJson?: Record<string, unknown>;
   rerollFromClassId?: ClassId;
   rerollToClassId?: ClassId;
 };
@@ -224,12 +233,17 @@ function destinyResultFromJson(data: RecommendResponse): DestinyResult {
     viabilityNotes: data.viabilityNotes,
     filterRelaxedForAi: data.filterRelaxedForAi,
     experimentalLane: data.experimentalLane,
+    experimentalCandidate: data.experimentalCandidate,
     sourceType: data.sourceType,
     fallbackUsed: data.fallbackUsed,
     output: {
       headline: data.output.headline,
       subline: data.output.subline,
       classId: data.output.classId,
+      raceSuggestion: data.output.raceSuggestion,
+      factionSuggestion: data.output.factionSuggestion,
+      genderLean: data.output.genderLean,
+      isExperimental: data.experimentalCandidate,
       tierProse: data.output.tierProse,
       bullets: data.output.bullets,
     },

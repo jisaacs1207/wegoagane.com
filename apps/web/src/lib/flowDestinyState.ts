@@ -12,6 +12,8 @@ export type StoredDestinyState = {
   intentSnapshot?: BuildIntentSignals;
   /** AI-prototyped archetype row path (see API `experimentalLane`). */
   experimentalLane?: boolean;
+  /** Candidate came from experimental pool shown in normal cycles. */
+  experimentalCandidate?: boolean;
 };
 
 function key(flow: FlowKey) {

@@ -33,8 +33,9 @@ const CLASS_FANTASY_LABEL: Record<DestinyFixture["classId"], string> = {
 
 export function DestinyCard({ data, compact, intentSignals }: Props) {
   const headlineId = useId();
-  const raceId = inferRaceFromHeadline(data.headline);
-  const faction = inferFactionFromRace(raceId);
+  const raceLabel = data.raceSuggestion ?? formatRaceLabel(inferRaceFromHeadline(data.headline));
+  const raceId = inferRaceFromHeadline(raceLabel);
+  const faction = data.factionSuggestion ?? inferFactionFromRace(raceId);
   const stripeStyle = {
     "--destiny-class": `var(--${data.classId})`,
   } as CSSProperties;
@@ -60,6 +61,11 @@ export function DestinyCard({ data, compact, intentSignals }: Props) {
               title={`Class: ${data.classId}`}
             />
             <h2 id={headlineId}>{data.headline}</h2>
+            {data.isExperimental ? (
+              <span className="destiny-card__intent-chip" title="Experimental candidate used in normal cycles">
+                Experimental
+              </span>
+            ) : null}
           </div>
           <p>{data.subline}</p>
           <div className="destiny-card__identity-band">
@@ -78,7 +84,7 @@ export function DestinyCard({ data, compact, intentSignals }: Props) {
                 title={formatRaceLabel(raceId)}
               />
               <div className="destiny-card__race-faction-text">
-                <span className="destiny-card__race-line">{formatRaceLabel(raceId)}</span>
+                <span className="destiny-card__race-line">{raceLabel}</span>
                 <span className={`destiny-card__faction-pill destiny-card__faction-pill--${faction}`}>
                   <IdentityPortrait
                     src={FACTION_ASSET_URLS[faction]}
@@ -119,7 +125,7 @@ export function DestinyCard({ data, compact, intentSignals }: Props) {
         ))}
       </ul>
       <p className="destiny-card__rollup">
-        <strong>Suggested identity:</strong> {CLASS_FANTASY_LABEL[data.classId]} · {formatRaceLabel(raceId)} ·{" "}
+        <strong>Suggested identity:</strong> {CLASS_FANTASY_LABEL[data.classId]} · {raceLabel} ·{" "}
         {faction === "horde" ? "Horde" : faction === "alliance" ? "Alliance" : "Neutral"} — {data.bullets.join(" · ")}
       </p>
       <span className="card-watermark">wegoagane.com</span>

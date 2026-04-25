@@ -14,6 +14,10 @@ export type DestinyFixture = {
   headline: string;
   subline: string;
   classId: ClassId;
+  raceSuggestion?: string;
+  factionSuggestion?: "horde" | "alliance" | "neutral";
+  genderLean?: "masculine" | "feminine" | "neutral";
+  isExperimental?: boolean;
   /** Prose tier line — §29.7 may later swap for badges */
   tierProse: string;
   bullets: string[];
@@ -32,6 +36,9 @@ export const destinyFixture: DestinyFixture = {
   headline: "Orc Frost Mage",
   subline: "Safe path · First 10 Levels",
   classId: "mage",
+  raceSuggestion: "TBD",
+  factionSuggestion: "neutral",
+  genderLean: "neutral",
   tierProse: "Suggested path · template copy only",
   bullets: ["Cold snap opener", "Kite discipline", "No dungeon shortcuts until 60"],
 };
@@ -40,6 +47,9 @@ export const planningDestinyFixture: DestinyFixture = {
   headline: "Tauren Enhancement Shaman",
   subline: "Planning mode · next run only",
   classId: "shaman",
+  raceSuggestion: "TBD",
+  factionSuggestion: "neutral",
+  genderLean: "neutral",
   tierProse: "Planning preview · template copy only",
   bullets: ["Windfury timing", "Totem cadence", "Melee risk budget"],
 };
