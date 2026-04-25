@@ -81,6 +81,13 @@ export function PlanJourneyStep() {
         output: result.output,
         intentSnapshot: signals,
       });
+      if (result.filterRelaxedForAi) {
+        try {
+          sessionStorage.setItem(SessionKeys.plan.recommendRelaxBanner, "1");
+        } catch {
+          /* ignore */
+        }
+      }
       sessionStorage.setItem(SessionKeys.plan.destinyId, result.destinyId);
       setLastRecommendErr(null);
       if (assignment) {

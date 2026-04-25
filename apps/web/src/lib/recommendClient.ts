@@ -37,6 +37,8 @@ type RecommendResponse = {
   buildPlanId?: string;
   buildSheetPath?: string;
   viabilityNotes?: string[];
+  /** API widened class eligibility so template+AI could run (strict filters had zero matches). */
+  filterRelaxedForAi?: boolean;
   sourceType: "template" | "ai";
   fallbackUsed: boolean;
   output: {
@@ -76,6 +78,7 @@ export type DestinyResult = {
   buildPlanId?: string;
   buildSheetPath?: string;
   viabilityNotes?: string[];
+  filterRelaxedForAi?: boolean;
   sourceType: "template" | "ai";
   fallbackUsed: boolean;
   output: DestinyFixture;
@@ -211,6 +214,7 @@ function destinyResultFromJson(data: RecommendResponse): DestinyResult {
     buildPlanId: data.buildPlanId,
     buildSheetPath: data.buildSheetPath,
     viabilityNotes: data.viabilityNotes,
+    filterRelaxedForAi: data.filterRelaxedForAi,
     sourceType: data.sourceType,
     fallbackUsed: data.fallbackUsed,
     output: {

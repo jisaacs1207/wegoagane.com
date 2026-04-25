@@ -175,6 +175,30 @@ export function computeViability(input: RecommendInput): ViabilityResult {
   return { allowedClasses: classes, allowedArchetypeKeys, notes };
 }
 
+/**
+ * Widen class eligibility to faction + excluded-classes only (ignore stat/profession/vector tags).
+ * Used when strict `computeViability` yields zero archetypes but AI is available so we can still
+ * pick a template archetype, rank it, and let `enrichDestiny` shape copy toward the player's signals.
+ */
+export function computeRelaxedViability(input: RecommendInput): ViabilityResult {
+  const notes: string[] = ["relaxed_stat_prof_vector_for_ai_sink"];
+  const { signals } = input;
+
+  let classes = [...ALL_CLASSES];
+  classes = applyFaction(classes, signals.factionPreference);
+
+  const excluded = new Set(signals.excludedClasses ?? []);
+  classes = classes.filter((c) => !excluded.has(c));
+
+  if (signals.preferredClass && !classes.includes(signals.preferredClass)) {
+    notes.push("preferred_class_incompatible_with_faction_or_exclusions");
+  }
+
+  const allowedArchetypeKeys = archetypes.filter((a) => classes.includes(a.classId)).map((a) => a.key);
+
+  return { allowedClasses: classes, allowedArchetypeKeys, notes };
+}
+
 export function filterArchetypesByViability(archetypeList: Archetype[], viability: ViabilityResult): Archetype[] {
   const allowed = new Set(viability.allowedArchetypeKeys);
   return archetypeList.filter((a) => allowed.has(a.key));

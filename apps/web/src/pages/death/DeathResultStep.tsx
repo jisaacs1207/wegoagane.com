@@ -72,6 +72,18 @@ export function DeathResultStep() {
   const [nameMode, setNameMode] = useState<"reflective" | "high_variance" | "humor">("reflective");
   const [nameVariance, setNameVariance] = useState(0.6);
   const [cardIntentSignals, setCardIntentSignals] = useState<BuildIntentSignals | null>(null);
+  const [showRelaxBanner, setShowRelaxBanner] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(SessionKeys.death.recommendRelaxBanner) === "1") {
+        setShowRelaxBanner(true);
+        sessionStorage.removeItem(SessionKeys.death.recommendRelaxBanner);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     const stored = readStoredDestiny("death");
@@ -241,6 +253,7 @@ export function DeathResultStep() {
         intentSnapshot,
       });
       setCardIntentSignals(intentSnapshot);
+      if (reroll.filterRelaxedForAi) setShowRelaxBanner(true);
       setNote("");
       setShowRerollGate(false);
     } catch (e) {
@@ -326,6 +339,12 @@ export function DeathResultStep() {
         </div>
       ) : (
         <>
+          {showRelaxBanner ? (
+            <p className="ui-body-sm" style={{ marginTop: 0, marginBottom: 10 }} role="status">
+              No template matched every filter together — we picked a compatible class for this era and used AI to
+              shape the card toward your picks.
+            </p>
+          ) : null}
           <div className="result-page-grid">
             <div className="result-page-grid__main">
               <DestinyCard

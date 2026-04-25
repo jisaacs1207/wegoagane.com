@@ -62,6 +62,13 @@ export function LuckyJourneyStep() {
         output: result.output,
         intentSnapshot: signals,
       });
+      if (result.filterRelaxedForAi) {
+        try {
+          sessionStorage.setItem(SessionKeys.lucky.recommendRelaxBanner, "1");
+        } catch {
+          /* ignore */
+        }
+      }
       sessionStorage.setItem(SessionKeys.lucky.destinyId, result.destinyId);
       setLastRecommendErr(null);
       if (assignment) {

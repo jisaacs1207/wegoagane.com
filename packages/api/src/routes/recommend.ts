@@ -9,7 +9,7 @@ import { rankArchetypes } from "../domain/ranker";
 import type { MemoryFeatures, MemoryRankingConfig } from "../domain/types";
 import { renderTemplateDestiny } from "../domain/template";
 import { recommendInputSchema, validateTemplateOutput } from "../domain/validator";
-import { computeViability, filterArchetypesByViability } from "../domain/viability";
+import { computeRelaxedViability, computeViability, filterArchetypesByViability } from "../domain/viability";
 import { enqueueBuildPlanGeneration } from "./build";
 
 export const recommendRouter = new Hono<ApiEnv>();
@@ -149,40 +149,90 @@ export async function handleRecommend(c: Context<ApiEnv>) {
 
   const input = parsed.data;
   try {
-    const viability = computeViability(input);
-    const archetypePool = filterArchetypesByViability(archetypes, viability);
+    const strictViability = computeViability(input);
+    let viability = strictViability;
+    let archetypePool = filterArchetypesByViability(archetypes, viability);
+    const aiReady = getAiGateStatus(c.env).ready;
+    let filterRelaxedForAi = false;
+
     if (archetypePool.length === 0) {
-      c.executionCtx.waitUntil(
-        captureServerEvent(c.env, AnalyticsEvent.DestinyGenerationFailed, input.sessionId ?? "anonymous", {
-          reason: "no_viable_build",
-          entryPath: input.entryPath,
-          viabilityNotes: viability.notes,
-        }),
-      );
-      return c.json({ error: "no_viable_build", notes: viability.notes }, 400);
+      if (!aiReady) {
+        c.executionCtx.waitUntil(
+          captureServerEvent(c.env, AnalyticsEvent.DestinyGenerationFailed, input.sessionId ?? "anonymous", {
+            reason: "no_viable_build",
+            entryPath: input.entryPath,
+            viabilityNotes: viability.notes,
+          }),
+        );
+        return c.json({ error: "no_viable_build", notes: viability.notes }, 400);
+      }
+      const relaxed = computeRelaxedViability(input);
+      viability = {
+        ...relaxed,
+        notes: [...strictViability.notes, ...relaxed.notes],
+      };
+      archetypePool = filterArchetypesByViability(archetypes, viability);
+      filterRelaxedForAi = true;
+      if (archetypePool.length === 0) {
+        c.executionCtx.waitUntil(
+          captureServerEvent(c.env, AnalyticsEvent.DestinyGenerationFailed, input.sessionId ?? "anonymous", {
+            reason: "no_viable_build",
+            entryPath: input.entryPath,
+            viabilityNotes: [...viability.notes, "ai_relax_exhausted"],
+          }),
+        );
+        return c.json({ error: "no_viable_build", notes: [...viability.notes, "ai_relax_exhausted"] }, 400);
+      }
     }
 
     const memoryConfig = readMemoryConfig(c);
     const serverMemory = await deriveServerMemory(c.env.DB, input.sessionId, memoryConfig.lookbackLimit);
-    const ranking = rankArchetypes(
-      input,
-      {
-        browserMemory: input.signals.memoryHints,
-        serverMemory,
-        config: memoryConfig,
-      },
-      archetypePool,
-    );
-    const ranked = ranking.ranked;
+    const rankerMemory = {
+      browserMemory: input.signals.memoryHints,
+      serverMemory,
+      config: memoryConfig,
+    };
+
+    let ranking = rankArchetypes(input, rankerMemory, archetypePool);
+    let ranked = ranking.ranked;
 
     if (ranked.length === 0) {
-      c.executionCtx.waitUntil(
-        captureServerEvent(c.env, AnalyticsEvent.DestinyGenerationFailed, input.sessionId ?? "anonymous", {
-          reason: "no_eligible_archetypes",
-          entryPath: input.entryPath,
-        }),
-      );
-      return c.json({ error: "no_eligible_archetypes" }, 400);
+      if (!aiReady || filterRelaxedForAi) {
+        c.executionCtx.waitUntil(
+          captureServerEvent(c.env, AnalyticsEvent.DestinyGenerationFailed, input.sessionId ?? "anonymous", {
+            reason: "no_eligible_archetypes",
+            entryPath: input.entryPath,
+          }),
+        );
+        return c.json({ error: "no_eligible_archetypes" }, 400);
+      }
+      const relaxed = computeRelaxedViability(input);
+      viability = {
+        ...relaxed,
+        notes: [...strictViability.notes, ...relaxed.notes],
+      };
+      archetypePool = filterArchetypesByViability(archetypes, viability);
+      filterRelaxedForAi = true;
+      if (archetypePool.length === 0) {
+        c.executionCtx.waitUntil(
+          captureServerEvent(c.env, AnalyticsEvent.DestinyGenerationFailed, input.sessionId ?? "anonymous", {
+            reason: "no_eligible_archetypes",
+            entryPath: input.entryPath,
+          }),
+        );
+        return c.json({ error: "no_eligible_archetypes" }, 400);
+      }
+      ranking = rankArchetypes(input, rankerMemory, archetypePool);
+      ranked = ranking.ranked;
+      if (ranked.length === 0) {
+        c.executionCtx.waitUntil(
+          captureServerEvent(c.env, AnalyticsEvent.DestinyGenerationFailed, input.sessionId ?? "anonymous", {
+            reason: "no_eligible_archetypes",
+            entryPath: input.entryPath,
+          }),
+        );
+        return c.json({ error: "no_eligible_archetypes" }, 400);
+      }
     }
 
     const top = ranked[0];
@@ -330,6 +380,7 @@ export async function handleRecommend(c: Context<ApiEnv>) {
         resolvedModelId: aiResult.telemetry.resolvedModelId,
         aiErrorType: aiResult.telemetry.providerError,
         aiLatencyMs: aiResult.telemetry.latencyMs,
+        filterRelaxedForAi,
         memoryEnabled: ranking.memoryMeta.enabled,
         memoryDegradeMode: ranking.memoryMeta.degradeMode,
         memoryBrowserWeight: ranking.memoryMeta.browserWeight,
@@ -349,6 +400,7 @@ export async function handleRecommend(c: Context<ApiEnv>) {
       buildPlanId,
       buildSheetPath: `/build/${destinyId}`,
       viabilityNotes: viability.notes,
+      filterRelaxedForAi,
       selectedArchetype: top.archetype.key,
       score: top.score,
       confidenceScore,

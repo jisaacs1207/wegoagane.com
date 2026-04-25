@@ -83,6 +83,13 @@ export function DeathJourneyStep() {
         output: result.output,
         intentSnapshot: { ...promptBias, ...signals },
       });
+      if (result.filterRelaxedForAi) {
+        try {
+          sessionStorage.setItem(SessionKeys.death.recommendRelaxBanner, "1");
+        } catch {
+          /* ignore */
+        }
+      }
       sessionStorage.setItem(SessionKeys.death.destinyId, result.destinyId);
       setLastRecommendErr(null);
       if (assignment) {

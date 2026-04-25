@@ -51,6 +51,18 @@ export function PlanResultStep() {
   const [nameMode, setNameMode] = useState<"reflective" | "high_variance" | "humor">("reflective");
   const [nameVariance, setNameVariance] = useState(0.6);
   const [cardIntentSignals, setCardIntentSignals] = useState<BuildIntentSignals | null>(null);
+  const [showRelaxBanner, setShowRelaxBanner] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(SessionKeys.plan.recommendRelaxBanner) === "1") {
+        setShowRelaxBanner(true);
+        sessionStorage.removeItem(SessionKeys.plan.recommendRelaxBanner);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     const stored = readStoredDestiny("plan");
@@ -216,6 +228,7 @@ export function PlanResultStep() {
         intentSnapshot: snapshot,
       });
       setCardIntentSignals(snapshot);
+      if (reroll.filterRelaxedForAi) setShowRelaxBanner(true);
       setNote("");
       setShowRerollGate(false);
     } catch (e) {
@@ -301,6 +314,12 @@ export function PlanResultStep() {
         </div>
       ) : (
         <>
+          {showRelaxBanner ? (
+            <p className="ui-body-sm" style={{ marginTop: 0, marginBottom: 10 }} role="status">
+              No template matched every filter together — we picked a compatible class for this era and used AI to
+              shape the card toward your picks. Your journey chips are still what you asked for.
+            </p>
+          ) : null}
           <DestinyCard
             data={destiny}
             intentSignals={cardIntentSignals ?? readBuildIntent(SessionKeys.plan.buildIntent)}

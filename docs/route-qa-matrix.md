@@ -79,7 +79,7 @@ Client throws `label:status:error` (e.g. `journey_commit:404:destiny_not_found`)
 | `invalid_json` / `invalid_input` | 400 | Malformed JSON or schema-failed body (`/v1/recommend`, `/v1/feedback`, `/v1/memorial`, `/v1/share`, …) |
 | `validation_failed` | 422 | Memorial output failed safety checks |
 | `destiny_not_found` | 404 | Journey commit — destiny/session mismatch |
-| `no_viable_build` / `no_eligible_archetypes` | 400 | Recommend — filters too tight (web: “Soften one filter” on journey steps) |
+| `no_viable_build` / `no_eligible_archetypes` | 400 | Recommend — filters too tight (web: “Soften one filter”). **Production with AI enabled:** API may widen class eligibility once, rank a template, then run `enrichDestiny` instead of returning `no_viable_build` (response includes `filterRelaxedForAi` when that path runs). |
 | `recommend_internal_error` | 503 | Recommend — retry client-side (limited) |
 | `build_commit_not_found` | 404 | GET commit / memorial on bad slug |
 | `share_run_not_found` | 404 | Share poll GET by unknown `runId` |

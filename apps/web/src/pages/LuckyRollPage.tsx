@@ -23,6 +23,7 @@ export function LuckyRollPage() {
   const [feedbackChoice, setFeedbackChoice] = useState<"closer" | "off" | null>(null);
   const [feedbackReason, setFeedbackReason] = useState<string>("");
   const [cardIntentSignals, setCardIntentSignals] = useState<BuildIntentSignals | null>(null);
+  const [showRelaxBanner, setShowRelaxBanner] = useState(false);
 
   useEffect(() => {
     const seededSessionId = sessionStorage.getItem(SessionKeys.lucky.sessionId) ?? crypto.randomUUID();
@@ -63,6 +64,7 @@ export function LuckyRollPage() {
       setDestiny(result.output);
       setDestinyId(result.destinyId);
       setCardIntentSignals(signals);
+      setShowRelaxBanner(Boolean(result.filterRelaxedForAi));
       if (assignmentId) {
         void submitGrowthOutcome({
           assignmentId,
@@ -96,6 +98,12 @@ export function LuckyRollPage() {
       {loadError ? (
         <p className="hero-sub" style={{ marginTop: 8 }}>
           {loadError}
+        </p>
+      ) : null}
+      {showRelaxBanner && destiny ? (
+        <p className="ui-body-sm" style={{ marginTop: 12, marginBottom: 0 }} role="status">
+          No template matched every filter together — we picked a compatible class for this era and used AI to shape the
+          card toward your picks.
         </p>
       ) : null}
       {destiny ? (
