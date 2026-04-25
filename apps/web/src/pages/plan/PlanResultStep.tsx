@@ -434,11 +434,11 @@ export function PlanResultStep() {
               </button>
             </div>
           </div>
-          <p style={{ marginTop: 14, fontSize: 13, color: "var(--ts)" }}>
+          <p className="ui-body-sm" style={{ marginTop: 14 }}>
         Planning mode skips memorial chrome — only the next Destiny card is shown here.
       </p>
       <div className="card" style={{ marginTop: 12 }}>
-        <p style={{ margin: 0, fontSize: 13, color: "var(--ts)" }}>
+        <p className="ui-body-sm">
           Before rerolling, tell us what felt off so the next result mutates in the right direction.
         </p>
         <label className="ui-caption" style={{ marginTop: 10, display: "block" }}>
@@ -458,7 +458,7 @@ export function PlanResultStep() {
               background: "var(--card)",
               color: "var(--text)",
               padding: 10,
-              fontSize: 13,
+              fontSize: "var(--type-body-sm)",
               fontFamily: "inherit",
             }}
           />

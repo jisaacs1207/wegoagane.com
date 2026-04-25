@@ -318,7 +318,7 @@ export function DeathResultStep() {
             </div>
             <aside className="result-page-grid__side">
               <div className="card">
-                <p style={{ margin: 0, fontSize: 13, color: "var(--ts)", lineHeight: 1.45 }}>
+                <p className="ui-body-sm">
                   Memorials now live on the committed build URL after you mark a death. Share exports still use the{" "}
                   <Link to="/design/cards">card shells</Link> reference layout.
                 </p>
@@ -339,7 +339,7 @@ export function DeathResultStep() {
                       background: "var(--card)",
                       color: "var(--text)",
                       padding: 10,
-                      fontSize: 13,
+                      fontSize: "var(--type-body-sm)",
                       fontFamily: "inherit",
                     }}
                   />

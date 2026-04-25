@@ -42,6 +42,8 @@
   --type-step-label-track: 0.12em;
   --type-caption-sm: 12px;
   --type-caption-xs: 11px;
+  --type-body-sm: 13px;
+  --type-micro: 10px;
 }
 
 *,
@@ -647,6 +649,24 @@ textarea::placeholder {
 
 .ui-caption--xs {
   font-size: var(--type-caption-xs);
+}
+
+.ui-body-sm {
+  margin: 0;
+  font-size: var(--type-body-sm);
+  color: var(--ts);
+  line-height: 1.45;
+}
+
+.ui-body-sm--tp {
+  color: var(--tp);
+}
+
+.ui-micro {
+  margin: 0;
+  font-size: var(--type-micro);
+  color: var(--ts);
+  line-height: 1.4;
 }
 
 .destiny-preview {

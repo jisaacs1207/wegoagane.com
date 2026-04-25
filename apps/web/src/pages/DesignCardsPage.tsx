@@ -39,7 +39,7 @@ export function DesignCardsPage() {
           {CLASS_IDS.map((id) => (
             <span key={`tex-${id}`} style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
               <IdentityPortrait src={CLASS_ASSET_URLS[id]} alt="" className="design-cards-class-tex" title={id} />
-              <span style={{ fontSize: 10, color: "var(--ts)" }}>{id}</span>
+              <span className="ui-caption ui-caption--xs">{id}</span>
             </span>
           ))}
         </div>

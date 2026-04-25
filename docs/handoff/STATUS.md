@@ -1,6 +1,6 @@
 # Build status & iteration contract
 
-**Last updated:** 2026-04-23 (M14+ roadmap reassessed for trust/ceremony/UAT)
+**Last updated:** 2026-04-24 (M17 web-hardening backlog landed on feature branch; merge to `main` when ready)
 
 ---
 
@@ -10,7 +10,7 @@
 |--------|--------|
 | **Current milestone** | **M14 (next)** — trust content expansion (wave 1) |
 | **Blocked by** | Confirm M14 archetype quality gate rubric + review owner per class cluster |
-| **Last build iteration** | **M13 shipped:** hybrid memory path (browser `localStorage` + API-derived session history) now biases deterministic ranking with configurable weights/clamps, balanced rollout defaults, degrade-mode controls, memory observability (`/api/v1/analytics/memory-health`), and deploy guard wiring for memory vars. |
+| **Last build iteration** | **M13 shipped:** hybrid memory path (browser `localStorage` + API-derived session history) now biases deterministic ranking with configurable weights/clamps, balanced rollout defaults, degrade-mode controls, memory observability (`/api/v1/analytics/memory-health`), and deploy guard wiring for memory vars. **Feature branch:** client error surfacing (`flowApiErrorHint` / filter recovery), `SessionKeys`, API `invalid_json` on memorial/share/build/journey, Playwright smoke E2E in CI, typography tokens (`.ui-caption` / `.ui-body-sm`), dev-only `debugClientIgnored` on non-blocking fetches, skip link + a11y polish — aligns with **M17** checklist; merge PR to fold into `main`. |
 | **Next “request to move forward” criteria** | Start **M14** with trust-first expansion: ship additional archetypes only if each passes quality gate (mechanical correctness, First-10 quality, source-tag completeness, non-generic language) and validation/acceptance metrics remain healthy; run AI-first sprint mode (1-2 day build + 3-7 day validation soak). |
 
 ### Autonomous growth engine baseline (implemented)
