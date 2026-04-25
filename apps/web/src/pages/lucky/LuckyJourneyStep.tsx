@@ -41,7 +41,10 @@ export function LuckyJourneyStep() {
         sessionId,
         surface: "recommendation",
         entryPath: "lucky_roll",
-      }).catch(() => null);
+      }).catch((err) => {
+        debugClientIgnored("lucky_journey.growth_assignment", err);
+        return null;
+      });
 
       const result = await fetchDestiny({
         entryPath: "lucky_roll",

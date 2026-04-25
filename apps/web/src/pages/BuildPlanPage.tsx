@@ -154,7 +154,7 @@ export function BuildPlanPage() {
       {plan ? (
         <div className="build-accordion card" style={{ marginTop: 14 }}>
           {plan.warnings?.length ? (
-            <div style={{ marginBottom: 12, fontSize: 13, color: "var(--ts)" }}>
+            <div className="ui-body-sm" style={{ marginBottom: 12 }}>
               <strong>Warnings</strong>
               <ul>
                 {plan.warnings.map((w) => (
@@ -166,8 +166,8 @@ export function BuildPlanPage() {
 
           <details open>
             <summary>Talents</summary>
-            {plan.talents?.summary ? <p style={{ fontSize: 13 }}>{plan.talents.summary}</p> : null}
-            <ul style={{ fontSize: 13, lineHeight: 1.5 }}>
+            {plan.talents?.summary ? <p className="ui-body-sm">{plan.talents.summary}</p> : null}
+            <ul className="ui-body-sm" style={{ lineHeight: 1.5 }}>
               {(plan.talents?.keyPicks ?? []).map((t) => (
                 <li key={`${t.tier}-${t.name}`}>
                   <strong>{t.name}</strong> ({t.tier}): {t.rationale}
@@ -179,7 +179,7 @@ export function BuildPlanPage() {
           <details>
             <summary>Professions</summary>
             {plan.professions ? (
-              <div style={{ fontSize: 13, lineHeight: 1.5 }}>
+              <div className="ui-body-sm" style={{ lineHeight: 1.5 }}>
                 <p>
                   <strong>{plan.professions.primary}</strong> + <strong>{plan.professions.secondary}</strong>
                 </p>
@@ -198,7 +198,7 @@ export function BuildPlanPage() {
           <details>
             <summary>Stats</summary>
             {plan.stats ? (
-              <div style={{ fontSize: 13 }}>
+              <div className="ui-body-sm">
                 <p>Priority: {plan.stats.priority.join(" → ")}</p>
                 <p>{plan.stats.rationale}</p>
               </div>
@@ -208,7 +208,7 @@ export function BuildPlanPage() {
           <details>
             <summary>Race</summary>
             {plan.race ? (
-              <div style={{ fontSize: 13 }}>
+              <div className="ui-body-sm">
                 <p>
                   <strong>{plan.race.suggestion}</strong>
                 </p>
@@ -220,7 +220,7 @@ export function BuildPlanPage() {
           <details>
             <summary>Name ideas</summary>
             {plan.namesByLane ? (
-              <div style={{ fontSize: 13 }}>
+              <div className="ui-body-sm">
                 {Object.entries(plan.namesByLane).map(([lane, arr]) =>
                   (arr ?? []).length ? (
                     <div key={lane} style={{ marginBottom: 10 }}>
@@ -255,7 +255,7 @@ export function BuildPlanPage() {
 
           <details>
             <summary>Choice forks</summary>
-            <ul style={{ fontSize: 13, lineHeight: 1.55 }}>
+            <ul className="ui-body-sm" style={{ lineHeight: 1.55 }}>
               {(plan.forks ?? []).map((f) => (
                 <li key={f.title}>
                   <strong>{f.title}</strong>: {f.why}

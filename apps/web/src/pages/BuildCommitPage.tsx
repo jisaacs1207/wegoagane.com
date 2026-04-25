@@ -13,7 +13,7 @@ import {
   inferFactionFromRace,
   inferRaceFromHeadline,
 } from "../content/identityAssets";
-import { debugClient } from "../lib/clientDebug";
+import { debugClient, debugClientIgnored } from "../lib/clientDebug";
 import { fetchBuildCommit, flowApiErrorHint, submitBuildCommitMemorial, type BuildCommitRecord } from "../lib/recommendClient";
 import { AnalyticsEvent, trackEvent } from "../lib/analytics";
 import { SessionKeys } from "../lib/sessionKeys";
@@ -138,7 +138,9 @@ export function BuildCommitPage() {
                 type="button"
                 className="btn-primary"
                 onClick={() => {
-                  navigator.clipboard.writeText(window.location.href).catch(() => null);
+                  void navigator.clipboard.writeText(window.location.href).catch((err) => {
+                    debugClientIgnored("build_commit.clipboard", err);
+                  });
                   trackEvent(AnalyticsEvent.BuildBookmarkCopied, { slug: record.slug });
                 }}
               >
@@ -224,7 +226,7 @@ export function BuildCommitPage() {
                 <figcaption>Milestones</figcaption>
               </figure>
             </div>
-            <ul style={{ margin: "10px 0 0", paddingLeft: 16, fontSize: 13, color: "var(--tp)", lineHeight: 1.45 }}>
+            <ul className="ui-body-sm ui-body-sm--tp" style={{ margin: "10px 0 0", paddingLeft: 16 }}>
               <li>Race suggestion: {raceFromPlan ?? formatRaceLabel(raceId)}</li>
               <li>Faction suggestion: {factionId}</li>
               <li>Gender lean: {genderLean}</li>
@@ -236,7 +238,7 @@ export function BuildCommitPage() {
             <p className="hero-sub" style={{ marginTop: 0 }}>
               On desktop this column stays visible while you scroll. Guidance now reflects raw AI synthesis plus normalized coach output.
             </p>
-            <ul style={{ margin: "10px 0 0", paddingLeft: 18, fontSize: 13, color: "var(--tp)", lineHeight: 1.45 }}>
+            <ul className="ui-body-sm ui-body-sm--tp" style={{ margin: "10px 0 0", paddingLeft: 18 }}>
               <li>Playstyle: {destiny.bullets.join(" · ")}</li>
               <li>
                 Professions: {buildPlan?.professions?.primary ?? "TBD"} + {buildPlan?.professions?.secondary ?? "TBD"}
@@ -261,7 +263,7 @@ export function BuildCommitPage() {
             {buildPlan?.aiRaw?.generatorJson ? (
               <details style={{ marginTop: 10 }}>
                 <summary style={{ cursor: "pointer", color: "var(--gold-bright)" }}>Raw AI output (full)</summary>
-                <pre style={{ marginTop: 8, maxHeight: 260, overflow: "auto", fontSize: 11, color: "var(--ts)" }}>
+                <pre className="ui-caption ui-caption--xs" style={{ marginTop: 8, maxHeight: 260, overflow: "auto" }}>
                   {buildPlan.aiRaw.generatorJson}
                   {"\n\n-- reviewer --\n"}
                   {buildPlan.aiRaw.reviewerJson ?? ""}

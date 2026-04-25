@@ -55,7 +55,7 @@ export function FeedbackSummaryPage() {
       </div>
 
       <div className="card" style={{ marginTop: 12 }}>
-        <p style={{ margin: 0, fontSize: 13, color: "var(--ts)" }}>Breakdown</p>
+        <p className="ui-body-sm">Breakdown</p>
         <p style={{ margin: "8px 0 0", fontSize: 14 }}>
           Accept: <strong>{summary.counts.accept}</strong> ({acceptPct}%)
         </p>
@@ -67,7 +67,7 @@ export function FeedbackSummaryPage() {
         </p>
       </div>
       <div className="card" style={{ marginTop: 12 }}>
-        <p style={{ margin: 0, fontSize: 13, color: "var(--ts)" }}>Post-accept ratings</p>
+        <p className="ui-body-sm">Post-accept ratings</p>
         <p style={{ margin: "8px 0 0", fontSize: 14 }}>
           Not this: <strong>{summary.postAcceptRatings.not_this}</strong>
         </p>
