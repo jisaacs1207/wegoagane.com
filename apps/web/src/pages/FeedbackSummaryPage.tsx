@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { fetchFeedbackSummary, type FeedbackSummary } from "../lib/recommendClient";
+import { AnalyticsEvent, trackEvent } from "../lib/analytics";
+import { fetchFeedbackSummary, flowApiErrorHint, type FeedbackSummary } from "../lib/recommendClient";
 
 const emptySummary: FeedbackSummary = {
   total: 0,
@@ -25,8 +26,9 @@ export function FeedbackSummaryPage() {
         setSummary(result);
         setError(null);
       })
-      .catch(() => {
-        setError("Could not load feedback summary.");
+      .catch((err) => {
+        setError(flowApiErrorHint(err));
+        trackEvent(AnalyticsEvent.OpsFeedbackSummaryFailed, { path: "/ops/feedback" });
       });
   }, []);
 

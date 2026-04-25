@@ -15,16 +15,17 @@ import {
   submitDestinyFeedback,
 } from "../../lib/recommendClient";
 import { readBuildIntent } from "../../lib/readBuildIntent";
+import { SessionKeys } from "../../lib/sessionKeys";
 import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 import { buildMemoryHints, rememberAccept, rememberReroll } from "../../lib/memoryProfile";
 import { readStoredDestiny } from "../../lib/flowDestinyState";
 import { augmentMoodWithPower } from "../../lib/journeySignalsExtras";
 
 function buildDeathContextFreeform() {
-  const zone = sessionStorage.getItem("death.detail.zone")?.trim();
-  const cause = sessionStorage.getItem("death.detail.cause")?.trim();
-  const level = sessionStorage.getItem("death.detail.level")?.trim();
-  const note = sessionStorage.getItem("death.detail.note")?.trim();
+  const zone = sessionStorage.getItem(SessionKeys.death.detailZone)?.trim();
+  const cause = sessionStorage.getItem(SessionKeys.death.detailCause)?.trim();
+  const level = sessionStorage.getItem(SessionKeys.death.detailLevel)?.trim();
+  const note = sessionStorage.getItem(SessionKeys.death.detailNote)?.trim();
   const bits = [zone ? `Zone: ${zone}` : "", cause ? `Cause: ${cause}` : "", level ? `Level: ${level}` : "", note ? `Note: ${note}` : ""].filter(Boolean);
   return bits.length ? bits.join(" | ") : undefined;
 }
@@ -107,11 +108,11 @@ export function DeathResultStep() {
     if (!sessionId || !destinyId || isLoadingNames) return;
     setIsLoadingNames(true);
     try {
-      const intent = readBuildIntent("death.buildIntent");
+      const intent = readBuildIntent(SessionKeys.death.buildIntent);
       const nameContext = [
         `class=${destiny?.classId ?? "unknown"}`,
-        `mood=${sessionStorage.getItem("death.mood") ?? "none"}`,
-        `next=${sessionStorage.getItem("death.nextSignal") ?? "none"}`,
+        `mood=${sessionStorage.getItem(SessionKeys.death.mood) ?? "none"}`,
+        `next=${sessionStorage.getItem(SessionKeys.death.nextSignal) ?? "none"}`,
         `stats=${(intent.statPhilosophy ?? []).join(",") || "none"}`,
         `professions=${(intent.professionIntents ?? []).join(",") || "none"}`,
         `vectors=${(intent.buildVectors ?? []).join(",") || "none"}`,
@@ -145,14 +146,14 @@ export function DeathResultStep() {
       destinyId,
       sessionId,
       filterCount:
-        (readBuildIntent("death.buildIntent").statPhilosophy?.length ?? 0) +
-        (readBuildIntent("death.buildIntent").professionIntents?.length ?? 0) +
-        (readBuildIntent("death.buildIntent").buildVectors?.length ?? 0) +
-        (readBuildIntent("death.buildIntent").raceMode ? 1 : 0),
+        (readBuildIntent(SessionKeys.death.buildIntent).statPhilosophy?.length ?? 0) +
+        (readBuildIntent(SessionKeys.death.buildIntent).professionIntents?.length ?? 0) +
+        (readBuildIntent(SessionKeys.death.buildIntent).buildVectors?.length ?? 0) +
+        (readBuildIntent(SessionKeys.death.buildIntent).raceMode ? 1 : 0),
     });
     try {
-      const mood = sessionStorage.getItem("death.mood") ?? undefined;
-      const nextSignal = sessionStorage.getItem("death.nextSignal") ?? undefined;
+      const mood = sessionStorage.getItem(SessionKeys.death.mood) ?? undefined;
+      const nextSignal = sessionStorage.getItem(SessionKeys.death.nextSignal) ?? undefined;
       const detailFreeform = buildDeathContextFreeform();
       const promptBias = deriveSignalBias(mood, nextSignal);
 
@@ -180,13 +181,13 @@ export function DeathResultStep() {
         entryPath: "release_spirit",
         sessionId,
         signals: {
-          mood: augmentMoodWithPower(mood, "death.buildIntent"),
+          mood: augmentMoodWithPower(mood, SessionKeys.death.buildIntent),
           nextSignal,
           freeform: detailFreeform,
           memoryHints: buildMemoryHints(),
           recommendVariantId: recommendVariantId ?? undefined,
           ...promptBias,
-          ...readBuildIntent("death.buildIntent"),
+          ...readBuildIntent(SessionKeys.death.buildIntent),
           excludedClasses:
             reason === "wrong_class" || reason === "just_curious" ? [destiny.classId] : undefined,
           preferredClass: reason === "wrong_energy" || reason === "almost_right" ? destiny.classId : undefined,
@@ -218,7 +219,7 @@ export function DeathResultStep() {
       }
       setDestiny(reroll.output);
       setDestinyId(reroll.destinyId);
-      sessionStorage.setItem("death.destinyId", reroll.destinyId);
+      sessionStorage.setItem(SessionKeys.death.destinyId, reroll.destinyId);
       setNote("");
       setShowRerollGate(false);
     } catch (e) {
@@ -304,7 +305,7 @@ export function DeathResultStep() {
         <>
           <div className="result-page-grid">
             <div className="result-page-grid__main">
-              <DestinyCard data={destiny} intentSignals={readBuildIntent("death.buildIntent")} />
+              <DestinyCard data={destiny} intentSignals={readBuildIntent(SessionKeys.death.buildIntent)} />
             </div>
             <aside className="result-page-grid__side">
               <div className="card">
@@ -368,7 +369,9 @@ export function DeathResultStep() {
                   </div>
                 ) : null}
                 {actionMessage ? (
-                  <p style={{ marginTop: 10, marginBottom: 0, fontSize: 12, color: "var(--ts)" }}>{actionMessage}</p>
+                  <p style={{ marginTop: 10, marginBottom: 0, fontSize: 12, color: "var(--ts)" }} role="status" aria-live="polite">
+                    {actionMessage}
+                  </p>
                 ) : null}
               </div>
 

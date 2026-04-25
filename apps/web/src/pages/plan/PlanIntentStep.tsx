@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { IdentityPortrait } from "../../components/IdentityPortrait";
 import { wowPackUrl } from "../../content/identityAssets";
+import { SessionKeys } from "../../lib/sessionKeys";
 
 const INTENTS = [
   { id: "safe_60", label: "Safest path to 60", hint: "Lower variance and stable progression.", icon: wowPackUrl("Abilities", "ShieldWall.png") },
@@ -18,8 +19,8 @@ export function PlanIntentStep() {
   const [selected, setSelected] = useState<string | null>(null);
 
   useEffect(() => {
-    sessionStorage.removeItem("plan.generatedDestiny");
-    sessionStorage.removeItem("plan.destinyId");
+    sessionStorage.removeItem(SessionKeys.plan.generatedDestiny);
+    sessionStorage.removeItem(SessionKeys.plan.destinyId);
   }, []);
 
   return (
@@ -35,13 +36,13 @@ export function PlanIntentStep() {
             className={`ritual-option ${selected === i.id ? "ritual-option--on" : ""}`}
             onClick={() => {
               setSelected(i.id);
-              sessionStorage.setItem("plan.intent", i.label);
+              sessionStorage.setItem(SessionKeys.plan.intent, i.label);
               // Starting a new plan run should not inherit stale journey filters.
-              sessionStorage.removeItem("plan.buildIntent");
-              sessionStorage.removeItem("plan.buildIntent.depth");
-              sessionStorage.removeItem("plan.buildIntent.powerCurve");
-              sessionStorage.removeItem("plan.generatedDestiny");
-              sessionStorage.removeItem("plan.destinyId");
+              sessionStorage.removeItem(SessionKeys.plan.buildIntent);
+              sessionStorage.removeItem(SessionKeys.plan.buildIntentDepth);
+              sessionStorage.removeItem(SessionKeys.plan.buildIntentPowerCurve);
+              sessionStorage.removeItem(SessionKeys.plan.generatedDestiny);
+              sessionStorage.removeItem(SessionKeys.plan.destinyId);
             }}
           >
             <IdentityPortrait src={i.icon} alt="" className="ritual-option__icon" />
@@ -57,13 +58,13 @@ export function PlanIntentStep() {
           type="button"
           className="btn-ghost"
           onClick={() => {
-            sessionStorage.removeItem("plan.intent");
-            sessionStorage.removeItem("plan.freeform");
-            sessionStorage.removeItem("plan.buildIntent");
-            sessionStorage.removeItem("plan.buildIntent.depth");
-            sessionStorage.removeItem("plan.buildIntent.powerCurve");
-            sessionStorage.removeItem("plan.generatedDestiny");
-            sessionStorage.removeItem("plan.destinyId");
+            sessionStorage.removeItem(SessionKeys.plan.intent);
+            sessionStorage.removeItem(SessionKeys.plan.freeform);
+            sessionStorage.removeItem(SessionKeys.plan.buildIntent);
+            sessionStorage.removeItem(SessionKeys.plan.buildIntentDepth);
+            sessionStorage.removeItem(SessionKeys.plan.buildIntentPowerCurve);
+            sessionStorage.removeItem(SessionKeys.plan.generatedDestiny);
+            sessionStorage.removeItem(SessionKeys.plan.destinyId);
             navigate("/");
           }}
         >

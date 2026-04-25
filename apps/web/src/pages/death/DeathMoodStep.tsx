@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { IdentityPortrait } from "../../components/IdentityPortrait";
 import { wowPackUrl } from "../../content/identityAssets";
+import { SessionKeys } from "../../lib/sessionKeys";
 
 const MOODS = [
   { id: "my_fault", label: "My fault", hint: "I misplayed and want a cleaner safety loop.", icon: wowPackUrl("Abilities", "ShieldGuard.png") },
@@ -16,8 +17,8 @@ export function DeathMoodStep() {
   const [selected, setSelected] = useState<string | null>(null);
 
   useEffect(() => {
-    sessionStorage.removeItem("death.generatedDestiny");
-    sessionStorage.removeItem("death.destinyId");
+    sessionStorage.removeItem(SessionKeys.death.generatedDestiny);
+    sessionStorage.removeItem(SessionKeys.death.destinyId);
   }, []);
 
   return (
@@ -33,17 +34,17 @@ export function DeathMoodStep() {
             className={`ritual-option ${selected === m.id ? "ritual-option--on" : ""}`}
             onClick={() => {
               setSelected(m.id);
-              sessionStorage.setItem("death.mood", m.label);
-              sessionStorage.removeItem("death.nextSignal");
-              sessionStorage.removeItem("death.detail.zone");
-              sessionStorage.removeItem("death.detail.cause");
-              sessionStorage.removeItem("death.detail.level");
-              sessionStorage.removeItem("death.detail.note");
-              sessionStorage.removeItem("death.buildIntent");
-              sessionStorage.removeItem("death.buildIntent.depth");
-              sessionStorage.removeItem("death.buildIntent.powerCurve");
-              sessionStorage.removeItem("death.generatedDestiny");
-              sessionStorage.removeItem("death.destinyId");
+              sessionStorage.setItem(SessionKeys.death.mood, m.label);
+              sessionStorage.removeItem(SessionKeys.death.nextSignal);
+              sessionStorage.removeItem(SessionKeys.death.detailZone);
+              sessionStorage.removeItem(SessionKeys.death.detailCause);
+              sessionStorage.removeItem(SessionKeys.death.detailLevel);
+              sessionStorage.removeItem(SessionKeys.death.detailNote);
+              sessionStorage.removeItem(SessionKeys.death.buildIntent);
+              sessionStorage.removeItem(SessionKeys.death.buildIntentDepth);
+              sessionStorage.removeItem(SessionKeys.death.buildIntentPowerCurve);
+              sessionStorage.removeItem(SessionKeys.death.generatedDestiny);
+              sessionStorage.removeItem(SessionKeys.death.destinyId);
             }}
           >
             <IdentityPortrait src={m.icon} alt="" className="ritual-option__icon" />
