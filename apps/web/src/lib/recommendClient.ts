@@ -223,12 +223,22 @@ function destinyResultFromJson(data: RecommendResponse): DestinyResult {
   };
 }
 
-async function readRecommendError(response: Response): Promise<{ error?: string }> {
+async function readApiJsonError(response: Response): Promise<{ error?: string }> {
   try {
     return (await response.json()) as { error?: string };
   } catch {
     return {};
   }
+}
+
+async function throwApiFailure(response: Response, label: string): Promise<never> {
+  const e = await readApiJsonError(response);
+  throw new Error(`${label}:${response.status}:${e.error ?? "unknown"}`);
+}
+
+async function parseJsonOk<T>(response: Response, label: string): Promise<T> {
+  if (!response.ok) await throwApiFailure(response, label);
+  return (await response.json()) as T;
 }
 
 /** Maps `fetchDestiny` errors (e.g. `recommend_failed:400:no_viable_build`) to UI copy. */
@@ -258,6 +268,58 @@ export function destinyRecommendErrorHint(err: unknown): string {
   return "Generation failed. Adjust your path or try again.";
 }
 
+/** Maps non-recommend client errors (`journey_commit:404:destiny_not_found`, etc.) to UI copy. */
+export function flowApiErrorHint(err: unknown): string {
+  const message = err instanceof Error ? err.message : "";
+  if (message.startsWith("recommend_failed")) return destinyRecommendErrorHint(err);
+  if (message.includes("journey_commit:404:destiny_not_found")) {
+    return "We could not find that destiny for this session. Start the flow again from intent, then regenerate.";
+  }
+  if (message.includes("journey_commit:400:invalid_input") || message.includes("journey_commit:400:invalid_json")) {
+    return "Commit request was invalid. Refresh the page and try commit again.";
+  }
+  if (message.includes("journey_commit:500:invalid_destiny_payload")) {
+    return "Stored destiny data looks corrupted. Generate a new card, then commit.";
+  }
+  if (message.includes("journey_memorial:404:build_commit_not_found")) {
+    return "This commit page is no longer available. Check the URL or return home.";
+  }
+  if (message.includes("journey_memorial:400:invalid_input") || message.includes("journey_memorial:400:invalid_json")) {
+    return "Memorial fields failed validation. Shorten notes and check required fields.";
+  }
+  if (message.includes("build_commit_fetch:404:build_commit_not_found")) {
+    return "Committed build not found. The link may be wrong or the row was removed.";
+  }
+  if (message.includes("feedback:")) {
+    return "Could not save feedback. Check your connection and try again.";
+  }
+  if (message.includes("share_create:") || message.includes("share_fetch:")) {
+    return "Could not start share preview. Try again in a moment.";
+  }
+  if (message.includes("memorial:422:validation_failed")) {
+    return "Memorial output failed a safety check. Adjust wording and try again.";
+  }
+  if (message.includes("memorial:")) {
+    return "Could not create memorial right now. Try again shortly.";
+  }
+  if (message.includes("names_generate:") || message.includes("names_fetch:")) {
+    return "Name service is unavailable. Retry or pick a manual name.";
+  }
+  if (message.includes("growth_assign:") || message.includes("growth_outcome:")) {
+    return "Experiment assignment failed silently; your card still works.";
+  }
+  if (message.includes("feedback_summary:") || message.includes("analytics_config:")) {
+    return "Could not load ops or settings data. Refresh the page.";
+  }
+  if (message.includes("build_fetch:") || message.includes("build_post:")) {
+    return "Build plan service failed. Return to your result and try again.";
+  }
+  if (message.includes("journey_commit:") || message.includes("journey_memorial:") || message.includes("build_commit_fetch:")) {
+    return "That action could not complete. Check your connection and try again.";
+  }
+  return "Something went wrong. Try again.";
+}
+
 export async function fetchDestiny(input: RecommendRequest): Promise<DestinyResult> {
   const post = (body: RecommendRequest) =>
     fetch("/api/v1/recommend", {
@@ -266,29 +328,37 @@ export async function fetchDestiny(input: RecommendRequest): Promise<DestinyResu
       body: JSON.stringify(body),
     });
 
-  let response = await post(input);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    let response = await post(input);
 
-  if (!response.ok && response.status === 400) {
-    const errFirst = await readRecommendError(response);
-    if (errFirst.error === "invalid_input") {
-      clearMemoryProfile();
-      response = await post({
-        ...input,
-        signals: { ...input.signals, memoryHints: buildMemoryHints() },
-      });
-    } else {
-      throw new Error(`recommend_failed:400:${errFirst.error ?? "unknown"}`);
+    if (!response.ok && response.status === 400) {
+      const errFirst = await readApiJsonError(response);
+      if (errFirst.error === "invalid_input") {
+        clearMemoryProfile();
+        response = await post({
+          ...input,
+          signals: { ...input.signals, memoryHints: buildMemoryHints() },
+        });
+      } else {
+        throw new Error(`recommend_failed:400:${errFirst.error ?? "unknown"}`);
+      }
     }
-  }
 
-  if (!response.ok) {
-    const err = await readRecommendError(response);
+    if (response.ok) {
+      const data = (await response.json()) as RecommendResponse;
+      return destinyResultFromJson(data);
+    }
+
+    const err = await readApiJsonError(response);
+    if (response.status === 503 && err.error === "recommend_internal_error" && attempt < 2) {
+      await new Promise((r) => setTimeout(r, 350 + attempt * 200));
+      continue;
+    }
     if (err.error) throw new Error(`recommend_failed:${response.status}:${err.error}`);
     throw new Error(`recommend_failed:${response.status}`);
   }
 
-  const data = (await response.json()) as RecommendResponse;
-  return destinyResultFromJson(data);
+  throw new Error("recommend_failed:unknown");
 }
 
 export async function fetchMemorial(input: MemorialRequest): Promise<MemorialFixture> {
@@ -298,9 +368,7 @@ export async function fetchMemorial(input: MemorialRequest): Promise<MemorialFix
     body: JSON.stringify(input),
   });
 
-  if (!response.ok) {
-    throw new Error(`memorial_failed:${response.status}`);
-  }
+  if (!response.ok) await throwApiFailure(response, "memorial");
 
   const data = (await response.json()) as MemorialResponse;
   return {
@@ -319,17 +387,12 @@ export async function submitDestinyFeedback(input: FeedbackRequest): Promise<voi
     headers: { "content-type": "application/json" },
     body: JSON.stringify(input),
   });
-  if (!response.ok) {
-    throw new Error(`feedback_failed:${response.status}`);
-  }
+  if (!response.ok) await throwApiFailure(response, "feedback");
 }
 
 export async function fetchFeedbackSummary(): Promise<FeedbackSummary> {
   const response = await fetch("/api/v1/feedback/summary");
-  if (!response.ok) {
-    throw new Error(`feedback_summary_failed:${response.status}`);
-  }
-  return (await response.json()) as FeedbackSummary;
+  return parseJsonOk<FeedbackSummary>(response, "feedback_summary");
 }
 
 export async function createShareRun(input: CreateShareRequest): Promise<ShareRunResponse> {
@@ -338,26 +401,17 @@ export async function createShareRun(input: CreateShareRequest): Promise<ShareRu
     headers: { "content-type": "application/json" },
     body: JSON.stringify(input),
   });
-  if (!response.ok) {
-    throw new Error(`share_create_failed:${response.status}`);
-  }
-  return (await response.json()) as ShareRunResponse;
+  return parseJsonOk<ShareRunResponse>(response, "share_create");
 }
 
 export async function fetchShareRun(runId: string): Promise<ShareRunResponse> {
   const response = await fetch(`/api/v1/share/${runId}`);
-  if (!response.ok) {
-    throw new Error(`share_status_failed:${response.status}`);
-  }
-  return (await response.json()) as ShareRunResponse;
+  return parseJsonOk<ShareRunResponse>(response, "share_fetch");
 }
 
 export async function fetchAnalyticsConfig(): Promise<AnalyticsConfigResponse> {
   const response = await fetch("/api/v1/analytics/config");
-  if (!response.ok) {
-    throw new Error(`analytics_config_failed:${response.status}`);
-  }
-  return (await response.json()) as AnalyticsConfigResponse;
+  return parseJsonOk<AnalyticsConfigResponse>(response, "analytics_config");
 }
 
 export async function fetchGrowthAssignment(input: {
@@ -370,10 +424,7 @@ export async function fetchGrowthAssignment(input: {
     headers: { "content-type": "application/json" },
     body: JSON.stringify(input),
   });
-  if (!response.ok) {
-    throw new Error(`growth_assign_failed:${response.status}`);
-  }
-  return (await response.json()) as GrowthAssignmentResponse;
+  return parseJsonOk<GrowthAssignmentResponse>(response, "growth_assign");
 }
 
 export async function submitGrowthOutcome(input: {
@@ -386,17 +437,12 @@ export async function submitGrowthOutcome(input: {
     headers: { "content-type": "application/json" },
     body: JSON.stringify(input),
   });
-  if (!response.ok) {
-    throw new Error(`growth_outcome_failed:${response.status}`);
-  }
+  if (!response.ok) await throwApiFailure(response, "growth_outcome");
 }
 
 export async function fetchBuildPlan(destinyId: string): Promise<BuildPlanResponse> {
   const response = await fetch(`/api/v1/build/${encodeURIComponent(destinyId)}`);
-  if (!response.ok) {
-    throw new Error(`build_fetch_failed:${response.status}`);
-  }
-  return (await response.json()) as BuildPlanResponse;
+  return parseJsonOk<BuildPlanResponse>(response, "build_fetch");
 }
 
 export async function requestBuildPlan(input: {
@@ -410,7 +456,7 @@ export async function requestBuildPlan(input: {
     body: JSON.stringify(input),
   });
   if (!response.ok && response.status !== 201 && response.status !== 202) {
-    throw new Error(`build_post_failed:${response.status}`);
+    await throwApiFailure(response, "build_post");
   }
   return (await response.json()) as BuildPlanResponse;
 }
@@ -425,10 +471,7 @@ export async function fetchNameCandidates(params?: {
   if (params?.genderLean) q.set("genderLean", params.genderLean);
   if (params?.limit) q.set("limit", String(params.limit));
   const response = await fetch(`/api/v1/build/names?${q.toString()}`);
-  if (!response.ok) {
-    throw new Error(`names_fetch_failed:${response.status}`);
-  }
-  return (await response.json()) as { names: NameCandidateRow[] };
+  return parseJsonOk<{ names: NameCandidateRow[] }>(response, "names_fetch");
 }
 
 export async function generateNameCandidates(input: {
@@ -447,10 +490,7 @@ export async function generateNameCandidates(input: {
     headers: { "content-type": "application/json" },
     body: JSON.stringify(input),
   });
-  if (!response.ok) {
-    throw new Error(`names_generate_failed:${response.status}`);
-  }
-  return (await response.json()) as { names: NameCandidateRow[]; aiUsed: boolean };
+  return parseJsonOk<{ names: NameCandidateRow[]; aiUsed: boolean }>(response, "names_generate");
 }
 
 export async function commitJourneyBuild(input: {
@@ -463,18 +503,12 @@ export async function commitJourneyBuild(input: {
     headers: { "content-type": "application/json" },
     body: JSON.stringify(input),
   });
-  if (!response.ok && response.status !== 201) {
-    throw new Error(`journey_commit_failed:${response.status}`);
-  }
-  return (await response.json()) as BuildCommitResponse;
+  return parseJsonOk<BuildCommitResponse>(response, "journey_commit");
 }
 
 export async function fetchBuildCommit(slug: string): Promise<BuildCommitRecord> {
   const response = await fetch(`/api/v1/journey/commit/${encodeURIComponent(slug)}`);
-  if (!response.ok) {
-    throw new Error(`build_commit_fetch_failed:${response.status}`);
-  }
-  return (await response.json()) as BuildCommitRecord;
+  return parseJsonOk<BuildCommitRecord>(response, "build_commit_fetch");
 }
 
 export async function submitBuildCommitMemorial(
@@ -494,7 +528,5 @@ export async function submitBuildCommitMemorial(
     headers: { "content-type": "application/json" },
     body: JSON.stringify(input),
   });
-  if (!response.ok) {
-    throw new Error(`build_commit_memorial_failed:${response.status}`);
-  }
+  if (!response.ok) await throwApiFailure(response, "journey_memorial");
 }

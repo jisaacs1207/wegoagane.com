@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { AnalyticsEvent, trackEvent } from "../lib/analytics";
 
 type GrowthHealth = {
   experimentsRunning: number;
@@ -23,7 +24,10 @@ export function GrowthOpsPage() {
         const data = (await response.json()) as GrowthHealth;
         setHealth(data);
       })
-      .catch(() => setError("Could not load growth health."));
+      .catch(() => {
+        trackEvent(AnalyticsEvent.OpsGrowthHealthFailed, { path: "/ops/growth" });
+        setError("Could not load growth health.");
+      });
   }, []);
 
   return (

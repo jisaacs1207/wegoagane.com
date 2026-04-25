@@ -38,6 +38,7 @@ jobs:
           test -f docs/github-setup.md
           test -f docs/deploy-wegoagane-com.md
           test -f docs/wegoagane-handoff-v4.md
+          test -f README.md
           test -f apps/web/package.json
           test -f packages/api/package.json
           test -f packages/api/wrangler.toml
@@ -73,10 +74,11 @@ jobs:
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
 
-      - name: Install, lint, build
+      - name: Install, lint, test, build
         run: |
           npm ci
           npm run lint
+          npm run test
           npm run build
 
   api:

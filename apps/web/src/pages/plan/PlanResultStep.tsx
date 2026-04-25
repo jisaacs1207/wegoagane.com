@@ -10,6 +10,7 @@ import {
   fetchNameCandidates,
   generateNameCandidates,
   fetchGrowthAssignment,
+  flowApiErrorHint,
   type RerollReason,
   submitDestinyFeedback,
 } from "../../lib/recommendClient";
@@ -108,8 +109,8 @@ export function PlanResultStep() {
         context: nameContext,
       });
       setNameSuggestions(res.names.map((row) => row.name));
-    } catch {
-      setActionMessage("Could not generate additional names right now.");
+    } catch (e) {
+      setActionMessage(flowApiErrorHint(e));
     } finally {
       setIsLoadingNames(false);
     }
@@ -198,8 +199,8 @@ export function PlanResultStep() {
       sessionStorage.setItem("plan.destinyId", reroll.destinyId);
       setNote("");
       setShowRerollGate(false);
-    } catch {
-      setActionMessage("Could not save this rating yet.");
+    } catch (e) {
+      setActionMessage(flowApiErrorHint(e));
     } finally {
       setIsSubmitting(false);
     }
@@ -230,8 +231,8 @@ export function PlanResultStep() {
       setActionMessage("Accepted. Opening share preview...");
       setNote("");
       navigate(`/share/${share.runId}`);
-    } catch {
-      setActionMessage("Could not save acceptance yet.");
+    } catch (e) {
+      setActionMessage(flowApiErrorHint(e));
     } finally {
       setIsSubmitting(false);
     }
@@ -254,8 +255,8 @@ export function PlanResultStep() {
         slug: committed.slug,
       });
       navigate(committed.path);
-    } catch {
-      setActionMessage("Could not commit this build yet.");
+    } catch (e) {
+      setActionMessage(flowApiErrorHint(e));
     } finally {
       setIsSubmitting(false);
     }

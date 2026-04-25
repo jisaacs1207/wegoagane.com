@@ -13,7 +13,8 @@ import {
   inferFactionFromRace,
   inferRaceFromHeadline,
 } from "../content/identityAssets";
-import { fetchBuildCommit, submitBuildCommitMemorial, type BuildCommitRecord } from "../lib/recommendClient";
+import { debugClient } from "../lib/clientDebug";
+import { fetchBuildCommit, flowApiErrorHint, submitBuildCommitMemorial, type BuildCommitRecord } from "../lib/recommendClient";
 import { AnalyticsEvent, trackEvent } from "../lib/analytics";
 
 export function BuildCommitPage() {
@@ -39,7 +40,10 @@ export function BuildCommitPage() {
         setRecord(res);
         setError("");
       })
-      .catch(() => setError("Committed build not found."))
+      .catch((e) => {
+        debugClient("buildCommitFetch", e);
+        setError(flowApiErrorHint(e));
+      })
       .finally(() => setLoading(false));
   }, [slug]);
 
@@ -104,8 +108,9 @@ export function BuildCommitPage() {
       trackEvent(AnalyticsEvent.MemorialSubmitted, { slug });
       setMessage("Memorial captured. You can retool from this run.");
       sessionStorage.setItem("plan.seedDestinyId", activeRecord.destinyId);
-    } catch {
-      setMessage("Could not save memorial yet.");
+    } catch (e) {
+      debugClient("memorialSubmit", e);
+      setMessage(flowApiErrorHint(e));
     } finally {
       setBusy(false);
     }
