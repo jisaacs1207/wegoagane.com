@@ -11,6 +11,7 @@ import {
   recommendErrorSuggestsSoftenFilters,
   submitGrowthOutcome,
 } from "../../lib/recommendClient";
+import { debugClientIgnored } from "../../lib/clientDebug";
 import { SessionKeys } from "../../lib/sessionKeys";
 import { buildMemoryHints } from "../../lib/memoryProfile";
 import { writeStoredDestiny } from "../../lib/flowDestinyState";
@@ -57,7 +58,10 @@ export function DeathJourneyStep() {
         sessionId,
         surface: "recommendation",
         entryPath: "release_spirit",
-      }).catch(() => null);
+      }).catch((err) => {
+        debugClientIgnored("death_journey.growth_assignment", err);
+        return null;
+      });
 
       const result = await fetchDestiny({
         entryPath: "release_spirit",
@@ -84,7 +88,9 @@ export function DeathJourneyStep() {
           assignmentId: assignment.assignmentId,
           converted: true,
           outcome: { event: "recommend_rendered", destinyId: result.destinyId },
-        }).catch(() => {});
+        }).catch((err) => {
+          debugClientIgnored("death_journey.growth_outcome", err);
+        });
       }
       navigate("/release-spirit/result");
     } catch (err) {

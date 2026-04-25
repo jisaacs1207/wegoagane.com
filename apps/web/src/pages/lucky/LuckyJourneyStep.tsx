@@ -13,6 +13,7 @@ import {
   recommendErrorSuggestsSoftenFilters,
   submitGrowthOutcome,
 } from "../../lib/recommendClient";
+import { debugClientIgnored } from "../../lib/clientDebug";
 import { SessionKeys } from "../../lib/sessionKeys";
 import { buildMemoryHints } from "../../lib/memoryProfile";
 import { writeStoredDestiny } from "../../lib/flowDestinyState";
@@ -64,7 +65,9 @@ export function LuckyJourneyStep() {
           assignmentId: assignment.assignmentId,
           converted: true,
           outcome: { event: "recommend_rendered", destinyId: result.destinyId },
-        }).catch(() => {});
+        }).catch((err) => {
+          debugClientIgnored("lucky_journey.growth_outcome", err);
+        });
       }
       navigate("/lucky-roll/result");
     } catch (err) {

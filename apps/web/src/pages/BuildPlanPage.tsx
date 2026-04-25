@@ -9,6 +9,7 @@ import {
   type NameCandidateRow,
 } from "../lib/recommendClient";
 import { AnalyticsEvent, trackEvent } from "../lib/analytics";
+import { debugClientIgnored } from "../lib/clientDebug";
 import { SessionKeys } from "../lib/sessionKeys";
 
 type PlanV1 = {
@@ -79,7 +80,10 @@ export function BuildPlanPage() {
   useEffect(() => {
     void fetchNameCandidates({ limit: 24 })
       .then((r) => setNames(r.names))
-      .catch(() => setNames([]));
+      .catch((err) => {
+        debugClientIgnored("build_plan_page.name_candidates", err);
+        setNames([]);
+      });
   }, []);
 
   if (!destinyId) {

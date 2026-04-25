@@ -249,7 +249,7 @@ export function BuildCommitPage() {
                 <p className="step-label" style={{ marginBottom: 6 }}>
                   Decision forks
                 </p>
-                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "var(--ts)", lineHeight: 1.45 }}>
+                <ul className="ui-caption" style={{ margin: 0, paddingLeft: 18, lineHeight: 1.45 }}>
                   {buildPlan?.forks?.slice(0, 2).map((fork, idx) => (
                     <li key={`${fork.title ?? "fork"}-${idx}`}>
                       {fork.title}: {fork.optionA} / {fork.optionB}

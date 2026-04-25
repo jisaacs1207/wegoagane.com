@@ -81,6 +81,12 @@ jobs:
           npm run test
           npm run build
 
+      - name: Install Playwright (Chromium only)
+        run: npx playwright install chromium
+
+      - name: E2E smoke (Playwright)
+        run: npm run test:e2e
+
   api:
     name: API
     runs-on: ubuntu-latest

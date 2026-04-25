@@ -11,6 +11,7 @@ import {
   type PostAcceptRating,
   type ShareRunResponse,
 } from "../lib/recommendClient";
+import { debugClientIgnored } from "../lib/clientDebug";
 import { SessionKeys } from "../lib/sessionKeys";
 import { AnalyticsEvent, trackEvent } from "../lib/analytics";
 import { rememberPostAcceptRating } from "../lib/memoryProfile";
@@ -44,7 +45,9 @@ export function SharePlaceholderPage() {
         assignmentId = assignment.assignmentId;
         if (assignment.payload?.sharePromptPrefix) setSharePrefix(assignment.payload.sharePromptPrefix);
       })
-      .catch(() => {});
+      .catch((err) => {
+        debugClientIgnored("share_page.growth_assignment", err);
+      });
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
 
@@ -70,7 +73,9 @@ export function SharePlaceholderPage() {
           }, 1500);
         }
         if (assignmentId && result.status === "ready") {
-          void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "share_ready", runId } }).catch(() => {});
+          void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "share_ready", runId } }).catch((err) => {
+            debugClientIgnored("share_page.growth_outcome_share_ready", err);
+          });
         }
       } catch {
         if (!cancelled) {
@@ -159,7 +164,7 @@ export function SharePlaceholderPage() {
         )}
       </div>
       <div className="card" style={{ marginTop: 14 }}>
-        <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Post-accept rating (non-blocking)</p>
+        <p className="ui-caption">Post-accept rating (non-blocking)</p>
         <div className="flow-nav" style={{ marginTop: 8 }}>
           {postAcceptChoices.map((entry) => (
             <button
@@ -174,7 +179,9 @@ export function SharePlaceholderPage() {
           ))}
         </div>
         {ratingMessage ? (
-          <p style={{ marginTop: 8, marginBottom: 0, fontSize: 12, color: "var(--ts)" }}>{ratingMessage}</p>
+          <p className="ui-caption" style={{ marginTop: 8, marginBottom: 0 }}>
+            {ratingMessage}
+          </p>
         ) : null}
       </div>
       <Link to="/" className="btn-ghost" style={{ display: "inline-flex", marginTop: 16 }}>

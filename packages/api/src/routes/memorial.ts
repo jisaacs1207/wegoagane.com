@@ -10,8 +10,18 @@ import { validateMemorialInput, validateMemorialOutput } from "../domain/validat
 export const memorialRouter = new Hono<ApiEnv>();
 
 export async function handleMemorial(c: Context<ApiEnv>) {
-  const payload = await c.req.json();
-  const input = validateMemorialInput(payload);
+  let payload: unknown;
+  try {
+    payload = await c.req.json();
+  } catch {
+    return c.json({ error: "invalid_json" }, 400);
+  }
+  let input;
+  try {
+    input = validateMemorialInput(payload);
+  } catch {
+    return c.json({ error: "invalid_input" }, 400);
+  }
   const templateOutput = renderTemplateMemorial(input);
   const aiResult = await enrichMemorial(c.env, templateOutput);
   const output = aiResult.output;

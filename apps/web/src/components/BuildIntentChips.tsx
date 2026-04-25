@@ -421,20 +421,21 @@ export function BuildIntentChips({
           Start fresh filters
         </button>
       </div>
-      <p className="hero-sub" style={{ marginTop: 0, marginBottom: 10, fontSize: 12 }}>
+      <p className="ui-caption" style={{ marginTop: 0, marginBottom: 10 }}>
         Choose depth, pick one priority vector, answer two quick questions, then generate.
       </p>
-      <p className="hero-sub" style={{ marginTop: 0, marginBottom: 12, fontSize: 12 }}>
+      <p className="ui-caption" style={{ marginTop: 0, marginBottom: 12 }}>
         Step {step === "depth" ? "1" : step === "vector" ? "2" : step === "question" ? "3" : "4"} of 4
       </p>
       {step === "depth" ? (
         <>
-          <div className="chip-row">
+          <div className="chip-row" role="group" aria-label="Intent depth">
             {DEPTH_OPTIONS.map((o) => (
               <button
                 key={o.id}
                 type="button"
                 className={`chip-btn ${depth === o.id ? "chip-btn--on" : ""}`}
+                aria-pressed={depth === o.id}
                 onClick={() => {
                   persistDepth(o.id);
                   trackEvent(AnalyticsEvent.IntentDepthSelected, {
@@ -448,11 +449,13 @@ export function BuildIntentChips({
               </button>
             ))}
           </div>
-          <p className="hero-sub" style={{ marginTop: 8, marginBottom: 12, fontSize: 12 }}>
+          <p className="ui-caption" style={{ marginTop: 8, marginBottom: 12 }}>
             {depthHelper}
           </p>
           <fieldset style={{ border: "none", padding: 0, margin: "0 0 12px 0" }}>
-            <legend style={{ fontSize: 12, color: "var(--ts)", marginBottom: 6 }}>Core preference</legend>
+            <legend className="ui-caption" style={{ marginBottom: 6 }}>
+              Core preference
+            </legend>
             <div className="chip-row">
               {[
                 { id: "safe" as CorePreset, label: "Safe route" },
@@ -463,6 +466,7 @@ export function BuildIntentChips({
                   key={o.id}
                   type="button"
                   className={`chip-btn ${corePreset === o.id ? "chip-btn--on" : ""}`}
+                  aria-pressed={corePreset === o.id}
                   onClick={() => {
                     setCorePreset(o.id);
                     persist(applyCorePreset(value, o.id));
@@ -474,16 +478,19 @@ export function BuildIntentChips({
             </div>
           </fieldset>
           <fieldset className="journey-power-fieldset" style={{ border: "none", padding: 0, margin: "0 0 12px 0" }}>
-            <legend style={{ fontSize: 12, color: "var(--ts)", marginBottom: 6 }}>Power curve (optional)</legend>
-            <p className="hero-sub" style={{ marginTop: 0, marginBottom: 8, fontSize: 11 }}>
+            <legend className="ui-caption" style={{ marginBottom: 6 }}>
+              Power curve (optional)
+            </legend>
+            <p className="ui-caption ui-caption--xs" style={{ marginTop: 0, marginBottom: 8 }}>
               Nudges the recommender toward early kit, mid climb, late spikes, or an even curve.
             </p>
-            <div className="journey-power-curve">
+            <div className="journey-power-curve" role="group" aria-label="Power curve bias">
               {POWER_CURVE_OPTIONS.map((o) => (
                 <button
                   key={o.id}
                   type="button"
                   className={`journey-power-curve__btn ${powerCurve === o.id ? "journey-power-curve__btn--on" : ""}`}
+                  aria-pressed={powerCurve === o.id}
                   onClick={() => {
                     setStoredPowerCurve(o.id);
                     trackEvent(AnalyticsEvent.IntentDepthSelected, { ...eventContext, powerCurve: o.id });
@@ -492,7 +499,12 @@ export function BuildIntentChips({
                   {o.label}
                 </button>
               ))}
-              <button type="button" className="journey-power-curve__clear" onClick={() => setStoredPowerCurve(null)}>
+              <button
+                type="button"
+                className="journey-power-curve__clear"
+                aria-label="Clear power curve selection"
+                onClick={() => setStoredPowerCurve(null)}
+              >
                 Clear
               </button>
             </div>
@@ -512,20 +524,21 @@ export function BuildIntentChips({
       ) : null}
       {step === "vector" ? (
         <>
-          <p className="hero-sub" style={{ marginTop: 0, marginBottom: 10, fontSize: 12 }}>
+          <p className="ui-caption" style={{ marginTop: 0, marginBottom: 10 }}>
             What should lead this build?
           </p>
           {selectedVectors.length > 0 ? (
-            <p className="hero-sub" style={{ marginTop: 0, marginBottom: 10, fontSize: 12 }}>
+            <p className="ui-caption" style={{ marginTop: 0, marginBottom: 10 }}>
               Selected priorities: {selectedVectors.map((v) => VECTOR_ROWS.find((r) => r.id === v)?.title ?? v).join(" -> ")}
             </p>
           ) : null}
-          <div className="journey-vector-grid">
+          <div className="journey-vector-grid" role="group" aria-label="Build priority vectors, up to three">
             {VECTOR_ROWS.map((row) => (
               <button
                 key={row.id}
                 type="button"
                 className={`journey-vector-tile ${(selectedVectors.includes(row.id) || vector === row.id) ? "journey-vector-tile--on" : ""}`}
+                aria-pressed={selectedVectors.includes(row.id) || vector === row.id}
                 onClick={() => {
                   setVector(row.id);
                   setSelectedVectors((prev) => {
@@ -577,10 +590,10 @@ export function BuildIntentChips({
           <p className="step-label" style={{ marginBottom: 6 }}>
             Refining: {VECTOR_ROWS.find((r) => r.id === activeVector)?.title ?? activeVector}
           </p>
-          <p className="hero-sub" style={{ marginTop: 0, marginBottom: 10, fontSize: 12 }}>
+          <p className="ui-caption" style={{ marginTop: 0, marginBottom: 10 }}>
             {currentQuestion.prompt}
           </p>
-          <div className="chip-row" style={{ marginBottom: 10 }}>
+          <div className="chip-row" style={{ marginBottom: 10 }} role="group" aria-label={currentQuestion.prompt}>
             {currentQuestion.answers.map((answer) => (
               <button
                 key={answer}
@@ -632,16 +645,23 @@ export function BuildIntentChips({
               <p className="step-label" style={{ marginBottom: 6 }}>
                 Selected filters for this run
               </p>
-              <div className="chip-row">
+              <div className="chip-row" role="group" aria-label="Active filters, click to remove">
                 {activeIds.map((id) => (
-                  <button key={id} type="button" className="chip-btn chip-btn--on" onClick={() => removeActive(id)}>
+                  <button
+                    key={id}
+                    type="button"
+                    className="chip-btn chip-btn--on"
+                    aria-pressed={true}
+                    aria-label={`${optionLabel(id)}, remove`}
+                    onClick={() => removeActive(id)}
+                  >
                     {optionLabel(id)} ×
                   </button>
                 ))}
               </div>
             </div>
           ) : (
-            <p className="hero-sub" style={{ marginTop: 0, marginBottom: 12, fontSize: 12 }}>
+            <p className="ui-caption" style={{ marginTop: 0, marginBottom: 12 }}>
               No extra filters selected. We&apos;ll generate from your core preferences.
             </p>
           )}
@@ -669,7 +689,7 @@ export function BuildIntentChips({
             </button>
           </div>
           {hasGenerated ? (
-            <p className="hero-sub" style={{ marginTop: 10, marginBottom: 0, fontSize: 12 }}>
+            <p className="ui-caption" style={{ marginTop: 10, marginBottom: 0 }}>
               You can return and adjust branches, then regenerate before reroll.
             </p>
           ) : null}

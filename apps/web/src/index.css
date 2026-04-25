@@ -32,6 +32,16 @@
   --line: #4a4034;
   --card: #211d19;
   --text: #e8dcc8;
+  /* Flow typography — use in `.hero-question` / `.hero-sub` / `.step-label` / `.ui-caption` */
+  --type-hero-question-size: 22px;
+  --type-hero-question-weight: 700;
+  --type-hero-question-line: 1.25;
+  --type-hero-sub-size: 14px;
+  --type-hero-sub-margin-bottom: 22px;
+  --type-step-label-size: 10px;
+  --type-step-label-track: 0.12em;
+  --type-caption-sm: 12px;
+  --type-caption-xs: 11px;
 }
 
 *,
@@ -225,17 +235,17 @@ a:hover {
 }
 
 .hero-question {
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1.25;
+  font-size: var(--type-hero-question-size);
+  font-weight: var(--type-hero-question-weight);
+  line-height: var(--type-hero-question-line);
   margin: 0 0 6px;
   color: var(--tp);
 }
 
 .hero-sub {
-  margin: 0 0 22px;
+  margin: 0 0 var(--type-hero-sub-margin-bottom);
   color: var(--ts);
-  font-size: 14px;
+  font-size: var(--type-hero-sub-size);
 }
 
 .entry-grid {
@@ -620,11 +630,23 @@ textarea::placeholder {
 }
 
 .step-label {
-  font-size: 10px;
-  letter-spacing: 0.12em;
+  font-size: var(--type-step-label-size);
+  letter-spacing: var(--type-step-label-track);
   text-transform: uppercase;
   color: var(--ts);
   margin-bottom: 8px;
+}
+
+/* Muted small copy (replaces repeated inline fontSize:12 + var(--ts)) */
+.ui-caption {
+  margin: 0;
+  font-size: var(--type-caption-sm);
+  color: var(--ts);
+  line-height: 1.45;
+}
+
+.ui-caption--xs {
+  font-size: var(--type-caption-xs);
 }
 
 .destiny-preview {

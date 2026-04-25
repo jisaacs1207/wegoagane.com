@@ -31,17 +31,37 @@
 - `/build/commit/:slug` retool -> `/draft-a-run/intent`
 - `/build/:destinyId` retool -> `/draft-a-run/intent`
 
+## Retool / restart (browser)
+
+- **Result pages** “retool” links send the player back to the flow’s intent or journey entry (see route lines above); they do not clear `sessionStorage` by themselves unless the target step’s `useEffect` removes stale destiny rows.
+- **Home** entry tiles clear the chosen flow’s `buildIntent`, depth/power-curve aux keys, `generatedDestiny`, and `destinyId` so a new ritual does not reuse the previous card.
+- **Stored destiny JSON** for the result page lives under `plan.generatedDestiny` / `death.generatedDestiny` / `lucky.generatedDestiny` (written via [`flowDestinyState`](../apps/web/src/lib/flowDestinyState.ts), aligned with [`SessionKeys`](../apps/web/src/lib/sessionKeys.ts)).
+
 ## SessionStorage keys (browser)
 
-| Key / prefix | Flow |
-|--------------|------|
-| `session.id` | Home + growth UI assignment |
-| `death.*` | Release spirit (`death.sessionId`, `death.destinyId`, `death.buildIntent`, `death.buildIntent.depth`, `death.buildIntent.powerCurve`, `death.detail.*`, …) |
-| `plan.*` | Draft a run (`plan.sessionId`, `plan.intent`, `plan.freeform`, `plan.destinyId`, `plan.buildIntent*`, `plan.seedDestinyId`, …) |
-| `lucky.*` | Lucky roll |
+Canonical string literals live in [`apps/web/src/lib/sessionKeys.ts`](../apps/web/src/lib/sessionKeys.ts) (`SessionKeys.home`, `SessionKeys.plan`, `SessionKeys.death`, `SessionKeys.lucky`). Values are stable wire names (not renamed) so existing sessions keep working.
+
+| Key | Purpose |
+|-----|---------|
+| `session.id` | `SessionKeys.home.sessionId` — growth assignment on home + share viewer bootstrap |
+| `plan.sessionId` | Recommend / growth session for draft-a-run |
+| `plan.intent` | Selected intent label (step 1) |
+| `plan.freeform` | Optional note (step 2) |
+| `plan.destinyId` | Latest destiny row id for this draft |
+| `plan.seedDestinyId` | Seed class/faction from a prior commit when re-drafting |
+| `plan.generatedDestiny` | JSON blob: `{ sessionId, destinyId, output }` for result page |
+| `plan.buildIntent` | JSON `BuildIntentSignals` |
+| `plan.buildIntent.depth` | `quick` \| `balanced` \| `dialed_in` |
+| `plan.buildIntent.powerCurve` | Optional power curve id |
+| `death.sessionId` | Release spirit recommend session |
+| `death.mood` / `death.nextSignal` | Mood + next-run signal labels |
+| `death.detail.zone` / `.cause` / `.level` / `.note` | Optional death context |
+| `death.destinyId` / `death.generatedDestiny` | Same pattern as plan |
+| `death.buildIntent` (+ `.depth`, `.powerCurve`) | Build journey for spirit release |
+| `lucky.sessionId` / `lucky.destinyId` / `lucky.generatedDestiny` / `lucky.buildIntent` (+ aux) | Lucky roll |
 | `wegoagane.memory.v1` | `localStorage` — recommend bias (see `memoryProfile.ts`) |
 
-Clearing rules: entry buttons on **Home** clear stale flow keys when starting a ritual; some intent steps clear downstream keys when restarting.
+Clearing rules: **Home** clears the flow being entered; **plan intent** clears build intent + destiny when picking a new intent; **death mood / next / detail** clear downstream keys per step comments in those components.
 
 ## API error → user copy (web)
 
@@ -49,13 +69,15 @@ Client throws `label:status:error` (e.g. `journey_commit:404:destiny_not_found`)
 
 | `error` | Typical HTTP | Flow |
 |---------|----------------|------|
-| `invalid_json` / `invalid_input` | 400 | Malformed or schema-failed body |
+| `invalid_json` / `invalid_input` | 400 | Malformed JSON or schema-failed body (`/v1/recommend`, `/v1/feedback`, `/v1/memorial`, `/v1/share`, …) |
+| `validation_failed` | 422 | Memorial output failed safety checks |
 | `destiny_not_found` | 404 | Journey commit — destiny/session mismatch |
-| `no_viable_build` / `no_eligible_archetypes` | 400 | Recommend — filters too tight |
+| `no_viable_build` / `no_eligible_archetypes` | 400 | Recommend — filters too tight (web: “Soften one filter” on journey steps) |
 | `recommend_internal_error` | 503 | Recommend — retry client-side (limited) |
 | `build_commit_not_found` | 404 | GET commit / memorial on bad slug |
+| `share_run_not_found` | 404 | Share poll GET by unknown `runId` |
 
 ## Validation runs completed
 
-- `apps/web`: `npm run lint` + `npm run test` + `npm run build`
+- `apps/web`: `npm run lint` + `npm run test` + `npm run build` + `npx playwright install chromium` + `npm run test:e2e` (CI runs E2E after build; [`playwright.config.ts`](../apps/web/playwright.config.ts) starts `vite preview` on port 4173)
 - `packages/api`: `npm run typecheck` + `npm test`
