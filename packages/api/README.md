@@ -156,6 +156,12 @@ Worker routes are configured in `wrangler.toml` for:
 - `wegoagane.com/api/*`
 - `www.wegoagane.com/api/*`
 
+## Testing (CI)
+
+`npm test` runs Node’s test runner on `src/**/*.test.ts` — route and handler coverage for recommend, journey commit, feedback, memorial, share, build bodies, growth auth, and related `invalid_json` / validation paths.
+
+Web flows, `SessionKeys`, and API `error` → UI copy: [../docs/route-qa-matrix.md](../docs/route-qa-matrix.md).
+
 ## Smoke + persistence checks
 
 ```bash

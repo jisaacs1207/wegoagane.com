@@ -32,9 +32,11 @@ This folder is the **canonical** design and build specification for wegoagane.co
 
 Each milestone should leave something **usable and tangible** (not a pile of blocked WIP). Cross-links between files use relative paths; original **“Section N”** references in prose still map to the same numbered headings inside these files.
 
-**CI:** GitHub Actions — **Handbook layout** (docs integrity) + **Web** (`apps/web` lint + build) + **API** (`packages/api` typecheck + migration-drift + **`npm test`**) on push/PR ([04-engineering-data-ops.md](04-engineering-data-ops.md) §17.4). If **`main`** is ruleset-protected, add required checks for **Web** and **API** by exact job name ([GitHub setup — Step 5](../github-setup.md#step-5-day-to-day-after-the-ruleset-exists)).
+**CI:** GitHub Actions — **Handbook layout** (docs integrity) + **Web** (`apps/web`: ESLint, Vitest, production build, Playwright Chromium + smoke E2E) + **API** (`packages/api`: typecheck, `npm test`, migration drift, local migrate apply, route check) on push/PR ([04-engineering-data-ops.md](04-engineering-data-ops.md) §17.4; source [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)). If **`main`** is ruleset-protected, required checks use the **exact job names** **Handbook layout**, **Web**, **API** ([GitHub setup — Step 5](../github-setup.md#step-5-day-to-day-after-the-ruleset-exists)) — the **Web** job name did not change when E2E was added (extra steps inside the same job).
 
 **GitHub (remote, rulesets, deploy prep):** [../github-setup.md](../github-setup.md) — includes **Step 4** using current **Rules → Rulesets** UI.
+
+**Route QA + session keys + error matrix:** [../route-qa-matrix.md](../route-qa-matrix.md).
 
 **Live site:** **https://wegoagane.com** — Cloudflare Pages from **`main`** ([deploy doc](../deploy-wegoagane-com.md): root **`apps/web`**, output **`dist`**, DNS + custom domains). In-app **M2** card/icon QA: **`/design/cards`**.
 

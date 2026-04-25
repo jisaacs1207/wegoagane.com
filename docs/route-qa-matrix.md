@@ -1,5 +1,7 @@
 # Route QA matrix
 
+**Doc index:** [Handbook hub](../handoff/README.md) · [STATUS / milestones](../handoff/STATUS.md) · [Root README](../README.md)
+
 ## Home entry routes
 
 - `/` -> `/release-spirit/mood`
@@ -30,6 +32,11 @@
 
 - `/build/commit/:slug` retool -> `/draft-a-run/intent`
 - `/build/:destinyId` retool -> `/draft-a-run/intent`
+
+## Ops UI (growth / feedback)
+
+- `/ops/feedback` — feedback triage (auth-gated in production)
+- `/ops/growth` — growth assignments (auth-gated in production)
 
 ## Retool / restart (browser)
 

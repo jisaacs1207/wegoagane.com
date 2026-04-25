@@ -72,7 +72,7 @@ This stack is genuinely operable by one person. Cloudflare's billing consolidate
 | Stage | When | CI should do |
 |--------|------|----------------|
 | **Now** | Docs-only repo | Assert `docs/handoff/` index + nine topic files + pointer/archive exist (see repo `.github/workflows/ci.yml`). |
-| **M1–M2** | Frontend added | `npm ci` + ESLint + TypeScript `tsc --noEmit` + unit tests (Vitest) on PRs. |
+| **M1–M2** | Frontend added | `npm ci` + ESLint + TypeScript `tsc --noEmit` + Vitest + production `vite build` + Playwright smoke E2E (see repo `.github/workflows/ci.yml` **Web** job). |
 | **M7+** | Workers package | `wrangler` dry-run or `tsc` for worker; optional integration tests behind a label or nightly if they’re slow. |
 | **Deploy** | Pages + Workers | Keep deploy as its own workflow or Cloudflare Git integration; **CI** answers “does it build and test?” — deploy answers “ship it.” |
 
