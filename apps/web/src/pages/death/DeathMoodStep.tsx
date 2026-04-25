@@ -14,7 +14,7 @@ const MOODS = [
 
 export function DeathMoodStep() {
   const navigate = useNavigate();
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(sessionStorage.getItem(SessionKeys.death.mood));
 
   useEffect(() => {
     sessionStorage.removeItem(SessionKeys.death.generatedDestiny);
@@ -23,7 +23,7 @@ export function DeathMoodStep() {
 
   return (
     <div className="card">
-      <p className="step-label">Release spirit · step 1 of 4</p>
+      <p className="step-label">Release spirit · optional mood-only view</p>
       <h1 className="hero-question">What was the tone of that death?</h1>
       <p className="hero-sub">Pick the mood so your next recommendation matches how you want to recover.</p>
       <div className="ritual-option-grid">
@@ -34,7 +34,7 @@ export function DeathMoodStep() {
             className={`ritual-option ${selected === m.id ? "ritual-option--on" : ""}`}
             onClick={() => {
               setSelected(m.id);
-              sessionStorage.setItem(SessionKeys.death.mood, m.label);
+              sessionStorage.setItem(SessionKeys.death.mood, m.id);
               sessionStorage.removeItem(SessionKeys.death.nextSignal);
               sessionStorage.removeItem(SessionKeys.death.detailZone);
               sessionStorage.removeItem(SessionKeys.death.detailCause);
@@ -59,7 +59,7 @@ export function DeathMoodStep() {
         <button type="button" className="btn-ghost" onClick={() => navigate("/")}>
           Back
         </button>
-        <button type="button" className="btn-primary" onClick={() => navigate("/release-spirit/next")}>
+        <button type="button" className="btn-primary" onClick={() => navigate("/release-spirit/next")} disabled={!selected}>
           Continue
         </button>
       </div>

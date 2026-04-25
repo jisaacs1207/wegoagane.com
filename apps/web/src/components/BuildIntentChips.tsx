@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { BuildIntentSignals } from "../lib/buildIntentTypes";
 import { AnalyticsEvent, trackEvent } from "../lib/analytics";
 import {
@@ -84,7 +84,7 @@ function readDepth(key: string): IntentDepth {
   } catch {
     /* ignore */
   }
-  return "balanced";
+  return "quick";
 }
 
 function writeDepth(key: string, depth: IntentDepth) {
@@ -108,13 +108,20 @@ export function BuildIntentChips({
 }: Props) {
   const [value, setValue] = useState<BuildIntentSignals>(() => readStorage(storageKey));
   const [depth, setDepth] = useState<IntentDepth>(() => readDepth(storageKey));
-  const [step, setStep] = useState<JourneyStep>("depth");
+  const [step, setStep] = useState<JourneyStep>(() => (readDepth(storageKey) === "quick" ? "review" : "depth"));
   const [vector, setVector] = useState<VectorKey>("survivability");
   const [selectedVectors, setSelectedVectors] = useState<VectorKey[]>([]);
   const [vectorCursor, setVectorCursor] = useState(0);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [corePreset, setCorePreset] = useState<CorePreset>("balanced");
   const [powerCurve, setPowerCurve] = useState<PowerCurveId | null>(() => readPowerCurve(storageKey));
+  const [pulseVector, setPulseVector] = useState<VectorKey | null>(null);
+
+  useEffect(() => {
+    if (!pulseVector) return;
+    const id = window.setTimeout(() => setPulseVector(null), 260);
+    return () => window.clearTimeout(id);
+  }, [pulseVector]);
 
   function persist(next: BuildIntentSignals) {
     try {
@@ -408,8 +415,8 @@ export function BuildIntentChips({
       /* ignore */
     }
     setValue({});
-    setDepth("balanced");
-    setStep("depth");
+    setDepth("quick");
+    setStep("review");
     setVector("survivability");
     setSelectedVectors([]);
     setVectorCursor(0);
@@ -421,15 +428,15 @@ export function BuildIntentChips({
   return (
     <div className="build-intent card" style={{ marginTop: 12 }}>
       <p className="step-label" style={{ marginBottom: 8 }}>
-        Build journey
+        Build setup
       </p>
       <div className="flow-nav" style={{ marginTop: -4, marginBottom: 8 }}>
         <button type="button" className="btn-ghost" onClick={resetJourneyFilters}>
-          Start fresh filters
+          Reset setup
         </button>
       </div>
       <p className="ui-caption" style={{ marginTop: 0, marginBottom: 10 }}>
-        Choose depth, pick one priority vector, answer two quick questions, then generate.
+        Fast path is ready now. Generate instantly, or tune with guided questions first.
       </p>
       <p className="ui-caption" style={{ marginTop: 0, marginBottom: 12 }}>
         Step {step === "depth" ? "1" : step === "vector" ? "2" : step === "question" ? "3" : "4"} of 4
@@ -465,9 +472,9 @@ export function BuildIntentChips({
             </legend>
             <div className="chip-row">
               {[
-                { id: "safe" as CorePreset, label: "Safe route" },
-                { id: "balanced" as CorePreset, label: "Balanced route" },
-                { id: "bold" as CorePreset, label: "Spicy route" },
+                { id: "safe" as CorePreset, label: "Safety first" },
+                { id: "balanced" as CorePreset, label: "Balanced" },
+                { id: "bold" as CorePreset, label: "Push pace" },
               ].map((o) => (
                 <button
                   key={o.id}
@@ -519,11 +526,11 @@ export function BuildIntentChips({
           <div className="flow-nav">
             {depth === "quick" ? (
               <button type="button" className="btn-primary" onClick={() => setStep("review")}>
-                Review filters
+                Review and generate
               </button>
             ) : (
               <button type="button" className="btn-primary" onClick={() => setStep("vector")}>
-                Choose priority
+                Pick priority
               </button>
             )}
           </div>
@@ -544,10 +551,11 @@ export function BuildIntentChips({
               <button
                 key={row.id}
                 type="button"
-                className={`journey-vector-tile ${(selectedVectors.includes(row.id) || vector === row.id) ? "journey-vector-tile--on" : ""}`}
+                className={`journey-vector-tile ${(selectedVectors.includes(row.id) || vector === row.id) ? "journey-vector-tile--on" : ""} ${pulseVector === row.id ? "journey-vector-tile--pulse" : ""}`}
                 aria-pressed={selectedVectors.includes(row.id) || vector === row.id}
                 onClick={() => {
                   setVector(row.id);
+                  setPulseVector(row.id);
                   setSelectedVectors((prev) => {
                     if (prev.includes(row.id)) return prev.filter((v) => v !== row.id);
                     if (prev.length >= 3) return [...prev.slice(1), row.id];
@@ -587,7 +595,7 @@ export function BuildIntentChips({
                 setStep("question");
               }}
             >
-              Refine priorities
+              Continue
             </button>
           </div>
         </>
@@ -637,16 +645,45 @@ export function BuildIntentChips({
                 setStep("vector");
               }}
             >
-              Add another priority
+              Pick different priority
             </button>
             <button type="button" className="btn-primary" onClick={() => setStep("review")}>
-              Skip to review
+              Review and generate
             </button>
           </div>
         </>
       ) : null}
       {step === "review" ? (
         <>
+          <div className="flow-nav flow-nav--wrap" style={{ marginBottom: 12 }}>
+            <button type="button" className="btn-ghost" onClick={() => setStep("depth")}>
+              Open guided tuning
+            </button>
+            <button
+              type="button"
+              className={`btn-ghost ${depth === "quick" ? "chip-btn--on" : ""}`}
+              aria-pressed={depth === "quick"}
+              onClick={() => persistDepth("quick")}
+            >
+              Quick mode
+            </button>
+            <button
+              type="button"
+              className={`btn-ghost ${depth === "balanced" ? "chip-btn--on" : ""}`}
+              aria-pressed={depth === "balanced"}
+              onClick={() => persistDepth("balanced")}
+            >
+              Balanced mode
+            </button>
+            <button
+              type="button"
+              className={`btn-ghost ${depth === "dialed_in" ? "chip-btn--on" : ""}`}
+              aria-pressed={depth === "dialed_in"}
+              onClick={() => persistDepth("dialed_in")}
+            >
+              Dialed-in mode
+            </button>
+          </div>
           {experimentalOffer !== "none" ? (
             <fieldset style={{ border: "none", padding: 0, margin: "0 0 14px 0" }}>
               <legend className="step-label" style={{ marginBottom: 6 }}>
@@ -667,7 +704,7 @@ export function BuildIntentChips({
                     trackEvent(AnalyticsEvent.ExperimentalLaneChosen, { lane: "curated", storageKey });
                   }}
                 >
-                  Curated deck
+                  Curated baseline
                 </button>
                 <button
                   type="button"
@@ -678,7 +715,7 @@ export function BuildIntentChips({
                     trackEvent(AnalyticsEvent.ExperimentalLaneChosen, { lane: "experimental", storageKey });
                   }}
                 >
-                  Experimental AI lane
+                  AI candidate
                 </button>
               </div>
             </fieldset>
@@ -686,7 +723,7 @@ export function BuildIntentChips({
           {activeIds.length ? (
             <div style={{ marginBottom: 12 }}>
               <p className="step-label" style={{ marginBottom: 6 }}>
-                Selected filters for this run
+                Active filters
               </p>
               <div className="chip-row" role="group" aria-label="Active filters, click to remove">
                 {activeIds.map((id) => (
@@ -755,7 +792,7 @@ export function BuildIntentChips({
           ) : null}
           <div className="flow-nav">
             <button type="button" className="btn-ghost" onClick={() => setStep(depth === "quick" ? "depth" : "question")}>
-              Back
+              Back to tuning
             </button>
             <button
               type="button"
@@ -766,7 +803,7 @@ export function BuildIntentChips({
                 onGenerate(value, depth);
               }}
             >
-              {isGenerating ? "Generating..." : hasGenerated ? "Regenerate with these filters" : "Generate my card"}
+              {isGenerating ? "Generating..." : hasGenerated ? "Regenerate build" : "Generate build"}
             </button>
           </div>
           {hasGenerated ? (

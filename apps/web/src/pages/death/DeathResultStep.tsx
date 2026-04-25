@@ -34,12 +34,12 @@ function buildDeathContextFreeform() {
 
 function deriveSignalBias(mood?: string, nextSignal?: string) {
   const base: Record<string, unknown> = {};
-  if (mood === "Bullshit death" || mood === "First time") base.statPhilosophy = ["stamina_forward", "balanced"];
-  if (mood === "Long time coming") base.buildVectors = ["hybrid", "group_ok"];
-  if (nextSignal === "Safer") base.buildVectors = [...((base.buildVectors as string[] | undefined) ?? []), "tank", "solo"];
-  if (nextSignal === "Faster") base.statPhilosophy = ["agility_forward", ...((base.statPhilosophy as string[] | undefined) ?? [])];
-  if (nextSignal === "Different" || nextSignal === "Different playstyle") base.raceMode = "surprise";
-  if (nextSignal === "No pet class" || nextSignal === "No pet classes")
+  if (mood === "bullshit" || mood === "first_time") base.statPhilosophy = ["stamina_forward", "balanced"];
+  if (mood === "long_time_coming") base.buildVectors = ["hybrid", "group_ok"];
+  if (nextSignal === "safer") base.buildVectors = [...((base.buildVectors as string[] | undefined) ?? []), "tank", "solo"];
+  if (nextSignal === "faster") base.statPhilosophy = ["agility_forward", ...((base.statPhilosophy as string[] | undefined) ?? [])];
+  if (nextSignal === "different") base.raceMode = "surprise";
+  if (nextSignal === "no_pet")
     base.buildVectors = [...((base.buildVectors as string[] | undefined) ?? []), "melee"];
   return base;
 }
@@ -258,7 +258,7 @@ export function DeathResultStep() {
       });
       setCardIntentSignals(intentSnapshot);
       if (reroll.filterRelaxedForAi) setShowRelaxBanner(true);
-      setShowExperimentalBanner(Boolean(reroll.experimentalLane));
+      setShowExperimentalBanner(Boolean(reroll.experimentalLane || reroll.experimentalCandidate));
       setNote("");
     } catch (e) {
       setActionMessage(flowApiErrorHint(e));
@@ -288,7 +288,7 @@ export function DeathResultStep() {
         classId: destiny.classId,
         memoryConfidence: buildMemoryHints().confidence ?? 0,
       });
-      sessionStorage.setItem("last.acceptedClassId", destiny.classId);
+      sessionStorage.setItem(SessionKeys.home.lastAcceptedClassId, destiny.classId);
       setActionMessage("Accepted. Opening share preview...");
       setNote("");
       navigate(`/share/${share.runId}`);
@@ -334,7 +334,7 @@ export function DeathResultStep() {
           </p>
           <div className="flow-nav" style={{ marginTop: 12 }}>
             <Link to="/release-spirit/journey" className="btn-primary">
-              Go to journey
+              Open setup
             </Link>
             <Link to="/" className="btn-ghost">
               Home
@@ -396,7 +396,7 @@ export function DeathResultStep() {
                     disabled={isSubmitting || !destinyId}
                     onClick={() => void acceptAndOpenPostRating()}
                   >
-                    Keep this result
+                    Accept result
                   </button>
                   <button
                     type="button"
@@ -404,7 +404,7 @@ export function DeathResultStep() {
                     disabled={isSubmitting || !destinyId}
                     onClick={() => navigate("/reroll/death")}
                   >
-                    Reroll and tell us why
+                    Reroll with feedback
                   </button>
                 </div>
                 {actionMessage ? (
@@ -509,13 +509,13 @@ export function DeathResultStep() {
                 </div>
                 <div className="flow-nav flow-nav--wrap" style={{ marginTop: 8 }}>
                   <button type="button" className={`btn-ghost ${nameMode === "reflective" ? "chip-btn--on" : ""}`} onClick={() => setNameMode("reflective")}>
-                    Reflect choices
+                    Match this build
                   </button>
                   <button type="button" className={`btn-ghost ${nameMode === "high_variance" ? "chip-btn--on" : ""}`} onClick={() => setNameMode("high_variance")}>
-                    More unique
+                    Higher variance
                   </button>
                   <button type="button" className={`btn-ghost ${nameMode === "humor" ? "chip-btn--on" : ""}`} onClick={() => setNameMode("humor")}>
-                    Humor
+                    Light humor
                   </button>
                 </div>
                 <label className="ui-caption" style={{ display: "block", marginTop: 8 }}>
@@ -536,7 +536,7 @@ export function DeathResultStep() {
                     disabled={isLoadingNames || !sessionId}
                     onClick={() => void generateMoreNames(false)}
                   >
-                    {isLoadingNames ? "Loading..." : "Generate more names"}
+                    {isLoadingNames ? "Loading..." : "New name set"}
                   </button>
                   <button
                     type="button"
@@ -544,17 +544,17 @@ export function DeathResultStep() {
                     disabled={isLoadingNames || !sessionId}
                     onClick={() => void generateMoreNames(true)}
                   >
-                    Reroll names
+                    Shuffle names
                   </button>
                   <button type="button" className="btn-primary" disabled={isSubmitting} onClick={() => void commitBuild()}>
-                    Create build link
+                    Save build URL
                   </button>
                 </div>
               </div>
 
               <div className="flow-nav flow-nav--wrap" style={{ marginTop: 12 }}>
                 <Link to="/release-spirit/mood" className="btn-ghost">
-                  Adjust journey
+                  Edit setup
                 </Link>
                 <Link to="/" className="btn-ghost" style={{ display: "inline-flex", alignItems: "center" }}>
                   Home

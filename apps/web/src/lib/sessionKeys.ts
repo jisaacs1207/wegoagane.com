@@ -2,6 +2,7 @@
 export const SessionKeys = {
   home: {
     sessionId: "session.id",
+    lastAcceptedClassId: "last.acceptedClassId",
   },
   plan: {
     sessionId: "plan.sessionId",
