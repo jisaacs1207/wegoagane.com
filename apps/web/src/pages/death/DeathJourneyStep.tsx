@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { BuildIntentChips } from "../../components/BuildIntentChips";
 import type { BuildIntentSignals } from "../../lib/buildIntentTypes";
 import { softenBuildIntentOneSlot } from "../../lib/buildIntentRecover";
@@ -179,6 +179,17 @@ export function DeathJourneyStep() {
 
   return (
     <div>
+      <div className="flow-crumbs" aria-label="Flow navigation">
+        <span className="flow-crumb">
+          <Link to="/">Home</Link>
+        </span>
+        <span className="flow-crumb">/</span>
+        <span className="flow-crumb">
+          <Link to="/release-spirit/next">Death setup</Link>
+        </span>
+        <span className="flow-crumb">/</span>
+        <span className="flow-crumb">Filters and generate</span>
+      </div>
       <p className="step-label" style={{ marginBottom: 8 }}>
         Release spirit · step 2 of 2
       </p>

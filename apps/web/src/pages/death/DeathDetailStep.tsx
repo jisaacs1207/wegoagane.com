@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { SessionKeys } from "../../lib/sessionKeys";
 
@@ -11,6 +11,17 @@ export function DeathDetailStep() {
 
   return (
     <div className="card">
+      <div className="flow-crumbs" aria-label="Flow navigation">
+        <span className="flow-crumb">
+          <Link to="/">Home</Link>
+        </span>
+        <span className="flow-crumb">/</span>
+        <span className="flow-crumb">
+          <Link to="/release-spirit/next">Death setup</Link>
+        </span>
+        <span className="flow-crumb">/</span>
+        <span className="flow-crumb">Optional details</span>
+      </div>
       <p className="step-label">Release spirit · optional details</p>
       <h1 className="hero-question">Add optional context</h1>
       <p className="hero-sub">Add quick details from the death to fine-tune your next recommendation.</p>
@@ -73,7 +84,7 @@ export function DeathDetailStep() {
           Back
         </button>
         <button type="button" className="btn-primary" onClick={() => navigate("/release-spirit/journey")}>
-          Continue
+          Generate build
         </button>
       </div>
     </div>

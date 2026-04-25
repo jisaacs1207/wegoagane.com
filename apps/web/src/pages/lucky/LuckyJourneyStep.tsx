@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { BuildIntentChips } from "../../components/BuildIntentChips";
 import { IdentityPortrait } from "../../components/IdentityPortrait";
 import { wowPackUrl } from "../../content/identityAssets";
@@ -17,23 +17,41 @@ import {
 import { debugClientIgnored } from "../../lib/clientDebug";
 import { SessionKeys } from "../../lib/sessionKeys";
 import { buildMemoryHints } from "../../lib/memoryProfile";
+import { readBuildIntent } from "../../lib/readBuildIntent";
 import { writeStoredDestiny } from "../../lib/flowDestinyState";
 import { experimentalCohortHit } from "../../lib/experimentalLaneOffer";
 import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 
 export function LuckyJourneyStep() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState("");
   const [lastRecommendErr, setLastRecommendErr] = useState<unknown>(null);
   const [chipNonce, setChipNonce] = useState(0);
   const [experimentalOffer, setExperimentalOffer] = useState<"none" | "cohort" | "forced">("none");
   const [recommendLane, setRecommendLane] = useState<"curated" | "experimental" | null>(null);
+  const [quickAutoTriggered, setQuickAutoTriggered] = useState(false);
 
   useEffect(() => {
     sessionStorage.removeItem(SessionKeys.lucky.generatedDestiny);
     sessionStorage.removeItem(SessionKeys.lucky.destinyId);
   }, []);
+
+  useEffect(() => {
+    if (quickAutoTriggered || isGenerating) return;
+    if (searchParams.get("quick") !== "1") return;
+    const seeded = readBuildIntent(SessionKeys.lucky.buildIntent);
+    if (
+      (seeded.statPhilosophy?.length ?? 0) === 0 &&
+      (seeded.professionIntents?.length ?? 0) === 0 &&
+      (seeded.buildVectors?.length ?? 0) === 0
+    ) {
+      return;
+    }
+    setQuickAutoTriggered(true);
+    void onGenerate(seeded);
+  }, [searchParams, quickAutoTriggered, isGenerating]);
 
   useEffect(() => {
     try {
@@ -158,6 +176,13 @@ export function LuckyJourneyStep() {
 
   return (
     <div>
+      <div className="flow-crumbs" aria-label="Flow navigation">
+        <span className="flow-crumb">
+          <Link to="/">Home</Link>
+        </span>
+        <span className="flow-crumb">/</span>
+        <span className="flow-crumb">Quick build setup</span>
+      </div>
       <div className="card" style={{ marginBottom: 12 }}>
         <p className="step-label">Lucky roll</p>
         <h1 className="hero-question">Set your run priorities</h1>

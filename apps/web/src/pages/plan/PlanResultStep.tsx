@@ -392,12 +392,13 @@ export function PlanResultStep() {
             </div>
           ) : null}
           <div className="card" style={{ marginTop: 12 }}>
-            <p className="ui-caption">Name this build before commit</p>
+            <p className="ui-caption">Character name (optional, used on memorial only)</p>
             <input
               value={commitName}
               onChange={(event) => setCommitName(event.target.value)}
               maxLength={80}
-              placeholder="Custom build name"
+              placeholder="e.g. Stonkee"
+              aria-label="Character name (optional, used on memorial only)"
               style={{ marginTop: 8, width: "100%" }}
             />
             {nameSuggestions.length > 0 ? (

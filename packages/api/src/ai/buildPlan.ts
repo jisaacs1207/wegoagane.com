@@ -94,7 +94,8 @@ function buildGeneratorPrompt(
     "You are an expert on World of Warcraft Classic ERA HARDCORE (permanent death).",
     `Ruleset pin: ${rulesetPin}. Prefer accurate Classic Era talent NAMES and real profession pairings. If unsure, say so in warnings[].`,
     "Return ONE JSON object only matching this shape:",
-    '{"v":1,"meta":{"publishTier":"draft","rulesetPin":"...","classId":"...","archetypeKey":"..."},"viabilityNotes":[],"warnings":[],"talents":{"summary":"...","keyPicks":[{"tier":"...","name":"talent name","rationale":"...","alternatives":[]}]},"professions":{"primary":"...","secondary":"...","rationale":"...","secondarySkills":{"firstAid":"...","cooking":"...","fishing":"..."}},"stats":{"priority":["stamina","..."],"rationale":"..."},"race":{"suggestion":"...","rationale":"...","alternatives":[]},"identity":{"raceSuggestion":"...","factionSuggestion":"horde|alliance|neutral","genderLean":"masculine|feminine|neutral","buildFantasy":"...","archetypeSummary":"..."},"namesByLane":{"lore_world":["NameOne"],"hc_practical":[],"light_humor":[],"grimdark":[],"neutral":[],"pop_culture":[]},"forks":[{"title":"...","optionA":"...","optionB":"...","why":"..."}]}',
+    '{"v":1,"meta":{"publishTier":"draft","rulesetPin":"...","classId":"...","archetypeKey":"..."},"viabilityNotes":[],"warnings":[],"talents":{"summary":"...","keyPicks":[{"tier":"...","name":"talent name","rationale":"...","alternatives":[]}]},"professions":{"primary":"...","secondary":"...","rationale":"...","secondarySkills":{"firstAid":"...","cooking":"...","fishing":"..."}},"stats":{"priority":["stamina","..."],"rationale":"..."},"race":{"suggestion":"...","rationale":"...","alternatives":[]},"identity":{"raceSuggestion":"...","factionSuggestion":"horde|alliance|neutral","genderLean":"masculine|feminine|neutral","buildFantasy":"...","archetypeSummary":"..."},"signature":{"tree":{"branch":"Holy|Protection|Retribution|Arms|Fury|...","weight":0.0},"strengths":["..."],"weaknesses":["..."],"whyDistinct":"...","keyItems":[{"name":"...","slot":"weapon|chest|trinket|...","rationale":"..."}]},"namesByLane":{"lore_world":["NameOne"],"hc_practical":[],"light_humor":[],"grimdark":[],"neutral":[],"pop_culture":[]},"forks":[{"title":"...","optionA":"...","optionB":"...","why":"..."}]}',
+    "signature: REQUIRED for hardcore differentiation. tree.branch is the dominant talent tree by point spend; tree.weight is 0..1 share of points in that branch. strengths/weaknesses 3-5 short HC-specific bullets each (e.g. 'low downtime between pulls', 'weak vs casters'). whyDistinct: 1-2 sentences on what separates this build from a generic same-class run. keyItems 4-6 leveling-tier upgrades with slot.",
     "namesByLane: each array 4-8 names; WoW rules: ASCII letters only, length 2-12 each, no spaces or punctuation. Include pop_culture lane with clever original blends (no trademark strings).",
     "forks: 2-3 entries for major build decisions.",
     `Player signals JSON: ${JSON.stringify(input.signals)}`,
@@ -225,6 +226,38 @@ function normalizeBuildPlanCandidate(input: unknown): unknown {
     r.generatorJson = clampText(r.generatorJson, 50000);
     r.reviewerJson = clampText(r.reviewerJson, 50000);
     out.aiRaw = r;
+  }
+
+  if (out.signature && typeof out.signature === "object") {
+    const sig = { ...(out.signature as Record<string, unknown>) };
+    if (sig.tree && typeof sig.tree === "object") {
+      const t = { ...(sig.tree as Record<string, unknown>) };
+      t.branch = clampText(t.branch, 40);
+      const w = typeof t.weight === "number" ? t.weight : Number(t.weight);
+      t.weight = Number.isFinite(w) ? Math.max(0, Math.min(1, w)) : 0;
+      sig.tree = t;
+    }
+    if (Array.isArray(sig.strengths)) {
+      sig.strengths = sig.strengths.slice(0, 5).map((s) => clampText(s, 120)).filter(Boolean);
+    }
+    if (Array.isArray(sig.weaknesses)) {
+      sig.weaknesses = sig.weaknesses.slice(0, 5).map((s) => clampText(s, 120)).filter(Boolean);
+    }
+    if (typeof sig.whyDistinct === "string") sig.whyDistinct = clampText(sig.whyDistinct, 300);
+    if (Array.isArray(sig.keyItems)) {
+      sig.keyItems = sig.keyItems
+        .slice(0, 8)
+        .map((row) => {
+          if (!row || typeof row !== "object") return null;
+          const r = { ...(row as Record<string, unknown>) };
+          r.name = clampText(r.name, 80);
+          r.slot = r.slot ? clampText(r.slot, 40) : undefined;
+          r.rationale = r.rationale ? clampText(r.rationale, 200) : undefined;
+          return r.name ? r : null;
+        })
+        .filter((row): row is Record<string, unknown> => Boolean(row));
+    }
+    out.signature = sig;
   }
 
   return out;

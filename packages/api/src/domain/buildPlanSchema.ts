@@ -77,6 +77,29 @@ export const buildPlanPayloadSchema = z.object({
       archetypeSummary: z.string().max(500).optional(),
     })
     .optional(),
+  signature: z
+    .object({
+      tree: z
+        .object({
+          branch: z.string().max(40),
+          weight: z.number().min(0).max(1),
+        })
+        .optional(),
+      strengths: z.array(z.string().max(120)).max(5).optional(),
+      weaknesses: z.array(z.string().max(120)).max(5).optional(),
+      whyDistinct: z.string().max(300).optional(),
+      keyItems: z
+        .array(
+          z.object({
+            name: z.string().max(80),
+            slot: z.string().max(40).optional(),
+            rationale: z.string().max(200).optional(),
+          }),
+        )
+        .max(8)
+        .optional(),
+    })
+    .optional(),
   namesByLane: namesByLaneSchema,
   forks: z.array(forkSchema).max(6),
   /** Raw AI outputs retained for deeper debugging and downstream features. */

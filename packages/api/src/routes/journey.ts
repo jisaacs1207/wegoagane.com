@@ -237,6 +237,12 @@ journeyRouter.post("/commit", async (c) => {
     plan: planPayload,
     buildPlanId: plan?.id ?? null,
   };
+  // Card headline now comes from the AI-generated destiny so the artifact has a single canonical name.
+  // commitName is retained as an optional player annotation (used for memorials), not the artifact title.
+  const destinyHeadline =
+    typeof (destinyPayload as { headline?: unknown } | null)?.headline === "string"
+      ? ((destinyPayload as { headline: string }).headline ?? "Committed build")
+      : "Committed build";
   await db.insert(buildCommits).values({
     id,
     slug,
@@ -245,7 +251,7 @@ journeyRouter.post("/commit", async (c) => {
     buildPlanId: plan?.id ?? null,
     commitName: commitName ?? null,
     payloadJson: JSON.stringify(payload),
-    cardJson: JSON.stringify({ headline: commitName ?? "Committed build", destinyId }),
+    cardJson: JSON.stringify({ headline: destinyHeadline, destinyId }),
     sourceType: "hybrid",
     createdAt: now,
     updatedAt: now,

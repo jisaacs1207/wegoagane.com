@@ -143,6 +143,13 @@ export function RerollTriagePage() {
   if (!stored) {
     return (
       <div className="card">
+        <div className="flow-crumbs" aria-label="Flow navigation">
+          <span className="flow-crumb">
+            <Link to="/">Home</Link>
+          </span>
+          <span className="flow-crumb">/</span>
+          <span className="flow-crumb">Reroll triage</span>
+        </div>
         <p className="step-label">Reroll triage</p>
         <h1 className="hero-question">No active result</h1>
         <p className="hero-sub">Generate a card first, then reroll from result.</p>
@@ -155,6 +162,13 @@ export function RerollTriagePage() {
 
   return (
     <div className="card">
+      <div className="flow-crumbs" aria-label="Flow navigation">
+        <span className="flow-crumb">
+          <Link to="/">Home</Link>
+        </span>
+        <span className="flow-crumb">/</span>
+        <span className="flow-crumb">Reroll triage</span>
+      </div>
       <p className="step-label">Reroll triage</p>
       <h1 className="hero-question">What felt off?</h1>
       <p className="hero-sub">Pick one: rework this result, or start over. Your note helps tune future picks.</p>
