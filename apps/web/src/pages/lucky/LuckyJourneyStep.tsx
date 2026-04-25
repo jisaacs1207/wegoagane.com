@@ -5,7 +5,7 @@ import { IdentityPortrait } from "../../components/IdentityPortrait";
 import { wowPackUrl } from "../../content/identityAssets";
 import type { BuildIntentSignals } from "../../lib/buildIntentTypes";
 import { augmentNextSignalWithPower } from "../../lib/journeySignalsExtras";
-import { fetchDestiny, fetchGrowthAssignment, submitGrowthOutcome } from "../../lib/recommendClient";
+import { destinyRecommendErrorHint, fetchDestiny, fetchGrowthAssignment, submitGrowthOutcome } from "../../lib/recommendClient";
 import { buildMemoryHints } from "../../lib/memoryProfile";
 import { writeStoredDestiny } from "../../lib/flowDestinyState";
 
@@ -57,12 +57,7 @@ export function LuckyJourneyStep() {
       }
       navigate("/lucky-roll/result");
     } catch (error) {
-      const msg = error instanceof Error ? error.message : "";
-      if (msg.includes("recommend_failed:400")) {
-        setError("Generation failed due to invalid input. Reset path choices and try again.");
-      } else {
-        setError("Generation failed. Adjust your path or try again.");
-      }
+      setError(destinyRecommendErrorHint(error));
     } finally {
       setIsGenerating(false);
     }

@@ -223,6 +223,41 @@ function destinyResultFromJson(data: RecommendResponse): DestinyResult {
   };
 }
 
+async function readRecommendError(response: Response): Promise<{ error?: string }> {
+  try {
+    return (await response.json()) as { error?: string };
+  } catch {
+    return {};
+  }
+}
+
+/** Maps `fetchDestiny` errors (e.g. `recommend_failed:400:no_viable_build`) to UI copy. */
+export function destinyRecommendErrorHint(err: unknown): string {
+  const message = err instanceof Error ? err.message : "";
+  if (message.includes("recommend_failed:400:invalid_input")) {
+    return "Generation failed due to invalid input. Adjust filters or optional notes and try again.";
+  }
+  if (message.includes("recommend_failed:422:validation_failed")) {
+    return "Generation failed an output safety check. Try again with slightly different filters.";
+  }
+  if (message.includes("recommend_failed:400:no_viable_build")) {
+    return "No build matched all of those filters together. Remove a chip or loosen one constraint, then try again.";
+  }
+  if (message.includes("recommend_failed:400:no_eligible_archetypes")) {
+    return "Those filters removed every eligible archetype. Relax a constraint and try again.";
+  }
+  if (message.includes("recommend_failed:400:no_ranked_candidate")) {
+    return "Could not pick a winner from the filtered set. Broaden filters and try again.";
+  }
+  if (message.includes("recommend_failed:503")) {
+    return "The recommender is briefly unavailable. Try again in a moment.";
+  }
+  if (message.startsWith("recommend_failed:")) {
+    return "Generation failed. Adjust your path or try again.";
+  }
+  return "Generation failed. Adjust your path or try again.";
+}
+
 export async function fetchDestiny(input: RecommendRequest): Promise<DestinyResult> {
   const post = (body: RecommendRequest) =>
     fetch("/api/v1/recommend", {
@@ -234,22 +269,21 @@ export async function fetchDestiny(input: RecommendRequest): Promise<DestinyResu
   let response = await post(input);
 
   if (!response.ok && response.status === 400) {
-    let errBody: { error?: string } = {};
-    try {
-      errBody = (await response.json()) as { error?: string };
-    } catch {
-      throw new Error(`recommend_failed:${response.status}`);
-    }
-    if (errBody.error === "invalid_input") {
+    const errFirst = await readRecommendError(response);
+    if (errFirst.error === "invalid_input") {
       clearMemoryProfile();
       response = await post({
         ...input,
         signals: { ...input.signals, memoryHints: buildMemoryHints() },
       });
+    } else {
+      throw new Error(`recommend_failed:400:${errFirst.error ?? "unknown"}`);
     }
   }
 
   if (!response.ok) {
+    const err = await readRecommendError(response);
+    if (err.error) throw new Error(`recommend_failed:${response.status}:${err.error}`);
     throw new Error(`recommend_failed:${response.status}`);
   }
 
