@@ -4,9 +4,9 @@
 
 ## Home entry routes
 
-- `/` -> `/release-spirit/next`
-- `/` -> `/draft-a-run/intent`
-- `/` -> `/lucky-roll/journey`
+- `/` -> `/lucky-roll/journey?quick=1` (Quick build)
+- `/` -> `/draft-a-run/intent` (Detailed build)
+- `/` -> `/release-spirit/next` (I died – recover from death)
 
 ## Release spirit
 

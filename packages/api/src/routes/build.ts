@@ -3,7 +3,7 @@ import { type Context, Hono } from "hono";
 import { z } from "zod";
 import { captureServerEvent } from "../analytics/posthog";
 import { AnalyticsEvent } from "../analytics/events";
-import { callAiGateway, extractJsonPayload, getAiGateStatus } from "../ai/adapter";
+import { callAiGateway, extractJsonPayload, getAiGateStatus, WOW_HC_JSON_GUARDS } from "../ai/adapter";
 import { runBuildPlanGeneration, loadDestinyRow } from "../ai/buildPlan";
 import { getDb, type ApiEnv } from "../db/client";
 import { buildPlans } from "../db/schema";
@@ -313,9 +313,10 @@ export async function handlePostGenerateNames(c: Context<ApiEnv>) {
   }
 
   const prompt = [
+    ...WOW_HC_JSON_GUARDS,
     "Return JSON with a single key `names` containing an array of character names.",
     "Rules: ASCII letters only, 2-12 chars, no spaces, no punctuation, no numbers.",
-    "Use World of Warcraft Classic-style fantasy naming; avoid exact known lore hero names.",
+    "Use World of Warcraft Classic ERA HARDCORE-appropriate fantasy naming; avoid exact known lore hero names.",
     "Names should be original and practical for availability.",
     `Requested style lane: ${data.style ?? "neutral"}.`,
     `Mode: ${mode}.`,
@@ -329,19 +330,20 @@ export async function handlePostGenerateNames(c: Context<ApiEnv>) {
       : "Keep names immersive and setting-coherent.",
   ].join("\n");
 
-  const ai = await callAiGateway(c.env, c.env.AI_MODEL_DESTINY ?? "openrouter/auto", prompt, 10000);
+  const ai = await callAiGateway(c.env, c.env.AI_MODEL_DESTINY ?? "openrouter/auto", prompt, 12_000, 2048);
   if (!ai.ok) {
     const fallbackBase = fallbackGeneratedNames(seed, count);
     const fallback = mode === "high_variance" ? Array.from(new Set(fallbackBase.flatMap((n) => makeHighVariance(n)))).slice(0, count) : fallbackBase;
     return c.json({ names: fallback.map((name) => ({ lane: data.style ?? "neutral", genderLean: null, name })), aiUsed: false });
   }
-  let parsedAi: { names?: string[] } = {};
+  let parsedAi: { names?: unknown } = {};
   try {
-    parsedAi = JSON.parse(extractJsonPayload(ai.content)) as { names?: string[] };
+    parsedAi = JSON.parse(extractJsonPayload(ai.content)) as { names?: unknown };
   } catch {
     parsedAi = {};
   }
-  const aiRaw = filterValidNames((parsedAi.names ?? []).map((n) => titleCase(n.trim())));
+  const rawList = Array.isArray(parsedAi.names) ? parsedAi.names : [];
+  const aiRaw = filterValidNames(rawList.map((n) => titleCase(String(n).trim())));
   const withVariance = mode === "high_variance" ? Array.from(new Set(aiRaw.flatMap((n) => makeHighVariance(n)))) : aiRaw;
   const unique = Array.from(new Set(withVariance));
   const names = unique.slice(0, count);

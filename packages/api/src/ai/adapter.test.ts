@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { ApiEnv } from "../db/client";
 import type { DestinyOutput } from "../domain/types";
-import { enrichDestiny, extractJsonPayload, isTruthyEnv } from "./adapter";
+import { AI_RESPONSE_MAX_CHARS, enrichDestiny, extractBalancedJsonObject, extractJsonPayload, isTruthyEnv } from "./adapter";
 
 test("extractJsonPayload strips markdown fences", () => {
   const raw = '```json\n{"a":1}\n```';
@@ -16,6 +16,27 @@ test("extractJsonPayload keeps bare JSON", () => {
 test("extractJsonPayload handles prose before a fence", () => {
   const raw = 'Sure.\n```json\n{"a":2}\n```\n';
   assert.equal(extractJsonPayload(raw), '{"a":2}');
+});
+
+test("extractBalancedJsonObject returns first complete object when nested", () => {
+  const raw = 'noise {"outer":{"inner":1},"tail":2} trailing';
+  assert.equal(extractBalancedJsonObject(raw), '{"outer":{"inner":1},"tail":2}');
+});
+
+test("extractBalancedJsonObject ignores braces inside JSON strings", () => {
+  const raw = '{"k":"a}b{c"}';
+  assert.equal(extractBalancedJsonObject(raw), '{"k":"a}b{c"}');
+});
+
+test("extractJsonPayload prefers balanced slice when trailing junk exists", () => {
+  const raw = '{"ok":true} and here is more } prose';
+  assert.equal(extractJsonPayload(raw), '{"ok":true}');
+});
+
+test("extractJsonPayload still parses small JSON after huge prefix within cap", () => {
+  const pad = " ".repeat(Math.min(5000, AI_RESPONSE_MAX_CHARS - 50));
+  const raw = `${pad}{"z":3}`;
+  assert.equal(JSON.parse(extractJsonPayload(raw)).z, 3);
 });
 
 test("isTruthyEnv accepts common Cloudflare / dashboard shapes", () => {

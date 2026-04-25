@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { BuildIntentChips } from "../../components/BuildIntentChips";
+import type { IntentDepth } from "../../components/intent/intentOptions";
 import { IdentityPortrait } from "../../components/IdentityPortrait";
 import { wowPackUrl } from "../../content/identityAssets";
 import type { BuildIntentSignals } from "../../lib/buildIntentTypes";
@@ -39,21 +40,6 @@ export function LuckyJourneyStep() {
   }, []);
 
   useEffect(() => {
-    if (quickAutoTriggered || isGenerating) return;
-    if (searchParams.get("quick") !== "1") return;
-    const seeded = readBuildIntent(SessionKeys.lucky.buildIntent);
-    if (
-      (seeded.statPhilosophy?.length ?? 0) === 0 &&
-      (seeded.professionIntents?.length ?? 0) === 0 &&
-      (seeded.buildVectors?.length ?? 0) === 0
-    ) {
-      return;
-    }
-    setQuickAutoTriggered(true);
-    void onGenerate(seeded);
-  }, [searchParams, quickAutoTriggered, isGenerating]);
-
-  useEffect(() => {
     try {
       if (!sessionStorage.getItem(SessionKeys.lucky.sessionId)) {
         sessionStorage.setItem(SessionKeys.lucky.sessionId, crypto.randomUUID());
@@ -83,78 +69,97 @@ export function LuckyJourneyStep() {
     };
   }, []);
 
-  async function onGenerate(signals: BuildIntentSignals) {
-    const sessionId = sessionStorage.getItem(SessionKeys.lucky.sessionId) ?? crypto.randomUUID();
-    sessionStorage.setItem(SessionKeys.lucky.sessionId, sessionId);
+  const onGenerate = useCallback(
+    async (signals: BuildIntentSignals, depth: IntentDepth) => {
+      void depth;
+      const sessionId = sessionStorage.getItem(SessionKeys.lucky.sessionId) ?? crypto.randomUUID();
+      sessionStorage.setItem(SessionKeys.lucky.sessionId, sessionId);
 
-    if (experimentalOffer === "cohort" && recommendLane === null) {
-      setError("Pick curated deck or experimental AI lane before generating.");
+      if (experimentalOffer === "cohort" && recommendLane === null) {
+        setError("Pick curated deck or experimental AI lane before generating.");
+        return;
+      }
+
+      setIsGenerating(true);
+      setError("");
+      try {
+        const assignment = await fetchGrowthAssignment({
+          sessionId,
+          surface: "recommendation",
+          entryPath: "lucky_roll",
+        }).catch((err) => {
+          debugClientIgnored("lucky_journey.growth_assignment", err);
+          return null;
+        });
+
+        const laneArg = recommendLane === "experimental" ? { recommendLane: "experimental" as const } : {};
+
+        const result = await fetchDestiny({
+          entryPath: "lucky_roll",
+          sessionId,
+          signals: {
+            nextSignal: augmentNextSignalWithPower("Surprise me", SessionKeys.lucky.buildIntent),
+            memoryHints: buildMemoryHints(),
+            recommendVariantId: assignment?.variantId ?? undefined,
+            ...signals,
+            ...laneArg,
+          },
+        });
+        writeStoredDestiny("lucky", {
+          sessionId: result.sessionId,
+          destinyId: result.destinyId,
+          output: result.output,
+          intentSnapshot: signals,
+          experimentalLane: result.experimentalLane,
+          experimentalCandidate: result.experimentalCandidate,
+        });
+        if (result.filterRelaxedForAi) {
+          try {
+            sessionStorage.setItem(SessionKeys.lucky.recommendRelaxBanner, "1");
+          } catch {
+            /* ignore */
+          }
+        }
+        sessionStorage.setItem(SessionKeys.lucky.destinyId, result.destinyId);
+        setLastRecommendErr(null);
+        if (assignment) {
+          void submitGrowthOutcome({
+            assignmentId: assignment.assignmentId,
+            converted: true,
+            outcome: { event: "recommend_rendered", destinyId: result.destinyId },
+          }).catch((err) => {
+            debugClientIgnored("lucky_journey.growth_outcome", err);
+          });
+        }
+        navigate("/lucky-roll/result");
+      } catch (err) {
+        setLastRecommendErr(err);
+        setError(destinyRecommendErrorHint(err));
+        if (recommendErrorSuggestsSoftenFilters(err)) {
+          setExperimentalOffer("forced");
+          setRecommendLane("experimental");
+        }
+      } finally {
+        setIsGenerating(false);
+      }
+    },
+    [experimentalOffer, recommendLane, navigate],
+  );
+
+  useEffect(() => {
+    if (quickAutoTriggered || isGenerating) return;
+    if (searchParams.get("quick") !== "1") return;
+    const seeded = readBuildIntent(SessionKeys.lucky.buildIntent);
+    if (
+      (seeded.statPhilosophy?.length ?? 0) === 0 &&
+      (seeded.professionIntents?.length ?? 0) === 0 &&
+      (seeded.buildVectors?.length ?? 0) === 0
+    ) {
       return;
     }
-
-    setIsGenerating(true);
-    setError("");
-    try {
-      const assignment = await fetchGrowthAssignment({
-        sessionId,
-        surface: "recommendation",
-        entryPath: "lucky_roll",
-      }).catch((err) => {
-        debugClientIgnored("lucky_journey.growth_assignment", err);
-        return null;
-      });
-
-      const laneArg = recommendLane === "experimental" ? { recommendLane: "experimental" as const } : {};
-
-      const result = await fetchDestiny({
-        entryPath: "lucky_roll",
-        sessionId,
-        signals: {
-          nextSignal: augmentNextSignalWithPower("Surprise me", SessionKeys.lucky.buildIntent),
-          memoryHints: buildMemoryHints(),
-          recommendVariantId: assignment?.variantId ?? undefined,
-          ...signals,
-          ...laneArg,
-        },
-      });
-      writeStoredDestiny("lucky", {
-        sessionId: result.sessionId,
-        destinyId: result.destinyId,
-        output: result.output,
-        intentSnapshot: signals,
-        experimentalLane: result.experimentalLane,
-        experimentalCandidate: result.experimentalCandidate,
-      });
-      if (result.filterRelaxedForAi) {
-        try {
-          sessionStorage.setItem(SessionKeys.lucky.recommendRelaxBanner, "1");
-        } catch {
-          /* ignore */
-        }
-      }
-      sessionStorage.setItem(SessionKeys.lucky.destinyId, result.destinyId);
-      setLastRecommendErr(null);
-      if (assignment) {
-        void submitGrowthOutcome({
-          assignmentId: assignment.assignmentId,
-          converted: true,
-          outcome: { event: "recommend_rendered", destinyId: result.destinyId },
-        }).catch((err) => {
-          debugClientIgnored("lucky_journey.growth_outcome", err);
-        });
-      }
-      navigate("/lucky-roll/result");
-    } catch (err) {
-      setLastRecommendErr(err);
-      setError(destinyRecommendErrorHint(err));
-      if (recommendErrorSuggestsSoftenFilters(err)) {
-        setExperimentalOffer("forced");
-        setRecommendLane("experimental");
-      }
-    } finally {
-      setIsGenerating(false);
-    }
-  }
+    setQuickAutoTriggered(true);
+    void onGenerate(seeded, "quick");
+  }, [searchParams, quickAutoTriggered, isGenerating, onGenerate]);
 
   const filterRecoveryAction =
     lastRecommendErr && recommendErrorSuggestsSoftenFilters(lastRecommendErr)
@@ -204,7 +209,9 @@ export function LuckyJourneyStep() {
         experimentalOffer={experimentalOffer}
         recommendLane={recommendLane}
         onRecommendLaneChange={setRecommendLane}
-        onGenerate={(signals) => void onGenerate(signals)}
+        onGenerate={(signals, depth) => {
+          void onGenerate(signals, depth);
+        }}
       />
       {error ? (
         <p className="hero-sub" style={{ marginTop: 10 }} role="status" aria-live="polite">

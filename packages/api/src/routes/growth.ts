@@ -74,8 +74,8 @@ function checkGuardrails(payload: GrowthVariantPayload): { pass: boolean; notes:
 function buildFallbackCandidates(surface: GrowthSurface): GrowthVariantPayload[] {
   if (surface === "ui" || surface === "onboarding") {
     return [
-      { headline: "Choose your next hardcore path", subline: "Fast, subtle, tuned by your outcomes.", ctaPrimary: "Find my path", ctaSecondary: "Surprise me" },
-      { headline: "One clean decision, zero noise", subline: "The system adapts from your accept vs reroll behavior.", ctaPrimary: "Draft my run", ctaSecondary: "Lucky roll" },
+      { headline: "Choose your next hardcore path", subline: "Fast, subtle, tuned by your outcomes.", ctaPrimary: "Quick build", ctaSecondary: "Detailed build" },
+      { headline: "One clean decision, zero noise", subline: "The system adapts from your accept vs reroll behavior.", ctaPrimary: "Quick build", ctaSecondary: "Detailed build" },
     ];
   }
   if (surface === "share") return [{ sharePromptPrefix: "Hardcore legacy:" }, { sharePromptPrefix: "Another run, another oath:" }];

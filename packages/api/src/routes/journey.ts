@@ -29,6 +29,15 @@ const commitSchema = z.object({
   commitName: z.string().max(80).optional(),
 });
 
+/** Single display title for commit cardJson — never blank or whitespace-only. */
+function destinyHeadlineFromPayload(destinyPayload: unknown): string {
+  if (!destinyPayload || typeof destinyPayload !== "object") return "Committed build";
+  const h = (destinyPayload as { headline?: unknown }).headline;
+  if (typeof h !== "string") return "Committed build";
+  const t = h.trim();
+  return t.length > 0 ? t : "Committed build";
+}
+
 const memorialSchema = z.object({
   sessionId: z.string().min(1).max(80),
   level: z.number().min(1).max(60).optional(),
@@ -239,10 +248,7 @@ journeyRouter.post("/commit", async (c) => {
   };
   // Card headline now comes from the AI-generated destiny so the artifact has a single canonical name.
   // commitName is retained as an optional player annotation (used for memorials), not the artifact title.
-  const destinyHeadline =
-    typeof (destinyPayload as { headline?: unknown } | null)?.headline === "string"
-      ? ((destinyPayload as { headline: string }).headline ?? "Committed build")
-      : "Committed build";
+  const destinyHeadline = destinyHeadlineFromPayload(destinyPayload);
   await db.insert(buildCommits).values({
     id,
     slug,

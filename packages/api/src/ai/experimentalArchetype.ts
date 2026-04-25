@@ -3,7 +3,10 @@ import { fetchRuntimeKvValue, KV_EXPERIMENTAL_SUPPLEMENT } from "../db/archetype
 import { archetypes } from "../domain/archetypes";
 import { mergeDesiredTags } from "../domain/intentTags";
 import type { Archetype, ClassId, RankedArchetype, RecommendInput, Tier } from "../domain/types";
-import { callAiGateway, extractJsonPayload, getAiGateStatus } from "./adapter";
+import { callAiGateway, extractJsonPayload, getAiGateStatus, safeJsonStringify, WOW_HC_JSON_GUARDS } from "./adapter";
+
+const EXPERIMENTAL_SIGNAL_BUDGET = 10_000;
+const EXPERIMENTAL_SUPPLEMENT_BUDGET = 6000;
 
 const TIER_VALUES: Tier[] = ["safe", "off_beaten", "high_risk", "just_fun"];
 
@@ -35,10 +38,20 @@ export async function buildExperimentalRankedArchetype(
   const model = env.AI_MODEL_DESTINY ?? "openrouter/auto";
   const tagsHint = mergeDesiredTags(input).slice(0, 12).join(", ");
 
-  const supplement = (await fetchRuntimeKvValue(env.DB, KV_EXPERIMENTAL_SUPPLEMENT))?.trim() ?? "";
+  let supplement = (await fetchRuntimeKvValue(env.DB, KV_EXPERIMENTAL_SUPPLEMENT))?.trim() ?? "";
+  if (supplement.length > EXPERIMENTAL_SUPPLEMENT_BUDGET) {
+    supplement = `${supplement.slice(0, EXPERIMENTAL_SUPPLEMENT_BUDGET)}\n/* supplement truncated */`;
+  }
+
+  const signalsJson = safeJsonStringify(input.signals, "signals");
+  const signalsForPrompt =
+    signalsJson.length > EXPERIMENTAL_SIGNAL_BUDGET
+      ? `${signalsJson.slice(0, EXPERIMENTAL_SIGNAL_BUDGET)}\n/* signals truncated */`
+      : signalsJson;
 
   const promptLines = [
-    "You help generate ONE hardcore Classic WoW style archetype for a recommender.",
+    ...WOW_HC_JSON_GUARDS,
+    "You help generate ONE hardcore Classic WoW ERA style archetype for a recommender (permanent death, level 60 cap).",
     "Return JSON only with keys: title,subline,tier,safetyMechanism,first10,tags,raceSuggestion,factionSuggestion,genderLean",
     `tier must be one of: ${TIER_VALUES.join(",")}`,
     "first10: array of 3 to 5 strings, each <=100 chars — concrete HC pull/kit cadence, no slurs, no politics, no real-money RMT.",
@@ -48,7 +61,7 @@ export async function buildExperimentalRankedArchetype(
     "factionSuggestion must be one of: horde, alliance, neutral",
     "genderLean must be one of: masculine, feminine, neutral",
     `Inspiration only (do not copy verbatim): title=${base.title}; subline=${base.subline}; mechanism=${base.safetyMechanism}`,
-    `Player signals JSON: ${JSON.stringify(input.signals)}`,
+    `Player signals JSON: ${signalsForPrompt}`,
   ];
   if (supplement.length > 0) {
     promptLines.push("Learning-loop addendum (follow strictly):", supplement);
@@ -56,7 +69,7 @@ export async function buildExperimentalRankedArchetype(
   const prompt = promptLines.join("\n");
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    const res = await callAiGateway(env, model, prompt, 18_000);
+    const res = await callAiGateway(env, model, prompt, 18_000, 4096);
     if (!res.ok) continue;
     try {
       const parsed = JSON.parse(extractJsonPayload(res.content)) as {
