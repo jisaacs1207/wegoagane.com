@@ -9,8 +9,9 @@ import {
   type BuildPlanPayload,
 } from "../domain/buildPlanSchema";
 import { callAiGateway, extractJsonPayload, getAiGateStatus, isTruthyEnv } from "./adapter";
-import type { RecommendInput } from "../domain/types";
+import type { ClassId, RecommendInput } from "../domain/types";
 import { computeViability } from "../domain/viability";
+import { coerceClassRaceSuggestions } from "../domain/classRaceRules";
 
 function rulesetPinFromEnv(env: ApiEnv["Bindings"]): string {
   return (env.RULESET_PIN ?? "classic-era-hc-2026-04").trim().slice(0, 120);
@@ -134,7 +135,9 @@ function normalizeBuildPlanCandidate(input: unknown): unknown {
     const t = { ...(out.talents as Record<string, unknown>) };
     if (typeof t.summary === "string") t.summary = clampText(t.summary, 600);
     if (Array.isArray(t.keyPicks)) {
-      t.keyPicks = t.keyPicks.slice(0, 12).map((row) => {
+      t.keyPicks = t.keyPicks
+      .slice(0, 12)
+      .map((row) => {
         if (!row || typeof row !== "object") return row;
         const r = { ...(row as Record<string, unknown>) };
         r.tier = clampText(r.tier, 40);
@@ -142,6 +145,12 @@ function normalizeBuildPlanCandidate(input: unknown): unknown {
         r.rationale = clampText(r.rationale, 400);
         if (Array.isArray(r.alternatives)) r.alternatives = r.alternatives.slice(0, 4).map((a) => clampText(a, 80)).filter(Boolean);
         return r;
+      })
+      .filter((row) => {
+        if (!row || typeof row !== "object") return false;
+        const name = String((row as Record<string, unknown>).name ?? "").toLowerCase();
+        // Hardcore mode: avoid dead-character recovery utility as recommended talent picks.
+        return !/(soulstone|rebirth|reincarnation|divine intervention)/.test(name);
       });
     }
     out.talents = t;
@@ -152,13 +161,21 @@ function normalizeBuildPlanCandidate(input: unknown): unknown {
     p.primary = clampText(p.primary, 40);
     p.secondary = clampText(p.secondary, 40);
     p.rationale = clampText(p.rationale, 800);
-    if (p.secondarySkills && typeof p.secondarySkills === "object") {
-      const ss = { ...(p.secondarySkills as Record<string, unknown>) };
-      ss.firstAid = clampText(ss.firstAid, 300);
-      ss.cooking = clampText(ss.cooking, 300);
-      ss.fishing = clampText(ss.fishing, 300);
-      p.secondarySkills = ss;
+    let ss: Record<string, unknown> = {};
+    if (Array.isArray(p.secondarySkills)) {
+      ss = {
+        firstAid: p.secondarySkills[0],
+        cooking: p.secondarySkills[1],
+        fishing: p.secondarySkills[2],
+      };
+    } else if (p.secondarySkills && typeof p.secondarySkills === "object") {
+      ss = { ...(p.secondarySkills as Record<string, unknown>) };
     }
+    p.secondarySkills = {
+      firstAid: clampText(ss.firstAid ?? "Train First Aid aggressively; it is core HC safety.", 300),
+      cooking: clampText(ss.cooking ?? "Cooking provides reliable sustain for longer leveling sessions.", 300),
+      fishing: clampText(ss.fishing ?? "Fishing is optional support for food supply and pacing.", 300),
+    };
     out.professions = p;
   }
 
@@ -232,7 +249,7 @@ export async function runBuildPlanGeneration(
   const destiny = params.destinyContent as {
     headline: string;
     subline: string;
-    classId: string;
+    classId: ClassId;
     bullets: string[];
     tierProse?: string;
     rationale?: string;
@@ -286,8 +303,22 @@ export async function runBuildPlanGeneration(
       const obj = normalizeBuildPlanCandidate(JSON.parse(raw) as unknown);
       const safe = buildPlanPayloadSchema.safeParse(obj);
       if (!safe.success) throw new Error(`schema:${safe.error.message}`);
+      const identity = coerceClassRaceSuggestions({
+        classId: destiny.classId,
+        raceSuggestion: safe.data.identity?.raceSuggestion ?? safe.data.race?.suggestion,
+        factionSuggestion: safe.data.identity?.factionSuggestion,
+      });
       parsed = sanitizeBuildPlanNames({
         ...safe.data,
+        race: {
+          ...safe.data.race,
+          suggestion: identity.raceSuggestion,
+        },
+        identity: {
+          ...safe.data.identity,
+          raceSuggestion: identity.raceSuggestion,
+          factionSuggestion: identity.factionSuggestion,
+        },
         aiRaw: {
           generatorJson: rawGeneratorContent.slice(0, 50000),
           reviewerJson: rawReviewerContent.slice(0, 50000),

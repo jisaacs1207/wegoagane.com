@@ -1,6 +1,7 @@
 import type { ApiEnv } from "../db/client";
 import type { DestinyOutput, MemorialOutput, RecommendInput } from "../domain/types";
 import { validateMemorialOutput, validateTemplateOutput } from "../domain/validator";
+import { coerceClassRaceSuggestions } from "../domain/classRaceRules";
 import type { AiTelemetry, DestinyAiResult, MemorialAiResult } from "./types";
 
 /** Cloudflare / Wrangler may supply booleans or strings ("true", "TRUE", "1"). */
@@ -202,16 +203,19 @@ export async function enrichDestiny(
       ...template,
       ...parsed,
       classId: template.classId,
-      factionSuggestion:
-        parsed.factionSuggestion === "horde" || parsed.factionSuggestion === "alliance" || parsed.factionSuggestion === "neutral"
-          ? parsed.factionSuggestion
-          : template.factionSuggestion,
       genderLean:
         parsed.genderLean === "masculine" || parsed.genderLean === "feminine" || parsed.genderLean === "neutral"
           ? parsed.genderLean
           : template.genderLean,
       sourceType: "ai",
     };
+    const fixedIdentity = coerceClassRaceSuggestions({
+      classId: template.classId,
+      raceSuggestion: candidate.raceSuggestion,
+      factionSuggestion: candidate.factionSuggestion,
+    });
+    candidate.raceSuggestion = fixedIdentity.raceSuggestion;
+    candidate.factionSuggestion = fixedIdentity.factionSuggestion;
     const failures = validateTemplateOutput(candidate, input.signals.factionPreference);
     if (failures.length === 0) {
       telemetry.fallbackUsed = false;

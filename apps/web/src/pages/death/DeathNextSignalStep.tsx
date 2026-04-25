@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { IdentityPortrait } from "../../components/IdentityPortrait";
 import { wowPackUrl } from "../../content/identityAssets";
 import { SessionKeys } from "../../lib/sessionKeys";
@@ -26,6 +26,15 @@ export function DeathNextSignalStep() {
   const navigate = useNavigate();
   const [selectedMood, setSelectedMood] = useState<string | null>(sessionStorage.getItem(SessionKeys.death.mood));
   const [selected, setSelected] = useState<string | null>(sessionStorage.getItem(SessionKeys.death.nextSignal));
+
+  useEffect(() => {
+    // Entering a new rerun intent should not silently reuse old build filters.
+    sessionStorage.removeItem(SessionKeys.death.buildIntent);
+    sessionStorage.removeItem(SessionKeys.death.buildIntentDepth);
+    sessionStorage.removeItem(SessionKeys.death.buildIntentPowerCurve);
+    sessionStorage.removeItem(SessionKeys.death.generatedDestiny);
+    sessionStorage.removeItem(SessionKeys.death.destinyId);
+  }, []);
 
   return (
     <div className="card">

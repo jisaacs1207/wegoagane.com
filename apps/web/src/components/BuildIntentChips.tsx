@@ -5,9 +5,12 @@ import {
   applyCorePreset,
   DEPTH_OPTIONS,
   optionLabel,
+  PROF_OPTIONS,
+  STAT_OPTIONS,
   toggleList,
   type CorePreset,
   type IntentDepth,
+  VECTOR_OPTIONS,
 } from "./intent/intentOptions";
 import { type JourneyVectorKey, VECTOR_JOURNEY_URLS, wowPackUrl } from "../content/identityAssets";
 import { IdentityPortrait } from "./IdentityPortrait";
@@ -61,6 +64,18 @@ const POWER_CURVE_OPTIONS: Array<{ id: PowerCurveId; label: string }> = [
   { id: "late", label: "Late spikes" },
   { id: "balanced", label: "Balanced curve" },
 ];
+
+const QUICK_ADD_STATS = ["stamina_forward", "balanced", "intellect_forward"] as const;
+const QUICK_ADD_PROF = ["engineering_outs", "herbalism_alchemy_pair", "tailoring_bags_arcane"] as const;
+const QUICK_ADD_VECTORS = ["solo", "hybrid", "ranged", "melee"] as const;
+const PRIMARY_PROF_ANCHORS = new Set([
+  "engineering_outs",
+  "herbalism_alchemy_pair",
+  "tailoring_bags_arcane",
+  "blacksmith_weaponsmith_fantasy",
+  "leatherworker_hunter_synergy",
+  "auction_house_play",
+]);
 
 function readStorage(key: string): BuildIntentSignals {
   try {
@@ -183,40 +198,39 @@ export function BuildIntentChips({
     profession: [
       {
         id: "prof_priority",
-        prompt: "Which profession priority fits this run?",
-        answers: ["Gold pacing", "Self-sustain", "Consumables", "Power spikes"],
+        prompt: "Which primary profession anchor do you want?",
+        answers: ["Mining + Engineering", "Herbalism + Alchemy", "Tailoring + Enchanting", "Auction-house focused"],
         apply: (a) =>
           ({
             ...value,
-            professionIntents: toggleList(
-              value.professionIntents,
-              a === "Gold pacing"
-                ? "auction_house_play"
-                : a === "Self-sustain"
-                  ? "engineering_outs"
-                  : a === "Consumables"
-                    ? "alchemy_consumables"
-                    : "mining_engineering_pair",
-              4,
-            ) as BuildIntentSignals["professionIntents"],
+            professionIntents: [
+              a === "Mining + Engineering"
+                ? "mining_engineering_pair"
+                : a === "Herbalism + Alchemy"
+                  ? "herbalism_alchemy_pair"
+                  : a === "Tailoring + Enchanting"
+                    ? "tailoring_bags_arcane"
+                    : "auction_house_play",
+              ...((value.professionIntents ?? []).filter((p) => !PRIMARY_PROF_ANCHORS.has(p))),
+            ].slice(0, 4) as BuildIntentSignals["professionIntents"],
           }),
       },
       {
         id: "prof_tempo",
-        prompt: "When should professions matter most?",
-        answers: ["Early", "Mid", "Late", "Any"],
+        prompt: "Pick one secondary focus",
+        answers: ["First Aid mandatory", "Consumable heavy", "Cooking + Fishing", "Gather then pivot"],
         apply: (a) =>
           ({
             ...value,
             professionIntents: toggleList(
               value.professionIntents,
-              a === "Early"
-                ? "skinning_mining_early"
-                : a === "Mid"
-                  ? "dual_gathering_bootstrap"
-                  : a === "Late"
-                    ? "early_gathering_then_pivot_engineering"
-                    : "fishing_optional",
+              a === "First Aid mandatory"
+                ? "first_aid_mandatory_mindset"
+                : a === "Consumable heavy"
+                  ? "alchemy_consumables"
+                  : a === "Cooking + Fishing"
+                    ? "fishing_supports_cooking"
+                    : "early_gathering_then_pivot_engineering",
               4,
             ) as BuildIntentSignals["professionIntents"],
           }),
@@ -403,6 +417,33 @@ export function BuildIntentChips({
       else sessionStorage.removeItem(`${storageKey}.powerCurve`);
     } catch {
       /* ignore */
+    }
+  }
+
+  function quickToggle(id: string) {
+    if (STAT_OPTIONS.some((s) => s.id === id)) {
+      persist({
+        ...value,
+        statPhilosophy: toggleList(value.statPhilosophy, id, 3) as BuildIntentSignals["statPhilosophy"],
+      });
+      return;
+    }
+    if (PROF_OPTIONS.some((p) => p.id === id)) {
+      const existing = (value.professionIntents ?? []).filter((p) => !PRIMARY_PROF_ANCHORS.has(p));
+      const next = PRIMARY_PROF_ANCHORS.has(id)
+        ? [id, ...existing].slice(0, 4)
+        : toggleList(value.professionIntents, id, 4);
+      persist({
+        ...value,
+        professionIntents: next as BuildIntentSignals["professionIntents"],
+      });
+      return;
+    }
+    if (VECTOR_OPTIONS.some((v) => v.id === id)) {
+      persist({
+        ...value,
+        buildVectors: toggleList(value.buildVectors, id, 6) as BuildIntentSignals["buildVectors"],
+      });
     }
   }
 
@@ -683,6 +724,23 @@ export function BuildIntentChips({
             >
               Dialed-in mode
             </button>
+          </div>
+          <div className="card" style={{ marginBottom: 12, padding: 10 }}>
+            <p className="step-label" style={{ marginBottom: 6 }}>
+              Quick add filters
+            </p>
+            <div className="chip-row" style={{ marginTop: 6 }}>
+              {[...QUICK_ADD_STATS, ...QUICK_ADD_PROF, ...QUICK_ADD_VECTORS].map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={`chip-btn ${activeIds.includes(id) ? "chip-btn--on" : ""}`}
+                  onClick={() => quickToggle(id)}
+                >
+                  {optionLabel(id)}
+                </button>
+              ))}
+            </div>
           </div>
           {experimentalOffer !== "none" ? (
             <fieldset style={{ border: "none", padding: 0, margin: "0 0 14px 0" }}>

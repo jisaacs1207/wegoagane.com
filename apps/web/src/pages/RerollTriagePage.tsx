@@ -65,6 +65,9 @@ export function RerollTriagePage() {
           rerollVerdict: "totally_off",
           note: note.trim() || undefined,
         });
+        sessionStorage.removeItem(meta.storageKey);
+        sessionStorage.removeItem(`${meta.storageKey}.depth`);
+        sessionStorage.removeItem(`${meta.storageKey}.powerCurve`);
         navigate(meta.restartPath);
         return;
       }

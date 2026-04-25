@@ -34,6 +34,14 @@ function isPlanV1(p: unknown): p is PlanV1 {
   return typeof p === "object" && p !== null && (p as PlanV1).v === 1;
 }
 
+function formatPlanError(message: string | null): string | null {
+  if (!message) return null;
+  if (message.startsWith("schema:")) {
+    return "Build sheet validation failed once. Regenerating with safer defaults; refresh in a few seconds.";
+  }
+  return message;
+}
+
 export function BuildPlanPage() {
   const { destinyId } = useParams();
   const [status, setStatus] = useState<string>("loading");
@@ -58,7 +66,7 @@ export function BuildPlanPage() {
         if (cancelled) return;
         setStatus(res.status);
         setPublishTier(res.publishTier);
-        setError(res.error);
+        setError(formatPlanError(res.error));
         setSessionId(res.sessionId);
         if (res.plan && isPlanV1(res.plan)) setPlan(res.plan);
         else setPlan(null);
@@ -140,7 +148,7 @@ export function BuildPlanPage() {
             onClick={() => {
               sessionStorage.setItem(SessionKeys.plan.seedDestinyId, destinyId);
               trackEvent(AnalyticsEvent.BuildRetoolClicked, { destinyId, source: "build_sheet" });
-              window.location.assign("/draft-a-run/journey");
+              window.location.assign("/draft-a-run/intent");
             }}
           >
             Start new run from this
