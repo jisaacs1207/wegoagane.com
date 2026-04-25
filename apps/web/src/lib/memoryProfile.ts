@@ -123,10 +123,16 @@ export function buildMemoryHints(): MemoryHints {
   }
 
   const confidence = clamp(totalSamples / 24, 0.05, 1);
+  const rerollReasonCounts: Partial<Record<RerollReason, number>> = {};
+  for (const [k, v] of Object.entries(profile.rerollReasonCounts)) {
+    if (typeof v !== "number" || !Number.isFinite(v)) continue;
+    const n = Math.min(1000, Math.max(0, Math.floor(v)));
+    if (n > 0) rerollReasonCounts[k as RerollReason] = n;
+  }
   return {
     version: 1,
     classAffinity: Object.keys(classAffinity).length > 0 ? classAffinity : undefined,
-    rerollReasonCounts: profile.rerollReasonCounts,
+    rerollReasonCounts: Object.keys(rerollReasonCounts).length > 0 ? rerollReasonCounts : undefined,
     confidence,
     updatedAt: profile.updatedAt,
   };

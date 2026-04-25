@@ -5,7 +5,13 @@ import { inferFactionFromRace, inferRaceFromHeadline } from "../../content/ident
 import type { ClassId } from "../../icons/types";
 import type { BuildIntentSignals } from "../../lib/buildIntentTypes";
 import { augmentFreeformWithPower } from "../../lib/journeySignalsExtras";
-import { fetchBuildCommit, fetchDestiny, fetchGrowthAssignment, submitGrowthOutcome } from "../../lib/recommendClient";
+import {
+  destinyRecommendErrorHint,
+  fetchBuildCommit,
+  fetchDestiny,
+  fetchGrowthAssignment,
+  submitGrowthOutcome,
+} from "../../lib/recommendClient";
 import { buildMemoryHints } from "../../lib/memoryProfile";
 import { writeStoredDestiny } from "../../lib/flowDestinyState";
 
@@ -75,12 +81,7 @@ export function PlanJourneyStep() {
       }
       navigate("/draft-a-run/result");
     } catch (error) {
-      const msg = error instanceof Error ? error.message : "";
-      if (msg.includes("recommend_failed:400")) {
-        setError("Generation failed due to invalid input. Adjust constraints and try again.");
-      } else {
-        setError("Generation failed. Adjust your path or try again.");
-      }
+      setError(destinyRecommendErrorHint(error));
     } finally {
       setIsGenerating(false);
     }
