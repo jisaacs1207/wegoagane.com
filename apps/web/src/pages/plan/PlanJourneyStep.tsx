@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { BuildIntentChips } from "../../components/BuildIntentChips";
 import { inferFactionFromRace, inferRaceFromHeadline } from "../../content/identityAssets";
@@ -8,6 +8,7 @@ import { softenBuildIntentOneSlot } from "../../lib/buildIntentRecover";
 import { augmentFreeformWithPower } from "../../lib/journeySignalsExtras";
 import {
   destinyRecommendErrorHint,
+  fetchAnalyticsConfig,
   fetchBuildCommit,
   fetchDestiny,
   fetchGrowthAssignment,
@@ -18,6 +19,8 @@ import { debugClientIgnored } from "../../lib/clientDebug";
 import { SessionKeys } from "../../lib/sessionKeys";
 import { buildMemoryHints } from "../../lib/memoryProfile";
 import { writeStoredDestiny } from "../../lib/flowDestinyState";
+import { experimentalCohortHit } from "../../lib/experimentalLaneOffer";
+import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 
 export function PlanJourneyStep() {
   const navigate = useNavigate();
@@ -25,12 +28,48 @@ export function PlanJourneyStep() {
   const [error, setError] = useState("");
   const [lastRecommendErr, setLastRecommendErr] = useState<unknown>(null);
   const [chipNonce, setChipNonce] = useState(0);
+  const [experimentalOffer, setExperimentalOffer] = useState<"none" | "cohort" | "forced">("none");
+  const [recommendLane, setRecommendLane] = useState<"curated" | "experimental" | null>(null);
+
+  useEffect(() => {
+    try {
+      if (!sessionStorage.getItem(SessionKeys.plan.sessionId)) {
+        sessionStorage.setItem(SessionKeys.plan.sessionId, crypto.randomUUID());
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const sid = sessionStorage.getItem(SessionKeys.plan.sessionId) ?? "";
+    if (!sid) return;
+    void fetchAnalyticsConfig()
+      .then((cfg) => {
+        if (cancelled) return;
+        const pct = cfg.experimentalLane?.offerPercent ?? 0;
+        if (experimentalCohortHit(sid, pct)) {
+          setExperimentalOffer("cohort");
+          trackEvent(AnalyticsEvent.ExperimentalLaneOfferShown, { flow: "draft_a_run", offerPercent: pct });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function onGenerate(signals: BuildIntentSignals) {
     const sessionId = sessionStorage.getItem(SessionKeys.plan.sessionId) ?? crypto.randomUUID();
     sessionStorage.setItem(SessionKeys.plan.sessionId, sessionId);
     const intent = sessionStorage.getItem(SessionKeys.plan.intent) ?? undefined;
     const freeform = sessionStorage.getItem(SessionKeys.plan.freeform) ?? undefined;
+
+    if (experimentalOffer === "cohort" && recommendLane === null) {
+      setError("Pick curated deck or experimental AI lane before generating.");
+      return;
+    }
 
     setIsGenerating(true);
     setError("");
@@ -62,6 +101,8 @@ export function PlanJourneyStep() {
         return null;
       });
 
+      const laneArg = recommendLane === "experimental" ? { recommendLane: "experimental" as const } : {};
+
       const result = await fetchDestiny({
         entryPath: "draft_a_run",
         sessionId,
@@ -73,6 +114,7 @@ export function PlanJourneyStep() {
           preferredClass: seedClass,
           factionPreference: seedFaction,
           ...signals,
+          ...laneArg,
         },
       });
       writeStoredDestiny("plan", {
@@ -80,7 +122,15 @@ export function PlanJourneyStep() {
         destinyId: result.destinyId,
         output: result.output,
         intentSnapshot: signals,
+        experimentalLane: result.experimentalLane,
       });
+      if (result.filterRelaxedForAi) {
+        try {
+          sessionStorage.setItem(SessionKeys.plan.recommendRelaxBanner, "1");
+        } catch {
+          /* ignore */
+        }
+      }
       sessionStorage.setItem(SessionKeys.plan.destinyId, result.destinyId);
       setLastRecommendErr(null);
       if (assignment) {
@@ -96,6 +146,10 @@ export function PlanJourneyStep() {
     } catch (err) {
       setLastRecommendErr(err);
       setError(destinyRecommendErrorHint(err));
+      if (recommendErrorSuggestsSoftenFilters(err)) {
+        setExperimentalOffer("forced");
+        setRecommendLane("experimental");
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -110,6 +164,10 @@ export function PlanJourneyStep() {
               setChipNonce((n) => n + 1);
               setError("");
               setLastRecommendErr(null);
+              if (experimentalOffer === "forced") {
+                setExperimentalOffer("none");
+                setRecommendLane(null);
+              }
             }
           },
         }
@@ -123,6 +181,9 @@ export function PlanJourneyStep() {
         isGenerating={isGenerating}
         hasGenerated={false}
         filterRecoveryAction={filterRecoveryAction}
+        experimentalOffer={experimentalOffer}
+        recommendLane={recommendLane}
+        onRecommendLaneChange={setRecommendLane}
         onGenerate={(signals) => void onGenerate(signals)}
       />
       {error ? (

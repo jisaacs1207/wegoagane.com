@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { BuildIntentChips } from "../../components/BuildIntentChips";
 import type { BuildIntentSignals } from "../../lib/buildIntentTypes";
@@ -6,6 +6,7 @@ import { softenBuildIntentOneSlot } from "../../lib/buildIntentRecover";
 import { augmentMoodWithPower } from "../../lib/journeySignalsExtras";
 import {
   destinyRecommendErrorHint,
+  fetchAnalyticsConfig,
   fetchDestiny,
   fetchGrowthAssignment,
   recommendErrorSuggestsSoftenFilters,
@@ -15,6 +16,8 @@ import { debugClientIgnored } from "../../lib/clientDebug";
 import { SessionKeys } from "../../lib/sessionKeys";
 import { buildMemoryHints } from "../../lib/memoryProfile";
 import { writeStoredDestiny } from "../../lib/flowDestinyState";
+import { experimentalCohortHit } from "../../lib/experimentalLaneOffer";
+import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 
 function buildDeathContextFreeform() {
   const zone = sessionStorage.getItem(SessionKeys.death.detailZone)?.trim();
@@ -42,6 +45,37 @@ export function DeathJourneyStep() {
   const [error, setError] = useState("");
   const [lastRecommendErr, setLastRecommendErr] = useState<unknown>(null);
   const [chipNonce, setChipNonce] = useState(0);
+  const [experimentalOffer, setExperimentalOffer] = useState<"none" | "cohort" | "forced">("none");
+  const [recommendLane, setRecommendLane] = useState<"curated" | "experimental" | null>(null);
+
+  useEffect(() => {
+    try {
+      if (!sessionStorage.getItem(SessionKeys.death.sessionId)) {
+        sessionStorage.setItem(SessionKeys.death.sessionId, crypto.randomUUID());
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const sid = sessionStorage.getItem(SessionKeys.death.sessionId) ?? "";
+    if (!sid) return;
+    void fetchAnalyticsConfig()
+      .then((cfg) => {
+        if (cancelled) return;
+        const pct = cfg.experimentalLane?.offerPercent ?? 0;
+        if (experimentalCohortHit(sid, pct)) {
+          setExperimentalOffer("cohort");
+          trackEvent(AnalyticsEvent.ExperimentalLaneOfferShown, { flow: "release_spirit", offerPercent: pct });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function onGenerate(signals: BuildIntentSignals) {
     const sessionId = sessionStorage.getItem(SessionKeys.death.sessionId) ?? crypto.randomUUID();
@@ -50,6 +84,11 @@ export function DeathJourneyStep() {
     const nextSignal = sessionStorage.getItem(SessionKeys.death.nextSignal) ?? undefined;
     const detailFreeform = buildDeathContextFreeform();
     const promptBias = deriveSignalBias(mood, nextSignal);
+
+    if (experimentalOffer === "cohort" && recommendLane === null) {
+      setError("Pick curated deck or experimental AI lane before generating.");
+      return;
+    }
 
     setIsGenerating(true);
     setError("");
@@ -63,6 +102,8 @@ export function DeathJourneyStep() {
         return null;
       });
 
+      const laneArg = recommendLane === "experimental" ? { recommendLane: "experimental" as const } : {};
+
       const mergedSignals = {
         mood: augmentMoodWithPower(mood, SessionKeys.death.buildIntent),
         nextSignal,
@@ -71,6 +112,7 @@ export function DeathJourneyStep() {
         recommendVariantId: assignment?.variantId ?? undefined,
         ...promptBias,
         ...signals,
+        ...laneArg,
       };
       const result = await fetchDestiny({
         entryPath: "release_spirit",
@@ -82,7 +124,15 @@ export function DeathJourneyStep() {
         destinyId: result.destinyId,
         output: result.output,
         intentSnapshot: { ...promptBias, ...signals },
+        experimentalLane: result.experimentalLane,
       });
+      if (result.filterRelaxedForAi) {
+        try {
+          sessionStorage.setItem(SessionKeys.death.recommendRelaxBanner, "1");
+        } catch {
+          /* ignore */
+        }
+      }
       sessionStorage.setItem(SessionKeys.death.destinyId, result.destinyId);
       setLastRecommendErr(null);
       if (assignment) {
@@ -98,6 +148,10 @@ export function DeathJourneyStep() {
     } catch (err) {
       setLastRecommendErr(err);
       setError(destinyRecommendErrorHint(err));
+      if (recommendErrorSuggestsSoftenFilters(err)) {
+        setExperimentalOffer("forced");
+        setRecommendLane("experimental");
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -112,6 +166,10 @@ export function DeathJourneyStep() {
               setChipNonce((n) => n + 1);
               setError("");
               setLastRecommendErr(null);
+              if (experimentalOffer === "forced") {
+                setExperimentalOffer("none");
+                setRecommendLane(null);
+              }
             }
           },
         }
@@ -128,6 +186,9 @@ export function DeathJourneyStep() {
         isGenerating={isGenerating}
         hasGenerated={false}
         filterRecoveryAction={filterRecoveryAction}
+        experimentalOffer={experimentalOffer}
+        recommendLane={recommendLane}
+        onRecommendLaneChange={setRecommendLane}
         onGenerate={(signals) => void onGenerate(signals)}
       />
       {error ? (

@@ -259,3 +259,32 @@ export const nameSuggestions = sqliteTable("name_suggestions", {
   qualityScore: real("quality_score").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
+
+/** Small key/value table for runtime-tunable strings (e.g. experimental prompt supplement). */
+export const runtimeKv = sqliteTable("runtime_kv", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+/**
+ * AI-generated archetypes (experimental lane) with promotion into the curated ranker pool.
+ */
+export const archetypeCandidates = sqliteTable("archetype_candidates", {
+  id: text("id").primaryKey(),
+  archetypeKey: text("archetype_key").notNull(),
+  classId: text("class_id").notNull(),
+  archetypeJson: text("archetype_json").notNull(),
+  contentFingerprint: text("content_fingerprint").notNull(),
+  sessionId: text("session_id").notNull(),
+  destinyId: text("destiny_id").notNull(),
+  status: text("status").notNull().default("candidate"),
+  acceptCount: integer("accept_count").notNull().default(0),
+  missCount: integer("miss_count").notNull().default(0),
+  ratingSum: real("rating_sum").notNull().default(0),
+  ratingN: integer("rating_n").notNull().default(0),
+  promptVersionAtGen: text("prompt_version_at_gen"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  promotedAt: integer("promoted_at", { mode: "timestamp_ms" }),
+  retiredAt: integer("retired_at", { mode: "timestamp_ms" }),
+});

@@ -72,6 +72,19 @@ export function DeathResultStep() {
   const [nameMode, setNameMode] = useState<"reflective" | "high_variance" | "humor">("reflective");
   const [nameVariance, setNameVariance] = useState(0.6);
   const [cardIntentSignals, setCardIntentSignals] = useState<BuildIntentSignals | null>(null);
+  const [showRelaxBanner, setShowRelaxBanner] = useState(false);
+  const [showExperimentalBanner, setShowExperimentalBanner] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(SessionKeys.death.recommendRelaxBanner) === "1") {
+        setShowRelaxBanner(true);
+        sessionStorage.removeItem(SessionKeys.death.recommendRelaxBanner);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     const stored = readStoredDestiny("death");
@@ -83,6 +96,7 @@ export function DeathResultStep() {
     setDestinyId(stored.destinyId);
     setSessionId(stored.sessionId);
     setCardIntentSignals(stored.intentSnapshot ?? null);
+    setShowExperimentalBanner(Boolean(stored.experimentalLane));
 
     void fetchGrowthAssignment({
       sessionId: stored.sessionId,
@@ -239,8 +253,11 @@ export function DeathResultStep() {
         destinyId: reroll.destinyId,
         output: reroll.output,
         intentSnapshot,
+        experimentalLane: reroll.experimentalLane,
       });
       setCardIntentSignals(intentSnapshot);
+      if (reroll.filterRelaxedForAi) setShowRelaxBanner(true);
+      setShowExperimentalBanner(Boolean(reroll.experimentalLane));
       setNote("");
       setShowRerollGate(false);
     } catch (e) {
@@ -326,6 +343,18 @@ export function DeathResultStep() {
         </div>
       ) : (
         <>
+          {showExperimentalBanner ? (
+            <p className="ui-body-sm" style={{ marginTop: 0, marginBottom: 10 }} role="status">
+              <strong>Experimental lane</strong> — AI-drafted archetype row (class-locked, validated). Reroll if it
+              feels off.
+            </p>
+          ) : null}
+          {showRelaxBanner ? (
+            <p className="ui-body-sm" style={{ marginTop: 0, marginBottom: 10 }} role="status">
+              No template matched every filter together — we picked a compatible class for this era and used AI to
+              shape the card toward your picks.
+            </p>
+          ) : null}
           <div className="result-page-grid">
             <div className="result-page-grid__main">
               <DestinyCard

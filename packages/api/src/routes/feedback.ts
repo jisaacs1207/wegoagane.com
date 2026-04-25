@@ -1,6 +1,7 @@
 import { type Context, Hono } from "hono";
 import { captureServerEvent } from "../analytics/posthog";
 import { AnalyticsEvent } from "../analytics/events";
+import { applyArchetypeCandidateFeedback } from "../db/archetypeLearning";
 import { getDb, type ApiEnv } from "../db/client";
 import { destinyFeedback } from "../db/schema";
 import { validateDestinyFeedbackInput } from "../domain/validator";
@@ -45,6 +46,15 @@ export async function handleFeedback(c: Context<ApiEnv>) {
       rerollFromClassId: input.rerollFromClassId ?? null,
       rerollToClassId: input.rerollToClassId ?? null,
     }),
+  );
+
+  c.executionCtx.waitUntil(
+    applyArchetypeCandidateFeedback(c.env.DB, {
+      destinyId: input.destinyId,
+      choice: input.choice,
+      stage: input.stage ?? "reroll_gate",
+      postAcceptRating: input.postAcceptRating ?? null,
+    }).catch(() => {}),
   );
 
   return c.json({ ok: true });

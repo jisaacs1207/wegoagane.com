@@ -31,6 +31,9 @@ export async function handleAnalyticsConfig(c: Context<ApiEnv>) {
       defaultHoldoutPercent: Number(c.env.GROWTH_DEFAULT_HOLDOUT_PERCENT ?? "10"),
       minSampleSize: Number(c.env.GROWTH_MIN_SAMPLE_SIZE ?? "40"),
     },
+    experimentalLane: {
+      offerPercent: Math.min(100, Math.max(0, Number(c.env.EXPERIMENTAL_LANE_OFFER_PERCENT ?? "0"))),
+    },
   });
 }
 

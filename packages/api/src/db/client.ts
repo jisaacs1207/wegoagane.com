@@ -23,6 +23,8 @@ export type ApiEnv = {
     GROWTH_DEFAULT_TRAFFIC_PERCENT?: string;
     GROWTH_DEFAULT_HOLDOUT_PERCENT?: string;
     GROWTH_MIN_SAMPLE_SIZE?: string;
+    /** 0–100: experimental vs curated lane offer (see analytics config). */
+    EXPERIMENTAL_LANE_OFFER_PERCENT?: string;
     GROWTH_CONTROL_TOKEN?: string;
     /** Plain var or JSON binding; compare with `isTruthyEnv` in adapter, not `=== "true"` only */
     AI_ENABLED?: string | boolean;
@@ -36,6 +38,10 @@ export type ApiEnv = {
     AI_PROVIDER_SORT?: string;
     /** Internal pin for Classic Era HC ruleset (build plans, prompts) */
     RULESET_PIN?: string;
+    /** Bumped when changing static experimental prompt; stored on archetype_candidates rows. */
+    EXPERIMENTAL_PROMPT_REVISION?: string;
+    /** When false, skip cron-driven experimental prompt supplement updates. */
+    EXPERIMENTAL_LEARNING_ENABLED?: string | boolean;
   };
 };
 

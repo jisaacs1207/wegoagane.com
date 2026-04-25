@@ -8,5 +8,6 @@ describe("SessionKeys", () => {
     expect(SessionKeys.plan.buildIntentDepth).toBe("plan.buildIntent.depth");
     expect(SessionKeys.death.detailZone).toBe("death.detail.zone");
     expect(SessionKeys.lucky.sessionId).toBe("lucky.sessionId");
+    expect(SessionKeys.plan.recommendRelaxBanner).toBe("plan.recommendRelaxBanner");
   });
 });

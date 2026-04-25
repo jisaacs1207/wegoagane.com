@@ -7,6 +7,7 @@ import { handleAnalyticsConfig, handleMemoryHealth } from "./routes/analytics";
 import { growthRouter } from "./routes/growth";
 import { buildRouter } from "./routes/build";
 import { journeyRouter } from "./routes/journey";
+import { runExperimentalLearningTick } from "./db/archetypeLearning";
 import type { ApiEnv } from "./db/client";
 
 const app = new Hono<ApiEnv>();
@@ -84,6 +85,11 @@ app.route("/api/v1/journey", journeyRouter);
 export default {
   fetch: app.fetch,
   scheduled: async (_event: ScheduledEvent, env: ApiEnv["Bindings"], ctx: ExecutionContext) => {
+    const learningEnabled = String(env.EXPERIMENTAL_LEARNING_ENABLED ?? "true").toLowerCase() !== "false";
+    if (learningEnabled) {
+      ctx.waitUntil(runExperimentalLearningTick(env.DB).catch(() => {}));
+    }
+
     const enabled = String(env.GROWTH_AUTOPILOT_ENABLED ?? "false").toLowerCase() === "true";
     if (!enabled) return;
     const origin = env.SITE_ORIGIN ?? "https://wegoagane.com";

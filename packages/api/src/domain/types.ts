@@ -78,6 +78,8 @@ export type RecommendSignals = {
   raceMode?: RaceMode;
   /** When raceMode is user_pick: race id string e.g. orc, human */
   pickedRace?: string;
+  /** Curated fixture ranker vs AI-prototyped archetype row (requires AI gateway). */
+  recommendLane?: "curated" | "experimental";
 };
 
 export type RecommendInput = {

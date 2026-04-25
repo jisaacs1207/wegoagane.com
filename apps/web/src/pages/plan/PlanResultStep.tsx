@@ -51,6 +51,19 @@ export function PlanResultStep() {
   const [nameMode, setNameMode] = useState<"reflective" | "high_variance" | "humor">("reflective");
   const [nameVariance, setNameVariance] = useState(0.6);
   const [cardIntentSignals, setCardIntentSignals] = useState<BuildIntentSignals | null>(null);
+  const [showRelaxBanner, setShowRelaxBanner] = useState(false);
+  const [showExperimentalBanner, setShowExperimentalBanner] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(SessionKeys.plan.recommendRelaxBanner) === "1") {
+        setShowRelaxBanner(true);
+        sessionStorage.removeItem(SessionKeys.plan.recommendRelaxBanner);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     const stored = readStoredDestiny("plan");
@@ -62,6 +75,7 @@ export function PlanResultStep() {
     setDestinyId(stored.destinyId);
     setSessionId(stored.sessionId);
     setCardIntentSignals(stored.intentSnapshot ?? null);
+    setShowExperimentalBanner(Boolean(stored.experimentalLane));
 
     void fetchGrowthAssignment({
       sessionId: stored.sessionId,
@@ -214,8 +228,11 @@ export function PlanResultStep() {
         destinyId: reroll.destinyId,
         output: reroll.output,
         intentSnapshot: snapshot,
+        experimentalLane: reroll.experimentalLane,
       });
       setCardIntentSignals(snapshot);
+      if (reroll.filterRelaxedForAi) setShowRelaxBanner(true);
+      setShowExperimentalBanner(Boolean(reroll.experimentalLane));
       setNote("");
       setShowRerollGate(false);
     } catch (e) {
@@ -301,6 +318,18 @@ export function PlanResultStep() {
         </div>
       ) : (
         <>
+          {showExperimentalBanner ? (
+            <p className="ui-body-sm" style={{ marginTop: 0, marginBottom: 10 }} role="status">
+              <strong>Experimental lane</strong> — this card used an AI-drafted archetype row (still class-locked and
+              validated). Downvote or reroll if it reads off; curated fixtures stay the default path.
+            </p>
+          ) : null}
+          {showRelaxBanner ? (
+            <p className="ui-body-sm" style={{ marginTop: 0, marginBottom: 10 }} role="status">
+              No template matched every filter together — we picked a compatible class for this era and used AI to
+              shape the card toward your picks. Your journey chips are still what you asked for.
+            </p>
+          ) : null}
           <DestinyCard
             data={destiny}
             intentSignals={cardIntentSignals ?? readBuildIntent(SessionKeys.plan.buildIntent)}

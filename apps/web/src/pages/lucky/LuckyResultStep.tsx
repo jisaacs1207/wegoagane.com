@@ -26,6 +26,19 @@ export function LuckyResultStep() {
   const [nameMode, setNameMode] = useState<"reflective" | "high_variance" | "humor">("reflective");
   const [nameVariance, setNameVariance] = useState(0.65);
   const [cardIntentSignals, setCardIntentSignals] = useState<BuildIntentSignals | null>(null);
+  const [showRelaxBanner, setShowRelaxBanner] = useState(false);
+  const [showExperimentalBanner, setShowExperimentalBanner] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(SessionKeys.lucky.recommendRelaxBanner) === "1") {
+        setShowRelaxBanner(true);
+        sessionStorage.removeItem(SessionKeys.lucky.recommendRelaxBanner);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     const stored = readStoredDestiny("lucky");
@@ -34,6 +47,7 @@ export function LuckyResultStep() {
       setDestinyId(stored.destinyId);
       setSessionId(stored.sessionId);
       setCardIntentSignals(stored.intentSnapshot ?? null);
+      setShowExperimentalBanner(Boolean(stored.experimentalLane));
     }
   }, []);
 
@@ -124,6 +138,17 @@ export function LuckyResultStep() {
   return (
     <div className="result-page-grid">
       <div className="result-page-grid__main">
+        {showExperimentalBanner ? (
+          <p className="ui-body-sm" style={{ marginTop: 0, marginBottom: 10 }} role="status">
+            <strong>Experimental lane</strong> — AI-drafted archetype row (class-locked, validated).
+          </p>
+        ) : null}
+        {showRelaxBanner ? (
+          <p className="ui-body-sm" style={{ marginTop: 0, marginBottom: 10 }} role="status">
+            No template matched every filter together — we picked a compatible class for this era and used AI to shape
+            the card toward your picks.
+          </p>
+        ) : null}
         <DestinyCard
           data={destiny}
           intentSignals={cardIntentSignals ?? readBuildIntent(SessionKeys.lucky.buildIntent)}
