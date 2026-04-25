@@ -268,6 +268,16 @@ export function destinyRecommendErrorHint(err: unknown): string {
   return "Generation failed. Adjust your path or try again.";
 }
 
+/** True when the API error suggests loosening stored build-intent filters (chip prune UX). */
+export function recommendErrorSuggestsSoftenFilters(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : "";
+  return (
+    message.includes("recommend_failed:400:no_viable_build") ||
+    message.includes("recommend_failed:400:no_eligible_archetypes") ||
+    message.includes("recommend_failed:400:no_ranked_candidate")
+  );
+}
+
 /** Maps non-recommend client errors (`journey_commit:404:destiny_not_found`, etc.) to UI copy. */
 export function flowApiErrorHint(err: unknown): string {
   const message = err instanceof Error ? err.message : "";

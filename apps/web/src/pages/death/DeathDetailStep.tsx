@@ -1,12 +1,13 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { SessionKeys } from "../../lib/sessionKeys";
 
 export function DeathDetailStep() {
   const navigate = useNavigate();
-  const [zone, setZone] = useState(sessionStorage.getItem("death.detail.zone") ?? "");
-  const [cause, setCause] = useState(sessionStorage.getItem("death.detail.cause") ?? "");
-  const [level, setLevel] = useState(sessionStorage.getItem("death.detail.level") ?? "");
-  const [note, setNote] = useState(sessionStorage.getItem("death.detail.note") ?? "");
+  const [zone, setZone] = useState(sessionStorage.getItem(SessionKeys.death.detailZone) ?? "");
+  const [cause, setCause] = useState(sessionStorage.getItem(SessionKeys.death.detailCause) ?? "");
+  const [level, setLevel] = useState(sessionStorage.getItem(SessionKeys.death.detailLevel) ?? "");
+  const [note, setNote] = useState(sessionStorage.getItem(SessionKeys.death.detailNote) ?? "");
 
   return (
     <div className="card">
@@ -19,7 +20,7 @@ export function DeathDetailStep() {
           onChange={(e) => {
             const next = e.target.value.slice(0, 60);
             setZone(next);
-            sessionStorage.setItem("death.detail.zone", next);
+            sessionStorage.setItem(SessionKeys.death.detailZone, next);
           }}
           placeholder="Zone (optional)"
         />
@@ -28,7 +29,7 @@ export function DeathDetailStep() {
           onChange={(e) => {
             const next = e.target.value.slice(0, 80);
             setCause(next);
-            sessionStorage.setItem("death.detail.cause", next);
+            sessionStorage.setItem(SessionKeys.death.detailCause, next);
           }}
           placeholder="Cause (optional)"
         />
@@ -37,7 +38,7 @@ export function DeathDetailStep() {
           onChange={(e) => {
             const next = e.target.value.replace(/[^0-9]/g, "").slice(0, 2);
             setLevel(next);
-            sessionStorage.setItem("death.detail.level", next);
+            sessionStorage.setItem(SessionKeys.death.detailLevel, next);
           }}
           placeholder="Level (optional)"
         />
@@ -46,7 +47,7 @@ export function DeathDetailStep() {
           onChange={(e) => {
             const next = e.target.value.slice(0, 120);
             setNote(next);
-            sessionStorage.setItem("death.detail.note", next);
+            sessionStorage.setItem(SessionKeys.death.detailNote, next);
           }}
           placeholder="Anything we should avoid or prioritize next time? (optional)"
           rows={3}
@@ -57,15 +58,15 @@ export function DeathDetailStep() {
           type="button"
           className="btn-ghost"
           onClick={() => {
-            sessionStorage.removeItem("death.detail.zone");
-            sessionStorage.removeItem("death.detail.cause");
-            sessionStorage.removeItem("death.detail.level");
-            sessionStorage.removeItem("death.detail.note");
-            sessionStorage.removeItem("death.buildIntent");
-            sessionStorage.removeItem("death.buildIntent.depth");
-            sessionStorage.removeItem("death.buildIntent.powerCurve");
-            sessionStorage.removeItem("death.generatedDestiny");
-            sessionStorage.removeItem("death.destinyId");
+            sessionStorage.removeItem(SessionKeys.death.detailZone);
+            sessionStorage.removeItem(SessionKeys.death.detailCause);
+            sessionStorage.removeItem(SessionKeys.death.detailLevel);
+            sessionStorage.removeItem(SessionKeys.death.detailNote);
+            sessionStorage.removeItem(SessionKeys.death.buildIntent);
+            sessionStorage.removeItem(SessionKeys.death.buildIntentDepth);
+            sessionStorage.removeItem(SessionKeys.death.buildIntentPowerCurve);
+            sessionStorage.removeItem(SessionKeys.death.generatedDestiny);
+            sessionStorage.removeItem(SessionKeys.death.destinyId);
             navigate("/release-spirit/next");
           }}
         >

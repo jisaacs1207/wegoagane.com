@@ -19,6 +19,7 @@ import { readBuildIntent } from "../../lib/readBuildIntent";
 import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 import { buildMemoryHints, rememberAccept, rememberReroll } from "../../lib/memoryProfile";
 import { readStoredDestiny } from "../../lib/flowDestinyState";
+import { SessionKeys } from "../../lib/sessionKeys";
 
 const rerollReasons: Array<{ value: RerollReason; label: string }> = [
   { value: "wrong_class", label: "Wrong class" },
@@ -88,11 +89,11 @@ export function PlanResultStep() {
     if (!sessionId || !destinyId || isLoadingNames) return;
     setIsLoadingNames(true);
     try {
-      const intent = readBuildIntent("plan.buildIntent");
+      const intent = readBuildIntent(SessionKeys.plan.buildIntent);
       const nameContext = [
         `class=${destiny?.classId ?? "unknown"}`,
-        `intent=${sessionStorage.getItem("plan.intent") ?? "none"}`,
-        `note=${sessionStorage.getItem("plan.freeform") ?? "none"}`,
+        `intent=${sessionStorage.getItem(SessionKeys.plan.intent) ?? "none"}`,
+        `note=${sessionStorage.getItem(SessionKeys.plan.freeform) ?? "none"}`,
         `stats=${(intent.statPhilosophy ?? []).join(",") || "none"}`,
         `professions=${(intent.professionIntents ?? []).join(",") || "none"}`,
         `vectors=${(intent.buildVectors ?? []).join(",") || "none"}`,
@@ -126,14 +127,14 @@ export function PlanResultStep() {
       destinyId,
       sessionId,
       filterCount:
-        (readBuildIntent("plan.buildIntent").statPhilosophy?.length ?? 0) +
-        (readBuildIntent("plan.buildIntent").professionIntents?.length ?? 0) +
-        (readBuildIntent("plan.buildIntent").buildVectors?.length ?? 0) +
-        (readBuildIntent("plan.buildIntent").raceMode ? 1 : 0),
+        (readBuildIntent(SessionKeys.plan.buildIntent).statPhilosophy?.length ?? 0) +
+        (readBuildIntent(SessionKeys.plan.buildIntent).professionIntents?.length ?? 0) +
+        (readBuildIntent(SessionKeys.plan.buildIntent).buildVectors?.length ?? 0) +
+        (readBuildIntent(SessionKeys.plan.buildIntent).raceMode ? 1 : 0),
     });
     try {
-      const intent = sessionStorage.getItem("plan.intent") ?? undefined;
-      const freeform = sessionStorage.getItem("plan.freeform") ?? undefined;
+      const intent = sessionStorage.getItem(SessionKeys.plan.intent) ?? undefined;
+      const freeform = sessionStorage.getItem(SessionKeys.plan.freeform) ?? undefined;
 
       if (reason === "wrong_goals") {
         rememberReroll(reason, destiny.classId);
@@ -160,10 +161,10 @@ export function PlanResultStep() {
         sessionId,
         signals: {
           intent,
-          freeform: augmentFreeformWithPower(freeform, "plan.buildIntent"),
+          freeform: augmentFreeformWithPower(freeform, SessionKeys.plan.buildIntent),
           memoryHints: buildMemoryHints(),
           recommendVariantId: recommendVariantId ?? undefined,
-          ...readBuildIntent("plan.buildIntent"),
+          ...readBuildIntent(SessionKeys.plan.buildIntent),
           excludedClasses:
             reason === "wrong_class" || reason === "just_curious" ? [destiny.classId] : undefined,
           preferredClass: reason === "wrong_energy" || reason === "almost_right" ? destiny.classId : undefined,
@@ -196,7 +197,7 @@ export function PlanResultStep() {
       }
       setDestiny(reroll.output);
       setDestinyId(reroll.destinyId);
-      sessionStorage.setItem("plan.destinyId", reroll.destinyId);
+      sessionStorage.setItem(SessionKeys.plan.destinyId, reroll.destinyId);
       setNote("");
       setShowRerollGate(false);
     } catch (e) {
@@ -280,7 +281,7 @@ export function PlanResultStep() {
         </div>
       ) : (
         <>
-          <DestinyCard data={destiny} intentSignals={readBuildIntent("plan.buildIntent")} />
+          <DestinyCard data={destiny} intentSignals={readBuildIntent(SessionKeys.plan.buildIntent)} />
           <div
             className="card icon-motif-card"
             style={{ marginTop: 12, ["--motif-url" as string]: `url(${wowPackUrl("Trade", "engineering.png")})` }}
@@ -484,7 +485,9 @@ export function PlanResultStep() {
         ) : null}
 
         {actionMessage ? (
-          <p style={{ marginTop: 10, marginBottom: 0, fontSize: 12, color: "var(--ts)" }}>{actionMessage}</p>
+          <p style={{ marginTop: 10, marginBottom: 0, fontSize: 12, color: "var(--ts)" }} role="status" aria-live="polite">
+            {actionMessage}
+          </p>
         ) : null}
       </div>
         </>

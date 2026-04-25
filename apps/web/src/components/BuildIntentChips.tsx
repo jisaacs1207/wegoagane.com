@@ -18,6 +18,8 @@ type Props = {
   onGenerate: (signals: BuildIntentSignals, depth: IntentDepth) => void;
   isGenerating?: boolean;
   hasGenerated?: boolean;
+  /** Shown on the review step when recommend failed due to over-tight filters. */
+  filterRecoveryAction?: { label: string; onSoften: () => void } | null;
 };
 type JourneyStep = "depth" | "vector" | "question" | "review";
 type VectorKey = JourneyVectorKey;
@@ -90,7 +92,13 @@ function writeDepth(key: string, depth: IntentDepth) {
 }
 
 
-export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false, hasGenerated = false }: Props) {
+export function BuildIntentChips({
+  storageKey,
+  onGenerate,
+  isGenerating = false,
+  hasGenerated = false,
+  filterRecoveryAction = null,
+}: Props) {
   const [value, setValue] = useState<BuildIntentSignals>(() => readStorage(storageKey));
   const [depth, setDepth] = useState<IntentDepth>(() => readDepth(storageKey));
   const [step, setStep] = useState<JourneyStep>("depth");
@@ -637,6 +645,13 @@ export function BuildIntentChips({ storageKey, onGenerate, isGenerating = false,
               No extra filters selected. We&apos;ll generate from your core preferences.
             </p>
           )}
+          {filterRecoveryAction ? (
+            <div style={{ marginTop: 10 }}>
+              <button type="button" className="btn-ghost" onClick={filterRecoveryAction.onSoften}>
+                {filterRecoveryAction.label}
+              </button>
+            </div>
+          ) : null}
           <div className="flow-nav">
             <button type="button" className="btn-ghost" onClick={() => setStep(depth === "quick" ? "depth" : "question")}>
               Back

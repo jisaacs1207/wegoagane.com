@@ -9,6 +9,7 @@ import {
   type NameCandidateRow,
 } from "../lib/recommendClient";
 import { AnalyticsEvent, trackEvent } from "../lib/analytics";
+import { SessionKeys } from "../lib/sessionKeys";
 
 type PlanV1 = {
   v: 1;
@@ -133,7 +134,7 @@ export function BuildPlanPage() {
             type="button"
             className="btn-ghost"
             onClick={() => {
-              sessionStorage.setItem("plan.seedDestinyId", destinyId);
+              sessionStorage.setItem(SessionKeys.plan.seedDestinyId, destinyId);
               trackEvent(AnalyticsEvent.BuildRetoolClicked, { destinyId, source: "build_sheet" });
               window.location.assign("/draft-a-run/journey");
             }}

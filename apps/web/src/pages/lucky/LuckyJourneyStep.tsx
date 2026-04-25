@@ -4,8 +4,16 @@ import { BuildIntentChips } from "../../components/BuildIntentChips";
 import { IdentityPortrait } from "../../components/IdentityPortrait";
 import { wowPackUrl } from "../../content/identityAssets";
 import type { BuildIntentSignals } from "../../lib/buildIntentTypes";
+import { softenBuildIntentOneSlot } from "../../lib/buildIntentRecover";
 import { augmentNextSignalWithPower } from "../../lib/journeySignalsExtras";
-import { destinyRecommendErrorHint, fetchDestiny, fetchGrowthAssignment, submitGrowthOutcome } from "../../lib/recommendClient";
+import {
+  destinyRecommendErrorHint,
+  fetchDestiny,
+  fetchGrowthAssignment,
+  recommendErrorSuggestsSoftenFilters,
+  submitGrowthOutcome,
+} from "../../lib/recommendClient";
+import { SessionKeys } from "../../lib/sessionKeys";
 import { buildMemoryHints } from "../../lib/memoryProfile";
 import { writeStoredDestiny } from "../../lib/flowDestinyState";
 
@@ -13,15 +21,17 @@ export function LuckyJourneyStep() {
   const navigate = useNavigate();
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState("");
+  const [lastRecommendErr, setLastRecommendErr] = useState<unknown>(null);
+  const [chipNonce, setChipNonce] = useState(0);
 
   useEffect(() => {
-    sessionStorage.removeItem("lucky.generatedDestiny");
-    sessionStorage.removeItem("lucky.destinyId");
+    sessionStorage.removeItem(SessionKeys.lucky.generatedDestiny);
+    sessionStorage.removeItem(SessionKeys.lucky.destinyId);
   }, []);
 
   async function onGenerate(signals: BuildIntentSignals) {
-    const sessionId = sessionStorage.getItem("lucky.sessionId") ?? crypto.randomUUID();
-    sessionStorage.setItem("lucky.sessionId", sessionId);
+    const sessionId = sessionStorage.getItem(SessionKeys.lucky.sessionId) ?? crypto.randomUUID();
+    sessionStorage.setItem(SessionKeys.lucky.sessionId, sessionId);
 
     setIsGenerating(true);
     setError("");
@@ -36,7 +46,7 @@ export function LuckyJourneyStep() {
         entryPath: "lucky_roll",
         sessionId,
         signals: {
-          nextSignal: augmentNextSignalWithPower("Surprise me", "lucky.buildIntent"),
+          nextSignal: augmentNextSignalWithPower("Surprise me", SessionKeys.lucky.buildIntent),
           memoryHints: buildMemoryHints(),
           recommendVariantId: assignment?.variantId ?? undefined,
           ...signals,
@@ -47,7 +57,8 @@ export function LuckyJourneyStep() {
         destinyId: result.destinyId,
         output: result.output,
       });
-      sessionStorage.setItem("lucky.destinyId", result.destinyId);
+      sessionStorage.setItem(SessionKeys.lucky.destinyId, result.destinyId);
+      setLastRecommendErr(null);
       if (assignment) {
         void submitGrowthOutcome({
           assignmentId: assignment.assignmentId,
@@ -56,12 +67,27 @@ export function LuckyJourneyStep() {
         }).catch(() => {});
       }
       navigate("/lucky-roll/result");
-    } catch (error) {
-      setError(destinyRecommendErrorHint(error));
+    } catch (err) {
+      setLastRecommendErr(err);
+      setError(destinyRecommendErrorHint(err));
     } finally {
       setIsGenerating(false);
     }
   }
+
+  const filterRecoveryAction =
+    lastRecommendErr && recommendErrorSuggestsSoftenFilters(lastRecommendErr)
+      ? {
+          label: "Soften one filter",
+          onSoften: () => {
+            if (softenBuildIntentOneSlot(SessionKeys.lucky.buildIntent)) {
+              setChipNonce((n) => n + 1);
+              setError("");
+              setLastRecommendErr(null);
+            }
+          },
+        }
+      : null;
 
   return (
     <div>
@@ -78,17 +104,18 @@ export function LuckyJourneyStep() {
         </div>
       </div>
       <BuildIntentChips
-        storageKey="lucky.buildIntent"
+        key={chipNonce}
+        storageKey={SessionKeys.lucky.buildIntent}
         isGenerating={isGenerating}
         hasGenerated={false}
+        filterRecoveryAction={filterRecoveryAction}
         onGenerate={(signals) => void onGenerate(signals)}
       />
       {error ? (
-        <p className="hero-sub" style={{ marginTop: 10 }}>
+        <p className="hero-sub" style={{ marginTop: 10 }} role="status" aria-live="polite">
           {error}
         </p>
       ) : null}
     </div>
   );
 }
-

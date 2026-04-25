@@ -7,6 +7,7 @@ import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 import { commitJourneyBuild, fetchNameCandidates, flowApiErrorHint, generateNameCandidates } from "../../lib/recommendClient";
 import { readStoredDestiny } from "../../lib/flowDestinyState";
 import { readBuildIntent } from "../../lib/readBuildIntent";
+import { SessionKeys } from "../../lib/sessionKeys";
 
 export function LuckyResultStep() {
   const navigate = useNavigate();
@@ -49,7 +50,7 @@ export function LuckyResultStep() {
     if (!sessionId || !destinyId || isLoadingNames) return;
     setIsLoadingNames(true);
     try {
-      const intent = readBuildIntent("lucky.buildIntent");
+      const intent = readBuildIntent(SessionKeys.lucky.buildIntent);
       const nameContext = [
         `class=${destiny?.classId ?? "unknown"}`,
         "path=lucky_roll",
@@ -116,7 +117,7 @@ export function LuckyResultStep() {
   return (
     <div className="result-page-grid">
       <div className="result-page-grid__main">
-        <DestinyCard data={destiny} intentSignals={readBuildIntent("lucky.buildIntent")} />
+        <DestinyCard data={destiny} intentSignals={readBuildIntent(SessionKeys.lucky.buildIntent)} />
       </div>
       <aside className="result-page-grid__side">
         <div className="card">

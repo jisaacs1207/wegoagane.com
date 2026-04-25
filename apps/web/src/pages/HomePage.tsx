@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { IdentityPortrait } from "../components/IdentityPortrait";
 import { wowPackUrl } from "../content/identityAssets";
 import { fetchGrowthAssignment, submitGrowthOutcome } from "../lib/recommendClient";
+import { SessionKeys } from "../lib/sessionKeys";
 
 function sanitizeUiExperiment(payload: { headline?: string; subline?: string }) {
   const headline = payload.headline?.trim();
@@ -18,8 +19,8 @@ export function HomePage() {
   const [assignmentId, setAssignmentId] = useState<string | null>(null);
 
   useEffect(() => {
-    const sessionId = sessionStorage.getItem("session.id") ?? crypto.randomUUID();
-    sessionStorage.setItem("session.id", sessionId);
+    const sessionId = sessionStorage.getItem(SessionKeys.home.sessionId) ?? crypto.randomUUID();
+    sessionStorage.setItem(SessionKeys.home.sessionId, sessionId);
     let assignmentId: string | null = null;
     void fetchGrowthAssignment({ sessionId, surface: "ui" })
       .then((assignment) => {
@@ -55,11 +56,11 @@ export function HomePage() {
             className="entry-btn"
             style={{ ["--entry-motif-url" as string]: `url(${wowPackUrl("Spells", "HellifrePVPThrallmarFavor.png")})` }}
             onClick={() => {
-              sessionStorage.removeItem("death.buildIntent");
-              sessionStorage.removeItem("death.buildIntent.depth");
-              sessionStorage.removeItem("death.buildIntent.powerCurve");
-              sessionStorage.removeItem("death.generatedDestiny");
-              sessionStorage.removeItem("death.destinyId");
+              sessionStorage.removeItem(SessionKeys.death.buildIntent);
+              sessionStorage.removeItem(SessionKeys.death.buildIntentDepth);
+              sessionStorage.removeItem(SessionKeys.death.buildIntentPowerCurve);
+              sessionStorage.removeItem(SessionKeys.death.generatedDestiny);
+              sessionStorage.removeItem(SessionKeys.death.destinyId);
               if (!assignmentId) return;
               void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_release_spirit" } }).catch(() => {});
             }}
@@ -82,11 +83,11 @@ export function HomePage() {
             className="entry-btn"
             style={{ ["--entry-motif-url" as string]: `url(${wowPackUrl("Trade", "engineering.png")})` }}
             onClick={() => {
-              sessionStorage.removeItem("plan.buildIntent");
-              sessionStorage.removeItem("plan.buildIntent.depth");
-              sessionStorage.removeItem("plan.buildIntent.powerCurve");
-              sessionStorage.removeItem("plan.generatedDestiny");
-              sessionStorage.removeItem("plan.destinyId");
+              sessionStorage.removeItem(SessionKeys.plan.buildIntent);
+              sessionStorage.removeItem(SessionKeys.plan.buildIntentDepth);
+              sessionStorage.removeItem(SessionKeys.plan.buildIntentPowerCurve);
+              sessionStorage.removeItem(SessionKeys.plan.generatedDestiny);
+              sessionStorage.removeItem(SessionKeys.plan.destinyId);
               if (!assignmentId) return;
               void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_draft_run" } }).catch(() => {});
             }}
@@ -109,11 +110,11 @@ export function HomePage() {
             className="entry-btn"
             style={{ ["--entry-motif-url" as string]: `url(${wowPackUrl("Miscellaneous", "Dice_01.png")})` }}
             onClick={() => {
-              sessionStorage.removeItem("lucky.buildIntent");
-              sessionStorage.removeItem("lucky.buildIntent.depth");
-              sessionStorage.removeItem("lucky.buildIntent.powerCurve");
-              sessionStorage.removeItem("lucky.generatedDestiny");
-              sessionStorage.removeItem("lucky.destinyId");
+              sessionStorage.removeItem(SessionKeys.lucky.buildIntent);
+              sessionStorage.removeItem(SessionKeys.lucky.buildIntentDepth);
+              sessionStorage.removeItem(SessionKeys.lucky.buildIntentPowerCurve);
+              sessionStorage.removeItem(SessionKeys.lucky.generatedDestiny);
+              sessionStorage.removeItem(SessionKeys.lucky.destinyId);
               if (!assignmentId) return;
               void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_lucky_roll" } }).catch(() => {});
             }}

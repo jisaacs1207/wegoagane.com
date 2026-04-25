@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { IdentityPortrait } from "../../components/IdentityPortrait";
 import { wowPackUrl } from "../../content/identityAssets";
+import { SessionKeys } from "../../lib/sessionKeys";
 
 export function PlanFreeformStep() {
   const navigate = useNavigate();
@@ -31,7 +32,7 @@ export function PlanFreeformStep() {
         onChange={(e) => {
           const next = e.target.value.slice(0, 80);
           setNote(next);
-          sessionStorage.setItem("plan.freeform", next);
+          sessionStorage.setItem(SessionKeys.plan.freeform, next);
         }}
         rows={3}
         placeholder="e.g. no pet micromanagement, no mage, prefer strong solo sustain"
@@ -53,12 +54,12 @@ export function PlanFreeformStep() {
           type="button"
           className="btn-ghost"
           onClick={() => {
-            sessionStorage.removeItem("plan.freeform");
-            sessionStorage.removeItem("plan.buildIntent");
-            sessionStorage.removeItem("plan.buildIntent.depth");
-            sessionStorage.removeItem("plan.buildIntent.powerCurve");
-            sessionStorage.removeItem("plan.generatedDestiny");
-            sessionStorage.removeItem("plan.destinyId");
+            sessionStorage.removeItem(SessionKeys.plan.freeform);
+            sessionStorage.removeItem(SessionKeys.plan.buildIntent);
+            sessionStorage.removeItem(SessionKeys.plan.buildIntentDepth);
+            sessionStorage.removeItem(SessionKeys.plan.buildIntentPowerCurve);
+            sessionStorage.removeItem(SessionKeys.plan.generatedDestiny);
+            sessionStorage.removeItem(SessionKeys.plan.destinyId);
             navigate("/draft-a-run/intent");
           }}
         >

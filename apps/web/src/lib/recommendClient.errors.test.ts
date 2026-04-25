@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { destinyRecommendErrorHint, flowApiErrorHint } from "./recommendClient";
+import { destinyRecommendErrorHint, flowApiErrorHint, recommendErrorSuggestsSoftenFilters } from "./recommendClient";
 
 describe("destinyRecommendErrorHint", () => {
   it("maps no_viable_build", () => {
@@ -8,6 +8,17 @@ describe("destinyRecommendErrorHint", () => {
 
   it("maps 503", () => {
     expect(destinyRecommendErrorHint(new Error("recommend_failed:503:recommend_internal_error"))).toContain("unavailable");
+  });
+});
+
+describe("recommendErrorSuggestsSoftenFilters", () => {
+  it("is true for filter-tight recommend errors", () => {
+    expect(recommendErrorSuggestsSoftenFilters(new Error("recommend_failed:400:no_viable_build"))).toBe(true);
+    expect(recommendErrorSuggestsSoftenFilters(new Error("recommend_failed:400:no_ranked_candidate"))).toBe(true);
+  });
+
+  it("is false for unrelated errors", () => {
+    expect(recommendErrorSuggestsSoftenFilters(new Error("recommend_failed:400:invalid_input"))).toBe(false);
   });
 });
 

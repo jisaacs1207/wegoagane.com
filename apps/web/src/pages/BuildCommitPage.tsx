@@ -16,6 +16,7 @@ import {
 import { debugClient } from "../lib/clientDebug";
 import { fetchBuildCommit, flowApiErrorHint, submitBuildCommitMemorial, type BuildCommitRecord } from "../lib/recommendClient";
 import { AnalyticsEvent, trackEvent } from "../lib/analytics";
+import { SessionKeys } from "../lib/sessionKeys";
 
 export function BuildCommitPage() {
   const { slug } = useParams();
@@ -107,7 +108,7 @@ export function BuildCommitPage() {
       });
       trackEvent(AnalyticsEvent.MemorialSubmitted, { slug });
       setMessage("Memorial captured. You can retool from this run.");
-      sessionStorage.setItem("plan.seedDestinyId", activeRecord.destinyId);
+      sessionStorage.setItem(SessionKeys.plan.seedDestinyId, activeRecord.destinyId);
     } catch (e) {
       debugClient("memorialSubmit", e);
       setMessage(flowApiErrorHint(e));
@@ -147,7 +148,7 @@ export function BuildCommitPage() {
                 type="button"
                 className="btn-ghost"
                 onClick={() => {
-                  sessionStorage.setItem("plan.seedDestinyId", record.destinyId);
+                  sessionStorage.setItem(SessionKeys.plan.seedDestinyId, record.destinyId);
                   trackEvent(AnalyticsEvent.RetoolStarted, { slug: record.slug, destinyId: record.destinyId });
                   navigate("/draft-a-run/intent");
                 }}

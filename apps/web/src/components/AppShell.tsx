@@ -8,6 +8,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="app-root">
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
       <AtmosphereFx />
       <header className="app-header">
         <div className="app-header-inner">
@@ -21,7 +24,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
         </div>
       </header>
-      <main className="app-main">{children}</main>
+      <main id="main-content" className="app-main" tabIndex={-1}>
+        {children}
+      </main>
       <footer className="app-footer">
         <span className="app-footer-note">Hardcore reroll & remembrance — Phase 1 build</span>
       </footer>

@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { DestinyCard } from "../components/cards/DestinyCard";
 import { type DestinyFixture } from "../content/cardFixtures";
 import { augmentNextSignalWithPower } from "../lib/journeySignalsExtras";
-import { fetchDestiny, fetchGrowthAssignment, submitGrowthOutcome } from "../lib/recommendClient";
+import { destinyRecommendErrorHint, fetchDestiny, fetchGrowthAssignment, submitGrowthOutcome } from "../lib/recommendClient";
+import { SessionKeys } from "../lib/sessionKeys";
 import { readBuildIntent } from "../lib/readBuildIntent";
 import { buildMemoryHints } from "../lib/memoryProfile";
 import { BuildIntentChips } from "../components/BuildIntentChips";
@@ -22,8 +23,8 @@ export function LuckyRollPage() {
   const [feedbackReason, setFeedbackReason] = useState<string>("");
 
   useEffect(() => {
-    const seededSessionId = sessionStorage.getItem("lucky.sessionId") ?? crypto.randomUUID();
-    sessionStorage.setItem("lucky.sessionId", seededSessionId);
+    const seededSessionId = sessionStorage.getItem(SessionKeys.lucky.sessionId) ?? crypto.randomUUID();
+    sessionStorage.setItem(SessionKeys.lucky.sessionId, seededSessionId);
     setSessionId(seededSessionId);
     void fetchGrowthAssignment({ sessionId: seededSessionId, surface: "recommendation", entryPath: "lucky_roll" })
       .then((assignment) => {
@@ -49,7 +50,7 @@ export function LuckyRollPage() {
         entryPath: "lucky_roll",
         sessionId,
         signals: {
-          nextSignal: augmentNextSignalWithPower("Surprise me", "lucky.buildIntent"),
+          nextSignal: augmentNextSignalWithPower("Surprise me", SessionKeys.lucky.buildIntent),
           memoryHints: buildMemoryHints(),
           recommendVariantId: variantId ?? undefined,
           ...signals,
@@ -64,8 +65,8 @@ export function LuckyRollPage() {
           outcome: { event: "recommend_rendered", destinyId: result.destinyId },
         }).catch(() => {});
       }
-    } catch {
-      setLoadError("Could not forge a lucky roll right now.");
+    } catch (err) {
+      setLoadError(destinyRecommendErrorHint(err));
     } finally {
       setIsLoading(false);
     }
@@ -80,7 +81,7 @@ export function LuckyRollPage() {
         unavailable.
       </p>
       <BuildIntentChips
-        storageKey="lucky.buildIntent"
+        storageKey={SessionKeys.lucky.buildIntent}
         isGenerating={isLoading}
         hasGenerated={Boolean(destiny)}
         onGenerate={(signals) => void generate(signals)}
@@ -90,7 +91,7 @@ export function LuckyRollPage() {
           {loadError}
         </p>
       ) : null}
-      {destiny ? <DestinyCard data={destiny} intentSignals={readBuildIntent("lucky.buildIntent")} /> : null}
+      {destiny ? <DestinyCard data={destiny} intentSignals={readBuildIntent(SessionKeys.lucky.buildIntent)} /> : null}
       {destiny ? (
         <div className="card" style={{ marginTop: 12 }}>
           <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Was this close to what you wanted?</p>

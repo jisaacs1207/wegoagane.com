@@ -5,11 +5,13 @@ import { ShareComboLayout } from "../components/cards/ShareComboLayout";
 import {
   fetchGrowthAssignment,
   fetchShareRun,
+  flowApiErrorHint,
   submitGrowthOutcome,
   submitDestinyFeedback,
   type PostAcceptRating,
   type ShareRunResponse,
 } from "../lib/recommendClient";
+import { SessionKeys } from "../lib/sessionKeys";
 import { AnalyticsEvent, trackEvent } from "../lib/analytics";
 import { rememberPostAcceptRating } from "../lib/memoryProfile";
 
@@ -27,13 +29,15 @@ export function SharePlaceholderPage() {
   const [ratingMessage, setRatingMessage] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sharePrefix, setSharePrefix] = useState<string>("Run share");
+  const [pollError, setPollError] = useState<string>("");
   const lastStatusRef = useRef<string | null>(null);
+  const pollFailCountRef = useRef(0);
 
   useEffect(() => {
     if (!runId) return;
     trackEvent(AnalyticsEvent.ShareViewed, { runId });
-    const sessionId = sessionStorage.getItem("session.id") ?? crypto.randomUUID();
-    sessionStorage.setItem("session.id", sessionId);
+    const sessionId = sessionStorage.getItem(SessionKeys.home.sessionId) ?? crypto.randomUUID();
+    sessionStorage.setItem(SessionKeys.home.sessionId, sessionId);
     let assignmentId: string | null = null;
     void fetchGrowthAssignment({ sessionId, surface: "share" })
       .then((assignment) => {
@@ -48,6 +52,8 @@ export function SharePlaceholderPage() {
       try {
         const result = await fetchShareRun(runId);
         if (cancelled) return;
+        pollFailCountRef.current = 0;
+        setPollError("");
         setShare(result);
         if (result.status !== lastStatusRef.current) {
           lastStatusRef.current = result.status;
@@ -120,8 +126,8 @@ export function SharePlaceholderPage() {
         });
       }
       setRatingMessage("Final rating saved.");
-    } catch {
-      setRatingMessage("Could not save final rating.");
+    } catch (err) {
+      setRatingMessage(flowApiErrorHint(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -135,6 +141,11 @@ export function SharePlaceholderPage() {
         <p className="hero-sub">
           Run id <strong>{runId}</strong> — status: <strong>{share?.status ?? "loading"}</strong>.
         </p>
+        {pollError ? (
+          <p className="hero-sub" style={{ marginTop: 8, color: "#ef4444" }} role="status" aria-live="polite">
+            {pollError}
+          </p>
+        ) : null}
       </div>
       <div className="card" style={{ marginTop: 14 }}>
         {share?.status === "ready" && share.imageUrl ? (
