@@ -63,23 +63,25 @@ export function DeathJourneyStep() {
         return null;
       });
 
+      const mergedSignals = {
+        mood: augmentMoodWithPower(mood, SessionKeys.death.buildIntent),
+        nextSignal,
+        freeform: detailFreeform,
+        memoryHints: buildMemoryHints(),
+        recommendVariantId: assignment?.variantId ?? undefined,
+        ...promptBias,
+        ...signals,
+      };
       const result = await fetchDestiny({
         entryPath: "release_spirit",
         sessionId,
-        signals: {
-          mood: augmentMoodWithPower(mood, SessionKeys.death.buildIntent),
-          nextSignal,
-          freeform: detailFreeform,
-          memoryHints: buildMemoryHints(),
-          recommendVariantId: assignment?.variantId ?? undefined,
-          ...promptBias,
-          ...signals,
-        },
+        signals: mergedSignals,
       });
       writeStoredDestiny("death", {
         sessionId: result.sessionId,
         destinyId: result.destinyId,
         output: result.output,
+        intentSnapshot: { ...promptBias, ...signals },
       });
       sessionStorage.setItem(SessionKeys.death.destinyId, result.destinyId);
       setLastRecommendErr(null);

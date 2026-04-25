@@ -18,7 +18,8 @@ import { augmentFreeformWithPower } from "../../lib/journeySignalsExtras";
 import { readBuildIntent } from "../../lib/readBuildIntent";
 import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 import { buildMemoryHints, rememberAccept, rememberReroll } from "../../lib/memoryProfile";
-import { readStoredDestiny } from "../../lib/flowDestinyState";
+import { readStoredDestiny, writeStoredDestiny } from "../../lib/flowDestinyState";
+import type { BuildIntentSignals } from "../../lib/buildIntentTypes";
 import { debugClientIgnored } from "../../lib/clientDebug";
 import { SessionKeys } from "../../lib/sessionKeys";
 
@@ -49,6 +50,7 @@ export function PlanResultStep() {
   const [nameLane, setNameLane] = useState<"hc_practical" | "lore_world" | "neutral">("hc_practical");
   const [nameMode, setNameMode] = useState<"reflective" | "high_variance" | "humor">("reflective");
   const [nameVariance, setNameVariance] = useState(0.6);
+  const [cardIntentSignals, setCardIntentSignals] = useState<BuildIntentSignals | null>(null);
 
   useEffect(() => {
     const stored = readStoredDestiny("plan");
@@ -59,6 +61,7 @@ export function PlanResultStep() {
     setDestiny(stored.output);
     setDestinyId(stored.destinyId);
     setSessionId(stored.sessionId);
+    setCardIntentSignals(stored.intentSnapshot ?? null);
 
     void fetchGrowthAssignment({
       sessionId: stored.sessionId,
@@ -96,7 +99,7 @@ export function PlanResultStep() {
     if (!sessionId || !destinyId || isLoadingNames) return;
     setIsLoadingNames(true);
     try {
-      const intent = readBuildIntent(SessionKeys.plan.buildIntent);
+      const intent = cardIntentSignals ?? readBuildIntent(SessionKeys.plan.buildIntent);
       const nameContext = [
         `class=${destiny?.classId ?? "unknown"}`,
         `intent=${sessionStorage.getItem(SessionKeys.plan.intent) ?? "none"}`,
@@ -205,6 +208,14 @@ export function PlanResultStep() {
       setDestiny(reroll.output);
       setDestinyId(reroll.destinyId);
       sessionStorage.setItem(SessionKeys.plan.destinyId, reroll.destinyId);
+      const snapshot = readBuildIntent(SessionKeys.plan.buildIntent);
+      writeStoredDestiny("plan", {
+        sessionId: reroll.sessionId,
+        destinyId: reroll.destinyId,
+        output: reroll.output,
+        intentSnapshot: snapshot,
+      });
+      setCardIntentSignals(snapshot);
       setNote("");
       setShowRerollGate(false);
     } catch (e) {
@@ -290,7 +301,10 @@ export function PlanResultStep() {
         </div>
       ) : (
         <>
-          <DestinyCard data={destiny} intentSignals={readBuildIntent(SessionKeys.plan.buildIntent)} />
+          <DestinyCard
+            data={destiny}
+            intentSignals={cardIntentSignals ?? readBuildIntent(SessionKeys.plan.buildIntent)}
+          />
           <div
             className="card icon-motif-card"
             style={{ marginTop: 12, ["--motif-url" as string]: `url(${wowPackUrl("Trade", "engineering.png")})` }}

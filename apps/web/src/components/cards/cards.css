@@ -278,6 +278,15 @@
   gap: 6px;
 }
 
+.destiny-card__world-defaults {
+  flex: 1 1 100%;
+  max-width: 100%;
+  color: var(--ts);
+  letter-spacing: 0.01em;
+  text-transform: none;
+  line-height: 1.4;
+}
+
 .destiny-card__portrait-row {
   margin-top: 10px;
   display: flex;
