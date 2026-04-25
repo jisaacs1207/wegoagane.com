@@ -1,5 +1,10 @@
+/** How the player scoped the lucky-roll setup (client + API telemetry). */
+export type IntentDepth = "quick" | "balanced" | "dialed_in";
+
 /** Mirrors API `RecommendSignals` subset used for build intent chips. */
 export type BuildIntentSignals = {
+  /** Sent to `/v1/recommend` with the request. */
+  intentDepth?: IntentDepth;
   statPhilosophy?: Array<
     | "stamina_forward"
     | "strength_forward"

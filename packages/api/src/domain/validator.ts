@@ -94,6 +94,7 @@ export const recommendInputSchema = z.object({
     pickedRace: z.string().min(2).max(24).optional(),
     genderLean: z.enum(["masculine", "feminine", "neutral"]).optional(),
     recommendLane: z.enum(["curated", "experimental"]).optional(),
+    intentDepth: z.enum(["quick", "balanced", "dialed_in"]).optional(),
     memoryHints: z
       .object({
         version: z.number().int().min(1).max(8),

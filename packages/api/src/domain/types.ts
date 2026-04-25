@@ -81,6 +81,8 @@ export type RecommendSignals = {
   genderLean?: "masculine" | "feminine" | "neutral";
   /** Curated fixture ranker vs AI-prototyped archetype row (requires AI gateway). */
   recommendLane?: "curated" | "experimental";
+  /** Client journey: quick random roll vs partial guided vs full question stack. */
+  intentDepth?: "quick" | "balanced" | "dialed_in";
 };
 
 export type RecommendInput = {

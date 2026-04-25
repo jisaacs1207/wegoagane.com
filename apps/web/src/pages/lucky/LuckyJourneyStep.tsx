@@ -71,7 +71,8 @@ export function LuckyJourneyStep() {
 
   const onGenerate = useCallback(
     async (signals: BuildIntentSignals, depth: IntentDepth) => {
-      void depth;
+      const { intentDepth: _ignored, ...intentWithoutDepth } = signals;
+      void _ignored;
       const sessionId = sessionStorage.getItem(SessionKeys.lucky.sessionId) ?? crypto.randomUUID();
       sessionStorage.setItem(SessionKeys.lucky.sessionId, sessionId);
 
@@ -101,7 +102,8 @@ export function LuckyJourneyStep() {
             nextSignal: augmentNextSignalWithPower("Surprise me", SessionKeys.lucky.buildIntent),
             memoryHints: buildMemoryHints(),
             recommendVariantId: assignment?.variantId ?? undefined,
-            ...signals,
+            ...intentWithoutDepth,
+            intentDepth: depth,
             ...laneArg,
           },
         });
