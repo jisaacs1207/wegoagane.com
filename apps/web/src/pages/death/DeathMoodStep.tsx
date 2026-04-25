@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { IdentityPortrait } from "../../components/IdentityPortrait";
 import { wowPackUrl } from "../../content/identityAssets";
@@ -23,6 +23,13 @@ export function DeathMoodStep() {
 
   return (
     <div className="card">
+      <div className="flow-crumbs" aria-label="Flow navigation">
+        <span className="flow-crumb">
+          <Link to="/">Home</Link>
+        </span>
+        <span className="flow-crumb">/</span>
+        <span className="flow-crumb">Death mood</span>
+      </div>
       <p className="step-label">Release spirit · optional mood-only view</p>
       <h1 className="hero-question">What was the tone of that death?</h1>
       <p className="hero-sub">Pick the mood so your next recommendation matches how you want to recover.</p>
@@ -45,6 +52,7 @@ export function DeathMoodStep() {
               sessionStorage.removeItem(SessionKeys.death.buildIntentPowerCurve);
               sessionStorage.removeItem(SessionKeys.death.generatedDestiny);
               sessionStorage.removeItem(SessionKeys.death.destinyId);
+              navigate("/release-spirit/next");
             }}
           >
             <IdentityPortrait src={m.icon} alt="" className="ritual-option__icon" />
@@ -55,14 +63,9 @@ export function DeathMoodStep() {
           </button>
         ))}
       </div>
-      <div className="flow-nav">
-        <button type="button" className="btn-ghost" onClick={() => navigate("/")}>
-          Back
-        </button>
-        <button type="button" className="btn-primary" onClick={() => navigate("/release-spirit/next")} disabled={!selected}>
-          Continue
-        </button>
-      </div>
+      <p className="ui-caption" style={{ marginTop: 10 }}>
+        Selecting a mood advances automatically.
+      </p>
     </div>
   );
 }

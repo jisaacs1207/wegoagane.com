@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { IdentityPortrait } from "../../components/IdentityPortrait";
 import { wowPackUrl } from "../../content/identityAssets";
@@ -38,6 +38,13 @@ export function DeathNextSignalStep() {
 
   return (
     <div className="card">
+      <div className="flow-crumbs" aria-label="Flow navigation">
+        <span className="flow-crumb">
+          <Link to="/">Home</Link>
+        </span>
+        <span className="flow-crumb">/</span>
+        <span className="flow-crumb">Death setup</span>
+      </div>
       <p className="step-label">Release spirit · step 1 of 2</p>
       <h1 className="hero-question">What should the next run optimize for?</h1>
       <p className="hero-sub">Set mood and one priority, then generate.</p>
@@ -65,6 +72,11 @@ export function DeathNextSignalStep() {
             onClick={() => {
               setSelected(s.id);
               sessionStorage.setItem(SessionKeys.death.nextSignal, s.id);
+              if (!selectedMood) {
+                setSelectedMood("just_generate");
+                sessionStorage.setItem(SessionKeys.death.mood, "just_generate");
+              }
+              navigate("/release-spirit/journey");
             }}
           >
             <IdentityPortrait src={s.icon} alt="" className="ritual-option__icon" />
@@ -95,37 +107,13 @@ export function DeathNextSignalStep() {
         >
           Back
         </button>
-        <button
-          type="button"
-          className="btn-ghost"
-          onClick={() => {
-            if (!selected) {
-              setSelected("surprise");
-              sessionStorage.setItem(SessionKeys.death.nextSignal, "surprise");
-            }
-            navigate("/release-spirit/detail");
-          }}
-        >
+        <button type="button" className="btn-ghost" onClick={() => navigate("/release-spirit/detail")}>
           Add optional details
         </button>
-        <button
-          type="button"
-          className="btn-primary"
-          onClick={() => {
-            if (!selectedMood) {
-              setSelectedMood("just_generate");
-              sessionStorage.setItem(SessionKeys.death.mood, "just_generate");
-            }
-            if (!selected) {
-              setSelected("surprise");
-              sessionStorage.setItem(SessionKeys.death.nextSignal, "surprise");
-            }
-            navigate("/release-spirit/journey");
-          }}
-        >
-          Generate build
-        </button>
       </div>
+      <p className="ui-caption" style={{ marginTop: 10 }}>
+        Selecting a priority advances automatically.
+      </p>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { IdentityPortrait } from "../components/IdentityPortrait";
 import { wowPackUrl } from "../content/identityAssets";
+import type { BuildIntentSignals } from "../lib/buildIntentTypes";
 import { fetchGrowthAssignment, submitGrowthOutcome } from "../lib/recommendClient";
 import { debugClientIgnored } from "../lib/clientDebug";
 import { SessionKeys } from "../lib/sessionKeys";
@@ -16,9 +17,27 @@ function sanitizeUiExperiment(payload: { headline?: string; subline?: string }) 
 
 export function HomePage() {
   const [heroQuestion, setHeroQuestion] = useState("One clean decision, no noise");
-  const [heroSub, setHeroSub] = useState("Pick your ritual: recover from a death, plan a run, or roll a wildcard.");
+  const [heroSub, setHeroSub] = useState("Choose fast generation or detailed setup.");
   const [assignmentId, setAssignmentId] = useState<string | null>(null);
-  const [activeEntry, setActiveEntry] = useState<"death" | "plan" | "lucky" | null>(null);
+  const [activeEntry, setActiveEntry] = useState<"quick" | "detailed" | null>(null);
+
+  function sample<T>(arr: readonly T[]): T {
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+
+  function seedQuickBuild() {
+    const quickSignals: BuildIntentSignals = {
+      statPhilosophy: [sample(["stamina_forward", "balanced", "intellect_forward"] as const)],
+      professionIntents: [sample(["engineering_outs", "herbalism_alchemy_pair", "mining_engineering_pair"] as const)],
+      buildVectors: [
+        sample(["solo", "hybrid", "ranged", "melee", "caster"] as const),
+        sample(["tank", "heal", "mana", "rage", "group_ok"] as const),
+      ],
+      raceMode: sample(["signal_inferred", "surprise"] as const),
+    };
+    sessionStorage.setItem(SessionKeys.lucky.buildIntent, JSON.stringify(quickSignals));
+    sessionStorage.setItem(SessionKeys.lucky.buildIntentDepth, "quick");
+  }
 
   useEffect(() => {
     const sessionId = sessionStorage.getItem(SessionKeys.home.sessionId) ?? crypto.randomUUID();
@@ -56,88 +75,20 @@ export function HomePage() {
         <p className="hero-sub">{heroSub}</p>
         <div className="entry-grid">
           <Link
-            to="/release-spirit/next"
-            className={`entry-btn ${activeEntry === "death" ? "entry-btn--active" : ""}`}
-            style={{ ["--entry-motif-url" as string]: `url(${wowPackUrl("Spells", "HellifrePVPThrallmarFavor.png")})` }}
-            onMouseEnter={() => setActiveEntry("death")}
-            onMouseLeave={() => setActiveEntry(null)}
-            onFocus={() => setActiveEntry("death")}
-            onBlur={() => setActiveEntry(null)}
-            onClick={() => {
-              sessionStorage.removeItem(SessionKeys.death.buildIntent);
-              sessionStorage.removeItem(SessionKeys.death.buildIntentDepth);
-              sessionStorage.removeItem(SessionKeys.death.buildIntentPowerCurve);
-              sessionStorage.removeItem(SessionKeys.death.generatedDestiny);
-              sessionStorage.removeItem(SessionKeys.death.destinyId);
-              if (!assignmentId) return;
-              void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_release_spirit" } }).catch((err) => {
-                debugClientIgnored("home.growth_outcome_release_spirit", err);
-              });
-            }}
-          >
-            <IdentityPortrait src={wowPackUrl("Miscellaneous", "Tournaments_banner_Scourge.png")} alt="" className="entry-emblem" />
-            <span className="entry-badges">
-              <IdentityPortrait src={wowPackUrl("Abilities", "ShieldWall.png")} alt="" className="entry-badge" />
-              <IdentityPortrait src={wowPackUrl("Spells", "Slow.png")} alt="" className="entry-badge" />
-            </span>
-            <span className="entry-btn-title">Release Spirit</span>
-            <span className="entry-btn-desc">I died - fast re-entry now, with optional context if I want to tune.</span>
-            <span className="entry-pill-row">
-              <span className="entry-pill">Fast restart</span>
-              <span className="entry-pill">Set next priority</span>
-              <span className="entry-pill">Optional detail tuning</span>
-            </span>
-          </Link>
-          <Link
-            to="/draft-a-run/intent"
-            className={`entry-btn ${activeEntry === "plan" ? "entry-btn--active" : ""}`}
-            style={{ ["--entry-motif-url" as string]: `url(${wowPackUrl("Trade", "engineering.png")})` }}
-            onMouseEnter={() => setActiveEntry("plan")}
-            onMouseLeave={() => setActiveEntry(null)}
-            onFocus={() => setActiveEntry("plan")}
-            onBlur={() => setActiveEntry(null)}
-            onClick={() => {
-              sessionStorage.removeItem(SessionKeys.plan.buildIntent);
-              sessionStorage.removeItem(SessionKeys.plan.buildIntentDepth);
-              sessionStorage.removeItem(SessionKeys.plan.buildIntentPowerCurve);
-              sessionStorage.removeItem(SessionKeys.plan.generatedDestiny);
-              sessionStorage.removeItem(SessionKeys.plan.destinyId);
-              if (!assignmentId) return;
-              void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_draft_run" } }).catch((err) => {
-                debugClientIgnored("home.growth_outcome_draft_run", err);
-              });
-            }}
-          >
-            <IdentityPortrait src={wowPackUrl("Abilities", "SwordandBoard.png")} alt="" className="entry-emblem" />
-            <span className="entry-badges">
-              <IdentityPortrait src={wowPackUrl("Trade", "engineering.png")} alt="" className="entry-badge" />
-              <IdentityPortrait src={wowPackUrl("Trade", "herbalism.png")} alt="" className="entry-badge" />
-            </span>
-            <span className="entry-btn-title">Draft a Run</span>
-            <span className="entry-btn-desc">I&apos;m planning - instant generate first, then tune deeper only if needed.</span>
-            <span className="entry-pill-row">
-              <span className="entry-pill">Instant first draft</span>
-              <span className="entry-pill">Persona-aware tuning</span>
-              <span className="entry-pill">Commit artifact</span>
-            </span>
-          </Link>
-          <Link
-            to="/lucky-roll/journey"
-            className={`entry-btn ${activeEntry === "lucky" ? "entry-btn--active" : ""}`}
+            to="/lucky-roll/journey?quick=1"
+            className={`entry-btn ${activeEntry === "quick" ? "entry-btn--active" : ""}`}
             style={{ ["--entry-motif-url" as string]: `url(${wowPackUrl("Miscellaneous", "Dice_01.png")})` }}
-            onMouseEnter={() => setActiveEntry("lucky")}
+            onMouseEnter={() => setActiveEntry("quick")}
             onMouseLeave={() => setActiveEntry(null)}
-            onFocus={() => setActiveEntry("lucky")}
+            onFocus={() => setActiveEntry("quick")}
             onBlur={() => setActiveEntry(null)}
             onClick={() => {
-              sessionStorage.removeItem(SessionKeys.lucky.buildIntent);
-              sessionStorage.removeItem(SessionKeys.lucky.buildIntentDepth);
-              sessionStorage.removeItem(SessionKeys.lucky.buildIntentPowerCurve);
               sessionStorage.removeItem(SessionKeys.lucky.generatedDestiny);
               sessionStorage.removeItem(SessionKeys.lucky.destinyId);
+              seedQuickBuild();
               if (!assignmentId) return;
-              void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_lucky_roll" } }).catch((err) => {
-                debugClientIgnored("home.growth_outcome_lucky_roll", err);
+              void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_quick_build" } }).catch((err) => {
+                debugClientIgnored("home.growth_outcome_quick_build", err);
               });
             }}
           >
@@ -146,13 +97,51 @@ export function HomePage() {
               <IdentityPortrait src={wowPackUrl("Spells", "StarFire.png")} alt="" className="entry-badge" />
               <IdentityPortrait src={wowPackUrl("Abilities", "BloodFrenzy.png")} alt="" className="entry-badge" />
             </span>
-            <span className="entry-btn-title">Lucky roll</span>
-            <span className="entry-btn-desc">Surprise me - shortest path with safe variance.</span>
+            <span className="entry-btn-title">Quick build</span>
+            <span className="entry-btn-desc">Randomized HC-safe filters, AI-leaning generation, minimal clicks.</span>
             <span className="entry-pill-row">
+              <span className="entry-pill">Auto-seeded filters</span>
               <span className="entry-pill">Fastest path</span>
-              <span className="entry-pill">Power curve aware</span>
               <span className="entry-pill">Commit-ready</span>
             </span>
+          </Link>
+          <Link
+            to="/draft-a-run/intent"
+            className={`entry-btn ${activeEntry === "detailed" ? "entry-btn--active" : ""}`}
+            style={{ ["--entry-motif-url" as string]: `url(${wowPackUrl("Trade", "engineering.png")})` }}
+            onMouseEnter={() => setActiveEntry("detailed")}
+            onMouseLeave={() => setActiveEntry(null)}
+            onFocus={() => setActiveEntry("detailed")}
+            onBlur={() => setActiveEntry(null)}
+            onClick={() => {
+              sessionStorage.removeItem(SessionKeys.plan.buildIntent);
+              sessionStorage.removeItem(SessionKeys.plan.buildIntentDepth);
+              sessionStorage.removeItem(SessionKeys.plan.buildIntentPowerCurve);
+              sessionStorage.removeItem(SessionKeys.plan.generatedDestiny);
+              sessionStorage.removeItem(SessionKeys.plan.destinyId);
+              if (!assignmentId) return;
+              void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_detailed_build" } }).catch((err) => {
+                debugClientIgnored("home.growth_outcome_detailed_build", err);
+              });
+            }}
+          >
+            <IdentityPortrait src={wowPackUrl("Abilities", "SwordandBoard.png")} alt="" className="entry-emblem" />
+            <span className="entry-badges">
+              <IdentityPortrait src={wowPackUrl("Trade", "engineering.png")} alt="" className="entry-badge" />
+              <IdentityPortrait src={wowPackUrl("Trade", "herbalism.png")} alt="" className="entry-badge" />
+            </span>
+            <span className="entry-btn-title">Detailed build</span>
+            <span className="entry-btn-desc">Choose exact priorities, professions, playstyle, and identity preferences.</span>
+            <span className="entry-pill-row">
+              <span className="entry-pill">High control</span>
+              <span className="entry-pill">Granular tuning</span>
+              <span className="entry-pill">Refine + commit</span>
+            </span>
+          </Link>
+        </div>
+        <div className="flow-nav" style={{ marginTop: 12 }}>
+          <Link to="/release-spirit/next" className="btn-ghost">
+            I died - recover from death
           </Link>
         </div>
         <p className="ui-caption" style={{ margin: "18px 0 0", color: "var(--td)" }}>

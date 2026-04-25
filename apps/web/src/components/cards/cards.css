@@ -271,22 +271,6 @@
   color: #bcae93;
 }
 
-.destiny-card__identity-row {
-  margin-top: 10px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.destiny-card__world-defaults {
-  flex: 1 1 100%;
-  max-width: 100%;
-  color: var(--ts);
-  letter-spacing: 0.01em;
-  text-transform: none;
-  line-height: 1.4;
-}
-
 .destiny-card__portrait-row {
   margin-top: 10px;
   display: flex;
@@ -302,7 +286,6 @@
   background: #15120f;
 }
 
-.destiny-card__class-tag,
 .destiny-card__identity-chip {
   font-size: 10px;
   letter-spacing: 0.09em;
@@ -311,25 +294,8 @@
   border: 1px solid #4a4337;
   background: rgba(21, 18, 14, 0.75);
   padding: 4px 8px;
-}
-
-.destiny-card__identity-chip {
   color: #bcae93;
 }
-
-.destiny-card__class-tag {
-  color: var(--gold-bright);
-}
-
-.destiny-card__class-tag--warrior { border-color: color-mix(in srgb, var(--warrior), #3a2c1a 45%); }
-.destiny-card__class-tag--mage { border-color: color-mix(in srgb, var(--mage), #203344 45%); }
-.destiny-card__class-tag--rogue { border-color: color-mix(in srgb, var(--rogue), #3e3a1a 45%); }
-.destiny-card__class-tag--priest { border-color: color-mix(in srgb, var(--priest), #514b42 45%); }
-.destiny-card__class-tag--hunter { border-color: color-mix(in srgb, var(--hunter), #2a3e1f 45%); }
-.destiny-card__class-tag--warlock { border-color: color-mix(in srgb, var(--warlock), #2f2642 45%); }
-.destiny-card__class-tag--druid { border-color: color-mix(in srgb, var(--druid), #472a15 45%); }
-.destiny-card__class-tag--paladin { border-color: color-mix(in srgb, var(--paladin), #492739 45%); }
-.destiny-card__class-tag--shaman { border-color: color-mix(in srgb, var(--shaman), #18335a 45%); }
 
 .destiny-card__tier {
   margin-top: 12px;
@@ -349,18 +315,6 @@
 
 .destiny-card__bullets li {
   margin-bottom: 4px;
-}
-
-.destiny-card__rollup {
-  margin: 14px 0 0;
-  font-size: 12px;
-  line-height: 1.5;
-  color: #c9bba3;
-}
-
-.destiny-card__rollup strong {
-  color: #dcc7a4;
-  font-weight: 600;
 }
 
 .share-combo {

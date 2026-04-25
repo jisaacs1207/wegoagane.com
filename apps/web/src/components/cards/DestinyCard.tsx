@@ -19,18 +19,6 @@ type Props = {
   intentSignals?: BuildIntentSignals | null;
 };
 
-const CLASS_FANTASY_LABEL: Record<DestinyFixture["classId"], string> = {
-  warrior: "Steel Vanguard",
-  mage: "Arcane Keeper",
-  rogue: "Shadow Agent",
-  priest: "Sacred Anchor",
-  hunter: "Wild Pathfinder",
-  warlock: "Fel Strategist",
-  druid: "Warden of Nature",
-  paladin: "Lightbound Sentinel",
-  shaman: "Stormbound Caller",
-};
-
 export function DestinyCard({ data, compact, intentSignals }: Props) {
   const headlineId = useId();
   const raceLabel = data.raceSuggestion ?? formatRaceLabel(inferRaceFromHeadline(data.headline));
@@ -108,14 +96,6 @@ export function DestinyCard({ data, compact, intentSignals }: Props) {
               </div>
             </div>
           ) : null}
-          <div className="destiny-card__identity-row">
-            <span className={`destiny-card__class-tag destiny-card__class-tag--${data.classId}`}>
-              {CLASS_FANTASY_LABEL[data.classId]}
-            </span>
-            <span className="destiny-card__world-defaults ui-caption ui-caption--xs">
-              Site defaults: classic-era pacing · survival-first framing (not your journey filters above).
-            </span>
-          </div>
         </div>
       </div>
       <p className="destiny-card__tier">{data.tierProse}</p>
@@ -124,10 +104,6 @@ export function DestinyCard({ data, compact, intentSignals }: Props) {
           <li key={b}>{b}</li>
         ))}
       </ul>
-      <p className="destiny-card__rollup">
-        <strong>Suggested identity:</strong> {CLASS_FANTASY_LABEL[data.classId]} · {raceLabel} ·{" "}
-        {faction === "horde" ? "Horde" : faction === "alliance" ? "Alliance" : "Neutral"} — {data.bullets.join(" · ")}
-      </p>
       <span className="card-watermark">wegoagane.com</span>
     </article>
   );

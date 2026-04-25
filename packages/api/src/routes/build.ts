@@ -201,6 +201,31 @@ export async function handleGetBuild(c: Context<ApiEnv>) {
   const rows = await db.select().from(buildPlans).where(eq(buildPlans.destinyId, destinyId)).limit(1);
   const row = rows[0];
   if (!row) return c.json({ error: "build_not_found" }, 404);
+  if (row.status === "failed") {
+    const now = Date.now();
+    const lastUpdate = row.updatedAt?.getTime?.() ?? 0;
+    // Auto-heal failed plans when polled by client, but avoid rapid retry storms.
+    if (now - lastUpdate > 8000) {
+      const destiny = await loadDestinyRow(db, destinyId);
+      if (destiny && destiny.sessionId === row.sessionId) {
+        await db
+          .update(buildPlans)
+          .set({ status: "queued", error: null, updatedAt: new Date() })
+          .where(eq(buildPlans.id, row.id));
+        c.executionCtx.waitUntil(
+          enqueueBuildPlanGeneration(
+            c.env,
+            row.id,
+            destinyId,
+            row.sessionId,
+            destiny.archetypeKey,
+            destiny.contentJson,
+          ),
+        );
+        return c.json({ ...asBuildResponse(row), status: "queued", error: null }, 202);
+      }
+    }
+  }
   return c.json(asBuildResponse(row));
 }
 

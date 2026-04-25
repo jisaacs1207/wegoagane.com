@@ -8,13 +8,17 @@ test.describe("smoke", () => {
     await expect(page.locator(".entry-grid")).toBeVisible();
   });
 
-  test("draft a run entry is reachable", async ({ page }) => {
+  test("detailed build (plan flow) entry is reachable", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("link", { name: /Draft a Run/i })).toBeVisible();
+    const detailed = page.getByRole("link", { name: /Detailed build/i });
+    await expect(detailed).toBeVisible();
+    await expect(detailed).toHaveAttribute("href", "/draft-a-run/intent");
   });
 
-  test("release spirit entry is reachable", async ({ page }) => {
+  test("death recovery entry is reachable", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("link", { name: /Release Spirit/i })).toBeVisible();
+    const death = page.getByRole("link", { name: /I died|recover from death/i });
+    await expect(death).toBeVisible();
+    await expect(death).toHaveAttribute("href", "/release-spirit/next");
   });
 });

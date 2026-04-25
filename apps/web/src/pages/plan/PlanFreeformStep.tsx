@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { IdentityPortrait } from "../../components/IdentityPortrait";
 import { wowPackUrl } from "../../content/identityAssets";
@@ -10,6 +10,17 @@ export function PlanFreeformStep() {
 
   return (
     <div className="card">
+      <div className="flow-crumbs" aria-label="Flow navigation">
+        <span className="flow-crumb">
+          <Link to="/">Home</Link>
+        </span>
+        <span className="flow-crumb">/</span>
+        <span className="flow-crumb">
+          <Link to="/draft-a-run/intent">Detailed setup</Link>
+        </span>
+        <span className="flow-crumb">/</span>
+        <span className="flow-crumb">Optional constraints</span>
+      </div>
       <p className="step-label">Draft a run · optional constraints view</p>
       <h1 className="hero-question">Add constraints (optional)</h1>
       <p className="hero-sub">Add dealbreakers or must-haves so the result is usable right away.</p>
@@ -66,7 +77,7 @@ export function PlanFreeformStep() {
           Back
         </button>
         <button type="button" className="btn-primary" onClick={() => navigate("/draft-a-run/journey")}>
-          Continue
+          Generate build
         </button>
       </div>
     </div>

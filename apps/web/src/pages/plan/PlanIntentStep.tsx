@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { IdentityPortrait } from "../../components/IdentityPortrait";
 import { wowPackUrl } from "../../content/identityAssets";
@@ -18,6 +18,7 @@ export function PlanIntentStep() {
   const navigate = useNavigate();
   const [selected, setSelected] = useState<string | null>(sessionStorage.getItem(SessionKeys.plan.intent));
   const [note, setNote] = useState(sessionStorage.getItem(SessionKeys.plan.freeform) ?? "");
+  const [showConstraints, setShowConstraints] = useState(false);
 
   useEffect(() => {
     sessionStorage.removeItem(SessionKeys.plan.generatedDestiny);
@@ -26,6 +27,13 @@ export function PlanIntentStep() {
 
   return (
     <div className="card">
+      <div className="flow-crumbs" aria-label="Flow navigation">
+        <span className="flow-crumb">
+          <Link to="/">Home</Link>
+        </span>
+        <span className="flow-crumb">/</span>
+        <span className="flow-crumb">Detailed setup</span>
+      </div>
       <p className="step-label">Draft a run · step 1 of 2</p>
       <h1 className="hero-question">What is this run trying to achieve?</h1>
       <p className="hero-sub">Pick the main goal for this run. We tune around this first.</p>
@@ -44,6 +52,9 @@ export function PlanIntentStep() {
               sessionStorage.removeItem(SessionKeys.plan.buildIntentPowerCurve);
               sessionStorage.removeItem(SessionKeys.plan.generatedDestiny);
               sessionStorage.removeItem(SessionKeys.plan.destinyId);
+              if ((sessionStorage.getItem(SessionKeys.plan.freeform) ?? "").trim().length === 0) {
+                navigate("/draft-a-run/journey");
+              }
             }}
           >
             <IdentityPortrait src={i.icon} alt="" className="ritual-option__icon" />
@@ -54,20 +65,27 @@ export function PlanIntentStep() {
           </button>
         ))}
       </div>
-      <label className="ui-caption" style={{ marginTop: 12, display: "block" }}>
-        Optional constraints
-        <textarea
-          value={note}
-          onChange={(e) => {
-            const next = e.target.value.slice(0, 120);
-            setNote(next);
-            sessionStorage.setItem(SessionKeys.plan.freeform, next);
-          }}
-          placeholder="e.g. no pet micromanagement, avoid mage, prioritize sustain"
-          rows={3}
-          style={{ width: "100%", marginTop: 6 }}
-        />
-      </label>
+      <div className="flow-nav" style={{ marginTop: 12 }}>
+        <button type="button" className="btn-ghost" onClick={() => setShowConstraints((v) => !v)}>
+          {showConstraints ? "Hide optional constraints" : "Add optional constraints"}
+        </button>
+      </div>
+      {showConstraints ? (
+        <label className="ui-caption" style={{ marginTop: 12, display: "block" }}>
+          Optional constraints
+          <textarea
+            value={note}
+            onChange={(e) => {
+              const next = e.target.value.slice(0, 120);
+              setNote(next);
+              sessionStorage.setItem(SessionKeys.plan.freeform, next);
+            }}
+            placeholder="e.g. no pet micromanagement, avoid mage, prioritize sustain"
+            rows={3}
+            style={{ width: "100%", marginTop: 6 }}
+          />
+        </label>
+      ) : null}
       <div className="flow-nav">
         <button
           type="button"
@@ -86,9 +104,12 @@ export function PlanIntentStep() {
           Back
         </button>
         <button type="button" className="btn-primary" onClick={() => navigate("/draft-a-run/journey")} disabled={!selected}>
-          Generate setup
+          Generate build
         </button>
       </div>
+      <p className="ui-caption" style={{ marginTop: 10 }}>
+        Selecting a goal with no constraints advances automatically.
+      </p>
     </div>
   );
 }
