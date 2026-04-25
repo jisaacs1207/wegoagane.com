@@ -4,7 +4,9 @@
 
 **Full single-file copy (frozen v4):** [`docs/wegoagane-handoff-v4-archive.md`](wegoagane-handoff-v4-archive.md)
 
-**Current build tracker:** [`docs/handoff/STATUS.md`](handoff/STATUS.md) — through **M13 shipped** (hybrid memory live), with trust-first next-wave roadmap **M14–M18**: content trust expansion, ceremony/language hardening, share polish, modern web hardening, then UAT go/no-go.
+**Current build tracker:** [`docs/handoff/STATUS.md`](handoff/STATUS.md) — milestone **M13** shipped on `main`; **M14+** roadmap (trust, ceremony, share, web hardening, UAT). In-flight **web/API hardening** (session keys, error surfacing, E2E smoke, API `invalid_json` parity) is documented there and in [`docs/route-qa-matrix.md`](route-qa-matrix.md) until merged to `main`.
+
+**Repo map (1 screen):** root [`README.md`](../README.md).
 
 ---
 

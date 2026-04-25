@@ -329,6 +329,8 @@ git push -u origin chore/test-ruleset-ci
 
 ### Profile B + new CI jobs (required checks list)
 
+The **Web** job in **`.github/workflows/ci.yml`** runs ESLint, Vitest, production build, and Playwright smoke E2E as **steps inside the same job** — the GitHub check name stays **`Web`**. You do not need a new ruleset entry when only steps change; add a required check only when the workflow defines a **new job** with a new `name:`.
+
 Whenever **`.github/workflows/ci.yml`** gains a **new job** with a new `name:` (for example **Lint** or **Typecheck**) and you want that job to **block merging to `main`** like **Handbook layout** does:
 
 1. **Merge a PR first** that only adds the workflow (or run the job on a PR once) so GitHub has seen that check name at least once.
