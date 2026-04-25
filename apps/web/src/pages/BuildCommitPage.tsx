@@ -76,6 +76,24 @@ export function BuildCommitPage() {
   );
   const genderLean = buildPlan?.identity?.genderLean ?? "neutral";
 
+  useEffect(() => {
+    if (!record?.destinyId || buildPlan) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await fetchBuildPlan(record.destinyId);
+        if (!cancelled && res.plan) setLivePlan(res.plan);
+        if (!cancelled && res.status !== "ready") window.setTimeout(() => void poll(), 1800);
+      } catch {
+        /* ignore */
+      }
+    };
+    void poll();
+    return () => {
+      cancelled = true;
+    };
+  }, [record?.destinyId, buildPlan]);
+
   if (loading) {
     return <div className="card">Loading committed build...</div>;
   }
@@ -118,24 +136,6 @@ export function BuildCommitPage() {
       setBusy(false);
     }
   }
-
-  useEffect(() => {
-    if (!record?.destinyId || buildPlan) return;
-    let cancelled = false;
-    const poll = async () => {
-      try {
-        const res = await fetchBuildPlan(record.destinyId);
-        if (!cancelled && res.plan) setLivePlan(res.plan);
-        if (!cancelled && res.status !== "ready") window.setTimeout(() => void poll(), 1800);
-      } catch {
-        /* ignore */
-      }
-    };
-    void poll();
-    return () => {
-      cancelled = true;
-    };
-  }, [record?.destinyId, buildPlan]);
 
   return (
     <div className="commit-page-shell">
