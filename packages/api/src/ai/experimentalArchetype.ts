@@ -1,4 +1,5 @@
 import type { ApiEnv } from "../db/client";
+import { fetchRuntimeKvValue, KV_EXPERIMENTAL_SUPPLEMENT } from "../db/archetypeLearning";
 import { archetypes } from "../domain/archetypes";
 import { mergeDesiredTags } from "../domain/intentTags";
 import type { Archetype, ClassId, RankedArchetype, RecommendInput, Tier } from "../domain/types";
@@ -34,7 +35,9 @@ export async function buildExperimentalRankedArchetype(
   const model = env.AI_MODEL_DESTINY ?? "openrouter/auto";
   const tagsHint = mergeDesiredTags(input).slice(0, 12).join(", ");
 
-  const prompt = [
+  const supplement = (await fetchRuntimeKvValue(env.DB, KV_EXPERIMENTAL_SUPPLEMENT))?.trim() ?? "";
+
+  const promptLines = [
     "You help generate ONE hardcore Classic WoW style archetype for a recommender.",
     "Return JSON only with keys: title,subline,tier,safetyMechanism,first10,tags",
     `tier must be one of: ${TIER_VALUES.join(",")}`,
@@ -44,7 +47,11 @@ export async function buildExperimentalRankedArchetype(
     `class is fixed at ${classPick} — do not output classId.`,
     `Inspiration only (do not copy verbatim): title=${base.title}; subline=${base.subline}; mechanism=${base.safetyMechanism}`,
     `Player signals JSON: ${JSON.stringify(input.signals)}`,
-  ].join("\n");
+  ];
+  if (supplement.length > 0) {
+    promptLines.push("Learning-loop addendum (follow strictly):", supplement);
+  }
+  const prompt = promptLines.join("\n");
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const res = await callAiGateway(env, model, prompt, 18_000);

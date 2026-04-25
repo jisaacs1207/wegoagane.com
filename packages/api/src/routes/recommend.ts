@@ -3,11 +3,12 @@ import { captureServerEvent } from "../analytics/posthog";
 import { AnalyticsEvent } from "../analytics/events";
 import { buildExperimentalRankedArchetype } from "../ai/experimentalArchetype";
 import { enrichDestiny, getAiGateStatus } from "../ai/adapter";
+import { loadPromotedArchetypes, recordExperimentalArchetypeCandidate } from "../db/archetypeLearning";
 import { getDb, type ApiEnv } from "../db/client";
 import { archetypes } from "../domain/archetypes";
 import { buildPlans, destinies, questionAnswers, recommendationLogs, sessions } from "../db/schema";
 import { rankArchetypes } from "../domain/ranker";
-import type { MemoryFeatures, MemoryRankingConfig, RankedArchetype } from "../domain/types";
+import type { Archetype, MemoryFeatures, MemoryRankingConfig, RankedArchetype } from "../domain/types";
 import { renderTemplateDestiny } from "../domain/template";
 import { recommendInputSchema, validateTemplateOutput } from "../domain/validator";
 import { computeRelaxedViability, computeViability, filterArchetypesByViability } from "../domain/viability";
@@ -150,9 +151,19 @@ export async function handleRecommend(c: Context<ApiEnv>) {
 
   const input = parsed.data;
   try {
+    const promotedFromDb = await loadPromotedArchetypes(c.env.DB);
+    const catalogKeys = new Set(archetypes.map((a) => a.key));
+    const archetypeCatalog: Archetype[] = [...archetypes];
+    for (const row of promotedFromDb) {
+      if (!catalogKeys.has(row.key)) {
+        archetypeCatalog.push(row);
+        catalogKeys.add(row.key);
+      }
+    }
+
     const strictViability = computeViability(input);
     let viability = strictViability;
-    let archetypePool = filterArchetypesByViability(archetypes, viability);
+    let archetypePool = filterArchetypesByViability(archetypeCatalog, viability);
     const aiReady = getAiGateStatus(c.env).ready;
     let filterRelaxedForAi = false;
 
@@ -172,7 +183,7 @@ export async function handleRecommend(c: Context<ApiEnv>) {
         ...relaxed,
         notes: [...strictViability.notes, ...relaxed.notes],
       };
-      archetypePool = filterArchetypesByViability(archetypes, viability);
+      archetypePool = filterArchetypesByViability(archetypeCatalog, viability);
       filterRelaxedForAi = true;
       if (archetypePool.length === 0) {
         c.executionCtx.waitUntil(
@@ -262,7 +273,7 @@ export async function handleRecommend(c: Context<ApiEnv>) {
           ...relaxed,
           notes: [...strictViability.notes, ...relaxed.notes],
         };
-        archetypePool = filterArchetypesByViability(archetypes, viability);
+        archetypePool = filterArchetypesByViability(archetypeCatalog, viability);
         filterRelaxedForAi = true;
         if (archetypePool.length === 0) {
           c.executionCtx.waitUntil(
@@ -365,6 +376,18 @@ export async function handleRecommend(c: Context<ApiEnv>) {
       contentJson: JSON.stringify(output),
       sourceType: output.sourceType,
     });
+
+    if (experimentalLane) {
+      const promptRev = (c.env.EXPERIMENTAL_PROMPT_REVISION ?? "1").toString().slice(0, 64);
+      c.executionCtx.waitUntil(
+        recordExperimentalArchetypeCandidate(c.env.DB, {
+          archetype: top.archetype,
+          sessionId,
+          destinyId,
+          promptVersionAtGen: promptRev,
+        }),
+      );
+    }
 
     let buildPlanId: string | undefined;
     try {

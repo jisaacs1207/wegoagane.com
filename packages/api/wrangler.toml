@@ -29,6 +29,10 @@ GROWTH_DEFAULT_HOLDOUT_PERCENT = "10"
 GROWTH_MIN_SAMPLE_SIZE = "40"
 # 0–100: share of sessions shown the curated vs experimental lane choice (see GET /api/v1/analytics/config).
 EXPERIMENTAL_LANE_OFFER_PERCENT = "0"
+# Bumps when you change the static experimental prompt in code; stored on archetype_candidates rows.
+EXPERIMENTAL_PROMPT_REVISION = "1"
+# Cron updates runtime_kv prompt supplement from reroll-gate stats (set false to freeze).
+EXPERIMENTAL_LEARNING_ENABLED = "true"
 # set as secret in preview/prod for control endpoints
 # npx wrangler secret put GROWTH_CONTROL_TOKEN --env production
 AI_ENABLED = "false"
@@ -71,6 +75,8 @@ GROWTH_DEFAULT_TRAFFIC_PERCENT = "25"
 GROWTH_DEFAULT_HOLDOUT_PERCENT = "10"
 GROWTH_MIN_SAMPLE_SIZE = "40"
 EXPERIMENTAL_LANE_OFFER_PERCENT = "0"
+EXPERIMENTAL_PROMPT_REVISION = "1"
+EXPERIMENTAL_LEARNING_ENABLED = "true"
 AI_ENABLED = "false"
 AI_GATEWAY_URL = "https://openrouter.ai/api/v1/chat/completions"
 AI_MODEL_DESTINY = "openrouter/auto"
@@ -122,6 +128,8 @@ GROWTH_DEFAULT_TRAFFIC_PERCENT = "20"
 GROWTH_DEFAULT_HOLDOUT_PERCENT = "12"
 GROWTH_MIN_SAMPLE_SIZE = "60"
 EXPERIMENTAL_LANE_OFFER_PERCENT = "0"
+EXPERIMENTAL_PROMPT_REVISION = "1"
+EXPERIMENTAL_LEARNING_ENABLED = "true"
 # OpenRouter: set secret AI_GATEWAY_TOKEN in Cloudflare; flip to "false" to force template-only.
 AI_ENABLED = "true"
 AI_GATEWAY_URL = "https://openrouter.ai/api/v1/chat/completions"
