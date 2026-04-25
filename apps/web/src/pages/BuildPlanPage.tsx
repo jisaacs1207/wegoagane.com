@@ -18,23 +18,35 @@ export function BuildPlanPage() {
     if (!destinyId) return;
     let cancelled = false;
     let attempts = 0;
+    /** DOM `setInterval` id — use `number` so we do not pick up Node's `Timeout` type from tooling. */
+    let intervalId: number | undefined;
+
+    const stopPolling = () => {
+      if (intervalId !== undefined) {
+        window.clearInterval(intervalId);
+        intervalId = undefined;
+      }
+    };
+
     const poll = async () => {
       try {
-        // The journey commit endpoint accepts both slug and destinyId.
         const record = await fetchBuildCommit(destinyId);
         if (cancelled) return;
         setSlug(record.slug);
+        stopPolling();
       } catch (err) {
         debugClientIgnored("build_plan_page.redirect_lookup", err);
         attempts += 1;
         if (attempts >= 6 && !cancelled) setMissing(true);
       }
     };
+
     void poll();
-    const id = window.setInterval(() => void poll(), 2000);
+    intervalId = window.setInterval(() => void poll(), 2000);
+
     return () => {
       cancelled = true;
-      window.clearInterval(id);
+      stopPolling();
     };
   }, [destinyId]);
 

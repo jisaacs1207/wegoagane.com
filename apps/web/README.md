@@ -1,6 +1,6 @@
 # wegoagane web (Phase 1)
 
-Vite + React + React Router. Entry flows: **Release Spirit**, **Draft a Run**, **Lucky Roll**.
+Vite + React + React Router. Home: **Quick build** (lucky roll, auto-seeded) and **Detailed build** (plan intent); **I died – recover from death** links to the release-spirit flow.
 
 **M2:** Original **class icons** (`src/icons/`), **Memorial / Destiny / share combo** card shells (`src/components/cards/`), static **`src/content/cardFixtures.ts`**. QA route: **`/design/cards`** (also linked from home).
 

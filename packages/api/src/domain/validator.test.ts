@@ -20,6 +20,20 @@ test("validateTemplateOutput accepts a valid template destiny", () => {
   assert.deepEqual(validateTemplateOutput(output, "horde"), []);
 });
 
+test("validateTemplateOutput handles null bullets and null rationale without throwing", () => {
+  const output = {
+    headline: "Arcane frost path for mage players who enjoy mage",
+    subline: "Safe path",
+    classId: "mage",
+    tierProse: "Safe path · template",
+    bullets: null,
+    rationale: null,
+    sourceType: "ai",
+  } as unknown as DestinyOutput;
+  const failures = validateTemplateOutput(output);
+  assert.ok(failures.includes("invalid_bullet_count"));
+});
+
 test("validateMemorialOutput rejects invalid memorial content", () => {
   const output: MemorialOutput = {
     epitaph: "short",
@@ -31,6 +45,19 @@ test("validateMemorialOutput rejects invalid memorial content", () => {
     sourceType: "template",
   };
   assert.ok(validateMemorialOutput(output).length > 0);
+});
+
+test("validateMemorialOutput allows omitted level (undefined) without invalid_level", () => {
+  const output = {
+    epitaph: "Honor found them in Elwynn and the lesson remains for us all today.",
+    characterName: "Hero",
+    level: undefined,
+    location: "Elwynn Forest",
+    cause: "Slain by wolves",
+    faction: "alliance",
+    sourceType: "template",
+  } as unknown as MemorialOutput;
+  assert.deepEqual(validateMemorialOutput(output), []);
 });
 
 test("validateDestinyFeedbackInput accepts valid M10 payload", () => {

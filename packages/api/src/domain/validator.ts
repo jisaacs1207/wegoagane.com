@@ -165,7 +165,8 @@ export function validateTemplateOutput(
   const failures: string[] = [];
 
   if (!output.headline || output.headline.length > 120) failures.push("invalid_headline");
-  if (output.bullets.length < 3 || output.bullets.length > 6) failures.push("invalid_bullet_count");
+  const bullets = Array.isArray(output.bullets) ? output.bullets : [];
+  if (bullets.length < 3 || bullets.length > 6) failures.push("invalid_bullet_count");
   if (output.genderLean && !["masculine", "feminine", "neutral"].includes(output.genderLean)) failures.push("invalid_gender_lean");
   if (output.factionSuggestion && !["horde", "alliance", "neutral"].includes(output.factionSuggestion)) failures.push("invalid_faction_suggestion");
   if (output.raceSuggestion && output.raceSuggestion.length > 40) failures.push("invalid_race_suggestion");
@@ -176,8 +177,9 @@ export function validateTemplateOutput(
     failures.push("invalid_class_faction_combo");
   }
 
+  const rationale = typeof output.rationale === "string" ? output.rationale : "";
   const source = archetypes.find((a) => output.headline.toLowerCase().includes(a.classId));
-  if (!source && output.rationale.length < 12) failures.push("thin_rationale");
+  if (!source && rationale.length < 12) failures.push("thin_rationale");
 
   return failures;
 }
@@ -191,7 +193,10 @@ export function validateMemorialOutput(output: MemorialOutput): string[] {
   if (!output.characterName || output.characterName.length > 80) failures.push("invalid_character_name");
   if (!output.location || output.location.length > 120) failures.push("invalid_location");
   if (!output.cause || output.cause.length > 160) failures.push("invalid_cause");
-  if (output.level !== null && (output.level < 1 || output.level > 60)) failures.push("invalid_level");
+  const lv = output.level;
+  if (lv !== null && lv !== undefined && (typeof lv !== "number" || !Number.isInteger(lv) || lv < 1 || lv > 60)) {
+    failures.push("invalid_level");
+  }
   if (!["horde", "alliance", "neutral"].includes(output.faction)) failures.push("invalid_faction");
 
   return failures;

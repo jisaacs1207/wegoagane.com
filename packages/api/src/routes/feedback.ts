@@ -1,7 +1,7 @@
 import { type Context, Hono } from "hono";
 import { captureServerEvent } from "../analytics/posthog";
 import { AnalyticsEvent } from "../analytics/events";
-import { callAiGateway, extractJsonPayload, getAiGateStatus } from "../ai/adapter";
+import { callAiGateway, extractJsonPayload, getAiGateStatus, WOW_HC_JSON_GUARDS } from "../ai/adapter";
 import { applyArchetypeCandidateFeedback } from "../db/archetypeLearning";
 import { getDb, type ApiEnv } from "../db/client";
 import { destinyFeedback } from "../db/schema";
@@ -19,13 +19,16 @@ async function parseFreeformSignal(env: ApiEnv["Bindings"], note: string | null 
     };
   }
   const model = env.AI_MODEL_DESTINY ?? "openrouter/auto";
+  const noteClip = note.trim().slice(0, 400);
   const prompt = [
+    ...WOW_HC_JSON_GUARDS,
+    "Context: player feedback about a WoW Classic Era Hardcore run / build generator.",
     "Return JSON only with keys: sentiment, issue_tags, user_goal_hint.",
     "sentiment must be one of: positive, mixed, negative.",
-    "issue_tags should be array of short snake_case tokens.",
-    `note=${note.slice(0, 240)}`,
+    "issue_tags should be array of short snake_case tokens (max 12 tags, each <= 40 chars). user_goal_hint <= 200 chars.",
+    `note=${JSON.stringify(noteClip)}`,
   ].join("\n");
-  const res = await callAiGateway(env, model, prompt, 10_000);
+  const res = await callAiGateway(env, model, prompt, 12_000, 1536);
   if (!res.ok) return null;
   try {
     const parsed = JSON.parse(extractJsonPayload(res.content)) as Record<string, unknown>;

@@ -8,13 +8,27 @@ import {
   sanitizeBuildPlanNames,
   type BuildPlanPayload,
 } from "../domain/buildPlanSchema";
-import { callAiGateway, extractJsonPayload, getAiGateStatus, isTruthyEnv } from "./adapter";
+import { callAiGateway, extractJsonPayload, getAiGateStatus, isTruthyEnv, WOW_HC_JSON_GUARDS } from "./adapter";
 import type { ClassId, RecommendInput } from "../domain/types";
 import { computeViability } from "../domain/viability";
 import { coerceClassRaceSuggestions } from "../domain/classRaceRules";
 
 function rulesetPinFromEnv(env: ApiEnv["Bindings"]): string {
   return (env.RULESET_PIN ?? "classic-era-hc-2026-04").trim().slice(0, 120);
+}
+
+/** Keep prompt payloads bounded so gateway requests stay parseable even with huge client signals. */
+const PROMPT_JSON_BUDGET = 12_000;
+const REVIEWER_DRAFT_BUDGET = 120_000;
+
+function jsonForPrompt(label: string, value: unknown): string {
+  try {
+    const raw = JSON.stringify(value);
+    if (raw.length <= PROMPT_JSON_BUDGET) return raw;
+    return `${raw.slice(0, PROMPT_JSON_BUDGET)}\n/* ${label}: truncated for token safety — infer missing tail conservatively */`;
+  } catch {
+    return "{}";
+  }
 }
 
 function stubPayload(input: {
@@ -91,30 +105,37 @@ function buildGeneratorPrompt(
   rulesetPin: string,
 ): string {
   return [
+    ...WOW_HC_JSON_GUARDS,
     "You are an expert on World of Warcraft Classic ERA HARDCORE (permanent death).",
     `Ruleset pin: ${rulesetPin}. Prefer accurate Classic Era talent NAMES and real profession pairings. If unsure, say so in warnings[].`,
+    "Do not emit keys outside the schema. Keep arrays within stated limits so the reply stays one valid JSON object.",
     "Return ONE JSON object only matching this shape:",
     '{"v":1,"meta":{"publishTier":"draft","rulesetPin":"...","classId":"...","archetypeKey":"..."},"viabilityNotes":[],"warnings":[],"talents":{"summary":"...","keyPicks":[{"tier":"...","name":"talent name","rationale":"...","alternatives":[]}]},"professions":{"primary":"...","secondary":"...","rationale":"...","secondarySkills":{"firstAid":"...","cooking":"...","fishing":"..."}},"stats":{"priority":["stamina","..."],"rationale":"..."},"race":{"suggestion":"...","rationale":"...","alternatives":[]},"identity":{"raceSuggestion":"...","factionSuggestion":"horde|alliance|neutral","genderLean":"masculine|feminine|neutral","buildFantasy":"...","archetypeSummary":"..."},"signature":{"tree":{"branch":"Holy|Protection|Retribution|Arms|Fury|...","weight":0.0},"strengths":["..."],"weaknesses":["..."],"whyDistinct":"...","keyItems":[{"name":"...","slot":"weapon|chest|trinket|...","rationale":"..."}]},"namesByLane":{"lore_world":["NameOne"],"hc_practical":[],"light_humor":[],"grimdark":[],"neutral":[],"pop_culture":[]},"forks":[{"title":"...","optionA":"...","optionB":"...","why":"..."}]}',
     "signature: REQUIRED for hardcore differentiation. tree.branch is the dominant talent tree by point spend; tree.weight is 0..1 share of points in that branch. strengths/weaknesses 3-5 short HC-specific bullets each (e.g. 'low downtime between pulls', 'weak vs casters'). whyDistinct: 1-2 sentences on what separates this build from a generic same-class run. keyItems 4-6 leveling-tier upgrades with slot.",
     "namesByLane: each array 4-8 names; WoW rules: ASCII letters only, length 2-12 each, no spaces or punctuation. Include pop_culture lane with clever original blends (no trademark strings).",
     "forks: 2-3 entries for major build decisions.",
-    `Player signals JSON: ${JSON.stringify(input.signals)}`,
+    `Player signals JSON: ${jsonForPrompt("signals", input.signals)}`,
     `Chosen archetypeKey: ${archetypeKey}`,
-    `Viability notes: ${JSON.stringify(viabilityNotes)}`,
-    `Destiny card summary JSON: ${JSON.stringify(destiny)}`,
+    `Viability notes: ${jsonForPrompt("viabilityNotes", viabilityNotes)}`,
+    `Destiny card summary JSON: ${jsonForPrompt("destiny", destiny)}`,
   ].join("\n");
 }
 
 function buildReviewerPrompt(draft: string, input: RecommendInput, rulesetPin: string): string {
+  const draftBody =
+    draft.length > REVIEWER_DRAFT_BUDGET
+      ? `${draft.slice(0, REVIEWER_DRAFT_BUDGET)}\n/* DRAFT truncated for reviewer context — preserve schema and fix top issues */`
+      : draft;
   return [
+    ...WOW_HC_JSON_GUARDS,
     "You are a hostile reviewer for WoW Classic Era Hardcore build advice.",
     `Ruleset pin: ${rulesetPin}.`,
     "Given the JSON draft below, find contradictions with the player signals, factual impossibilities, or non-viable HC choices.",
     "Also argue viability: pull risk, downtime, gear dependence, melee tax, first-HC suitability.",
     "Return ONE revised JSON object of the SAME schema. If you cannot fix, keep issues in warnings[] array strings.",
-    `Player signals: ${JSON.stringify(input.signals)}`,
+    `Player signals: ${jsonForPrompt("signals", input.signals)}`,
     "DRAFT JSON:",
-    draft,
+    draftBody,
   ].join("\n");
 }
 
@@ -318,14 +339,14 @@ export async function runBuildPlanGeneration(
       .where(eq(buildPlans.id, params.buildPlanId));
 
     const genPrompt = buildGeneratorPrompt(params.input, { ...destiny, tierProse: destiny.tierProse ?? "", rationale: destiny.rationale ?? "" }, params.archetypeKey, params.viabilityNotes, rulesetPin);
-    const gen = await callAiGateway(env, model, genPrompt, 95_000);
+    const gen = await callAiGateway(env, model, genPrompt, 95_000, 24_576);
     if (!gen.ok) throw new Error(gen.error);
     let raw = extractJsonPayload(gen.content);
     let rawGeneratorContent = gen.content;
     let rawReviewerContent = "";
 
     const revPrompt = buildReviewerPrompt(raw, params.input, rulesetPin);
-    const rev = await callAiGateway(env, model, revPrompt, 95_000);
+    const rev = await callAiGateway(env, model, revPrompt, 95_000, 24_576);
     if (rev.ok) {
       rawReviewerContent = rev.content;
       raw = extractJsonPayload(rev.content);
