@@ -106,8 +106,9 @@ export function DestinyCard({ data, compact, intentSignals }: Props) {
             <span className={`destiny-card__class-tag destiny-card__class-tag--${data.classId}`}>
               {CLASS_FANTASY_LABEL[data.classId]}
             </span>
-            <span className="destiny-card__identity-chip">Classic-era pacing</span>
-            <span className="destiny-card__identity-chip">Hardcore survival lane</span>
+            <span className="destiny-card__world-defaults ui-caption ui-caption--xs">
+              Site defaults: classic-era pacing · survival-first framing (not your journey filters above).
+            </span>
           </div>
         </div>
       </div>

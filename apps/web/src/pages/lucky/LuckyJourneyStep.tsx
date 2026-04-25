@@ -60,6 +60,7 @@ export function LuckyJourneyStep() {
         sessionId: result.sessionId,
         destinyId: result.destinyId,
         output: result.output,
+        intentSnapshot: signals,
       });
       sessionStorage.setItem(SessionKeys.lucky.destinyId, result.destinyId);
       setLastRecommendErr(null);

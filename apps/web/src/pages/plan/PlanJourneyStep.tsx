@@ -79,6 +79,7 @@ export function PlanJourneyStep() {
         sessionId: result.sessionId,
         destinyId: result.destinyId,
         output: result.output,
+        intentSnapshot: signals,
       });
       sessionStorage.setItem(SessionKeys.plan.destinyId, result.destinyId);
       setLastRecommendErr(null);

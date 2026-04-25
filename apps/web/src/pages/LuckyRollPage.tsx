@@ -22,6 +22,7 @@ export function LuckyRollPage() {
   const [loadError, setLoadError] = useState<string>("");
   const [feedbackChoice, setFeedbackChoice] = useState<"closer" | "off" | null>(null);
   const [feedbackReason, setFeedbackReason] = useState<string>("");
+  const [cardIntentSignals, setCardIntentSignals] = useState<BuildIntentSignals | null>(null);
 
   useEffect(() => {
     const seededSessionId = sessionStorage.getItem(SessionKeys.lucky.sessionId) ?? crypto.randomUUID();
@@ -61,6 +62,7 @@ export function LuckyRollPage() {
       });
       setDestiny(result.output);
       setDestinyId(result.destinyId);
+      setCardIntentSignals(signals);
       if (assignmentId) {
         void submitGrowthOutcome({
           assignmentId,
@@ -96,7 +98,12 @@ export function LuckyRollPage() {
           {loadError}
         </p>
       ) : null}
-      {destiny ? <DestinyCard data={destiny} intentSignals={readBuildIntent(SessionKeys.lucky.buildIntent)} /> : null}
+      {destiny ? (
+        <DestinyCard
+          data={destiny}
+          intentSignals={cardIntentSignals ?? readBuildIntent(SessionKeys.lucky.buildIntent)}
+        />
+      ) : null}
       {destiny ? (
         <div className="card" style={{ marginTop: 12 }}>
           <p className="ui-caption">Was this close to what you wanted?</p>

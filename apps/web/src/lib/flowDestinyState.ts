@@ -1,4 +1,5 @@
 import type { DestinyFixture } from "../content/cardFixtures";
+import type { BuildIntentSignals } from "./buildIntentTypes";
 import { SessionKeys } from "./sessionKeys";
 
 type FlowKey = "death" | "plan" | "lucky";
@@ -7,6 +8,8 @@ export type StoredDestinyState = {
   sessionId: string;
   destinyId: string;
   output: DestinyFixture;
+  /** Filters merged into the recommend call for this card — drives result UI so it stays in sync if session is edited later. */
+  intentSnapshot?: BuildIntentSignals;
 };
 
 function key(flow: FlowKey) {

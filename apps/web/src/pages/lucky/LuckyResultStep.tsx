@@ -7,6 +7,7 @@ import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 import { commitJourneyBuild, fetchNameCandidates, flowApiErrorHint, generateNameCandidates } from "../../lib/recommendClient";
 import { readStoredDestiny } from "../../lib/flowDestinyState";
 import { readBuildIntent } from "../../lib/readBuildIntent";
+import type { BuildIntentSignals } from "../../lib/buildIntentTypes";
 import { debugClientIgnored } from "../../lib/clientDebug";
 import { SessionKeys } from "../../lib/sessionKeys";
 
@@ -24,6 +25,7 @@ export function LuckyResultStep() {
   const [nameLane, setNameLane] = useState<"neutral" | "light_humor" | "lore_world">("neutral");
   const [nameMode, setNameMode] = useState<"reflective" | "high_variance" | "humor">("reflective");
   const [nameVariance, setNameVariance] = useState(0.65);
+  const [cardIntentSignals, setCardIntentSignals] = useState<BuildIntentSignals | null>(null);
 
   useEffect(() => {
     const stored = readStoredDestiny("lucky");
@@ -31,6 +33,7 @@ export function LuckyResultStep() {
       setDestiny(stored.output);
       setDestinyId(stored.destinyId);
       setSessionId(stored.sessionId);
+      setCardIntentSignals(stored.intentSnapshot ?? null);
     }
   }, []);
 
@@ -54,7 +57,7 @@ export function LuckyResultStep() {
     if (!sessionId || !destinyId || isLoadingNames) return;
     setIsLoadingNames(true);
     try {
-      const intent = readBuildIntent(SessionKeys.lucky.buildIntent);
+      const intent = cardIntentSignals ?? readBuildIntent(SessionKeys.lucky.buildIntent);
       const nameContext = [
         `class=${destiny?.classId ?? "unknown"}`,
         "path=lucky_roll",
@@ -121,7 +124,10 @@ export function LuckyResultStep() {
   return (
     <div className="result-page-grid">
       <div className="result-page-grid__main">
-        <DestinyCard data={destiny} intentSignals={readBuildIntent(SessionKeys.lucky.buildIntent)} />
+        <DestinyCard
+          data={destiny}
+          intentSignals={cardIntentSignals ?? readBuildIntent(SessionKeys.lucky.buildIntent)}
+        />
       </div>
       <aside className="result-page-grid__side">
         <div className="card">

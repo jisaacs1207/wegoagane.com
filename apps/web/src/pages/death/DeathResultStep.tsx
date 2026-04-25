@@ -19,7 +19,8 @@ import { SessionKeys } from "../../lib/sessionKeys";
 import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 import { buildMemoryHints, rememberAccept, rememberReroll } from "../../lib/memoryProfile";
 import { debugClientIgnored } from "../../lib/clientDebug";
-import { readStoredDestiny } from "../../lib/flowDestinyState";
+import { readStoredDestiny, writeStoredDestiny } from "../../lib/flowDestinyState";
+import type { BuildIntentSignals } from "../../lib/buildIntentTypes";
 import { augmentMoodWithPower } from "../../lib/journeySignalsExtras";
 
 function buildDeathContextFreeform() {
@@ -70,6 +71,7 @@ export function DeathResultStep() {
   const [nameLane, setNameLane] = useState<"hc_practical" | "lore_world" | "grimdark">("hc_practical");
   const [nameMode, setNameMode] = useState<"reflective" | "high_variance" | "humor">("reflective");
   const [nameVariance, setNameVariance] = useState(0.6);
+  const [cardIntentSignals, setCardIntentSignals] = useState<BuildIntentSignals | null>(null);
 
   useEffect(() => {
     const stored = readStoredDestiny("death");
@@ -80,6 +82,7 @@ export function DeathResultStep() {
     setDestiny(stored.output);
     setDestinyId(stored.destinyId);
     setSessionId(stored.sessionId);
+    setCardIntentSignals(stored.intentSnapshot ?? null);
 
     void fetchGrowthAssignment({
       sessionId: stored.sessionId,
@@ -115,7 +118,7 @@ export function DeathResultStep() {
     if (!sessionId || !destinyId || isLoadingNames) return;
     setIsLoadingNames(true);
     try {
-      const intent = readBuildIntent(SessionKeys.death.buildIntent);
+      const intent = cardIntentSignals ?? readBuildIntent(SessionKeys.death.buildIntent);
       const nameContext = [
         `class=${destiny?.classId ?? "unknown"}`,
         `mood=${sessionStorage.getItem(SessionKeys.death.mood) ?? "none"}`,
@@ -227,6 +230,17 @@ export function DeathResultStep() {
       setDestiny(reroll.output);
       setDestinyId(reroll.destinyId);
       sessionStorage.setItem(SessionKeys.death.destinyId, reroll.destinyId);
+      const intentSnapshot = {
+        ...promptBias,
+        ...readBuildIntent(SessionKeys.death.buildIntent),
+      } as BuildIntentSignals;
+      writeStoredDestiny("death", {
+        sessionId: reroll.sessionId,
+        destinyId: reroll.destinyId,
+        output: reroll.output,
+        intentSnapshot,
+      });
+      setCardIntentSignals(intentSnapshot);
       setNote("");
       setShowRerollGate(false);
     } catch (e) {
@@ -314,7 +328,10 @@ export function DeathResultStep() {
         <>
           <div className="result-page-grid">
             <div className="result-page-grid__main">
-              <DestinyCard data={destiny} intentSignals={readBuildIntent(SessionKeys.death.buildIntent)} />
+              <DestinyCard
+                data={destiny}
+                intentSignals={cardIntentSignals ?? readBuildIntent(SessionKeys.death.buildIntent)}
+              />
             </div>
             <aside className="result-page-grid__side">
               <div className="card">
