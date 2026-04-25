@@ -7,6 +7,7 @@ import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 import { commitJourneyBuild, fetchNameCandidates, flowApiErrorHint, generateNameCandidates } from "../../lib/recommendClient";
 import { readStoredDestiny } from "../../lib/flowDestinyState";
 import { readBuildIntent } from "../../lib/readBuildIntent";
+import { debugClientIgnored } from "../../lib/clientDebug";
 import { SessionKeys } from "../../lib/sessionKeys";
 
 export function LuckyResultStep() {
@@ -42,7 +43,10 @@ export function LuckyResultStep() {
     setIsLoadingNames(true);
     void fetchNameCandidates({ lane: nameLane, limit: 6 })
       .then((res) => setNameSuggestions(res.names.map((row) => row.name)))
-      .catch(() => setNameSuggestions([]))
+      .catch((err) => {
+        debugClientIgnored("lucky_result.name_candidates", err);
+        setNameSuggestions([]);
+      })
       .finally(() => setIsLoadingNames(false));
   }, [nameLane]);
 
@@ -121,7 +125,7 @@ export function LuckyResultStep() {
       </div>
       <aside className="result-page-grid__side">
         <div className="card">
-        <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>How close is this to what you wanted?</p>
+        <p className="ui-caption">How close is this to what you wanted?</p>
         <div className="flow-nav" style={{ marginTop: 10 }}>
           <button
             type="button"
@@ -172,7 +176,7 @@ export function LuckyResultStep() {
           className="card icon-motif-card"
           style={{ marginTop: 12, ["--motif-url" as string]: `url(${wowPackUrl("Abilities", "Blink.png")})` }}
         >
-        <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Name this build before commit</p>
+        <p className="ui-caption">Name this build before commit</p>
         <input
           value={commitName}
           onChange={(event) => setCommitName(event.target.value)}
@@ -219,7 +223,7 @@ export function LuckyResultStep() {
             Humor
           </button>
         </div>
-        <label style={{ display: "block", marginTop: 8, fontSize: 12, color: "var(--ts)" }}>
+        <label className="ui-caption" style={{ display: "block", marginTop: 8 }}>
           Name variance: {Math.round(nameVariance * 100)}%
           <input
             type="range"

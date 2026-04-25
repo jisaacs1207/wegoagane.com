@@ -26,7 +26,7 @@ export function DesignCardsPage() {
         <p className="step-label">Class · vector glyphs</p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "12px 16px", alignItems: "center" }}>
           {CLASS_IDS.map((id) => (
-            <span key={id} style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--ts)", fontSize: 12 }}>
+            <span key={id} className="ui-caption" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
               <ClassIcon classId={id} />
               {id}
             </span>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { AnalyticsEvent, trackEvent } from "../lib/analytics";
+import { debugClientIgnored } from "../lib/clientDebug";
 
 type GrowthHealth = {
   experimentsRunning: number;
@@ -24,7 +25,8 @@ export function GrowthOpsPage() {
         const data = (await response.json()) as GrowthHealth;
         setHealth(data);
       })
-      .catch(() => {
+      .catch((err) => {
+        debugClientIgnored("growth_ops.health_fetch", err);
         trackEvent(AnalyticsEvent.OpsGrowthHealthFailed, { path: "/ops/growth" });
         setError("Could not load growth health.");
       });
@@ -43,7 +45,7 @@ export function GrowthOpsPage() {
           <div style={{ marginTop: 12 }}>
             {health.recentDecisions.map((decision) => (
               <div key={`${decision.variantId}-${decision.createdAt}`} style={{ marginBottom: 8, padding: 8, border: "1px solid var(--line)", borderRadius: 8 }}>
-                <div style={{ fontSize: 12 }}>{decision.variantId}</div>
+                <div className="ui-caption">{decision.variantId}</div>
                 <strong>{decision.action}</strong> - {decision.reason}
               </div>
             ))}

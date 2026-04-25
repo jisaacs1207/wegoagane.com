@@ -421,10 +421,10 @@ export function BuildIntentChips({
           Start fresh filters
         </button>
       </div>
-      <p className="hero-sub" style={{ marginTop: 0, marginBottom: 10, fontSize: 12 }}>
+      <p className="ui-caption" style={{ marginTop: 0, marginBottom: 10 }}>
         Choose depth, pick one priority vector, answer two quick questions, then generate.
       </p>
-      <p className="hero-sub" style={{ marginTop: 0, marginBottom: 12, fontSize: 12 }}>
+      <p className="ui-caption" style={{ marginTop: 0, marginBottom: 12 }}>
         Step {step === "depth" ? "1" : step === "vector" ? "2" : step === "question" ? "3" : "4"} of 4
       </p>
       {step === "depth" ? (
@@ -449,11 +449,13 @@ export function BuildIntentChips({
               </button>
             ))}
           </div>
-          <p className="hero-sub" style={{ marginTop: 8, marginBottom: 12, fontSize: 12 }}>
+          <p className="ui-caption" style={{ marginTop: 8, marginBottom: 12 }}>
             {depthHelper}
           </p>
           <fieldset style={{ border: "none", padding: 0, margin: "0 0 12px 0" }}>
-            <legend style={{ fontSize: 12, color: "var(--ts)", marginBottom: 6 }}>Core preference</legend>
+            <legend className="ui-caption" style={{ marginBottom: 6 }}>
+              Core preference
+            </legend>
             <div className="chip-row">
               {[
                 { id: "safe" as CorePreset, label: "Safe route" },
@@ -476,8 +478,10 @@ export function BuildIntentChips({
             </div>
           </fieldset>
           <fieldset className="journey-power-fieldset" style={{ border: "none", padding: 0, margin: "0 0 12px 0" }}>
-            <legend style={{ fontSize: 12, color: "var(--ts)", marginBottom: 6 }}>Power curve (optional)</legend>
-            <p className="hero-sub" style={{ marginTop: 0, marginBottom: 8, fontSize: 11 }}>
+            <legend className="ui-caption" style={{ marginBottom: 6 }}>
+              Power curve (optional)
+            </legend>
+            <p className="ui-caption ui-caption--xs" style={{ marginTop: 0, marginBottom: 8 }}>
               Nudges the recommender toward early kit, mid climb, late spikes, or an even curve.
             </p>
             <div className="journey-power-curve" role="group" aria-label="Power curve bias">
@@ -520,11 +524,11 @@ export function BuildIntentChips({
       ) : null}
       {step === "vector" ? (
         <>
-          <p className="hero-sub" style={{ marginTop: 0, marginBottom: 10, fontSize: 12 }}>
+          <p className="ui-caption" style={{ marginTop: 0, marginBottom: 10 }}>
             What should lead this build?
           </p>
           {selectedVectors.length > 0 ? (
-            <p className="hero-sub" style={{ marginTop: 0, marginBottom: 10, fontSize: 12 }}>
+            <p className="ui-caption" style={{ marginTop: 0, marginBottom: 10 }}>
               Selected priorities: {selectedVectors.map((v) => VECTOR_ROWS.find((r) => r.id === v)?.title ?? v).join(" -> ")}
             </p>
           ) : null}
@@ -586,7 +590,7 @@ export function BuildIntentChips({
           <p className="step-label" style={{ marginBottom: 6 }}>
             Refining: {VECTOR_ROWS.find((r) => r.id === activeVector)?.title ?? activeVector}
           </p>
-          <p className="hero-sub" style={{ marginTop: 0, marginBottom: 10, fontSize: 12 }}>
+          <p className="ui-caption" style={{ marginTop: 0, marginBottom: 10 }}>
             {currentQuestion.prompt}
           </p>
           <div className="chip-row" style={{ marginBottom: 10 }} role="group" aria-label={currentQuestion.prompt}>
@@ -657,7 +661,7 @@ export function BuildIntentChips({
               </div>
             </div>
           ) : (
-            <p className="hero-sub" style={{ marginTop: 0, marginBottom: 12, fontSize: 12 }}>
+            <p className="ui-caption" style={{ marginTop: 0, marginBottom: 12 }}>
               No extra filters selected. We&apos;ll generate from your core preferences.
             </p>
           )}
@@ -685,7 +689,7 @@ export function BuildIntentChips({
             </button>
           </div>
           {hasGenerated ? (
-            <p className="hero-sub" style={{ marginTop: 10, marginBottom: 0, fontSize: 12 }}>
+            <p className="ui-caption" style={{ marginTop: 10, marginBottom: 0 }}>
               You can return and adjust branches, then regenerate before reroll.
             </p>
           ) : null}

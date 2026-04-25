@@ -19,6 +19,7 @@ import { readBuildIntent } from "../../lib/readBuildIntent";
 import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 import { buildMemoryHints, rememberAccept, rememberReroll } from "../../lib/memoryProfile";
 import { readStoredDestiny } from "../../lib/flowDestinyState";
+import { debugClientIgnored } from "../../lib/clientDebug";
 import { SessionKeys } from "../../lib/sessionKeys";
 
 const rerollReasons: Array<{ value: RerollReason; label: string }> = [
@@ -67,7 +68,10 @@ export function PlanResultStep() {
       .then((assignment) => {
         setRecommendVariantId(assignment.variantId);
       })
-      .catch(() => null);
+      .catch((err) => {
+        debugClientIgnored("plan_result.growth_assignment", err);
+        return null;
+      });
   }, []);
 
   useEffect(() => {
@@ -81,7 +85,10 @@ export function PlanResultStep() {
     setIsLoadingNames(true);
     void fetchNameCandidates({ lane: nameLane, limit: 6 })
       .then((res) => setNameSuggestions(res.names.map((row) => row.name)))
-      .catch(() => setNameSuggestions([]))
+      .catch((err) => {
+        debugClientIgnored("plan_result.name_candidates", err);
+        setNameSuggestions([]);
+      })
       .finally(() => setIsLoadingNames(false));
   }, [nameLane]);
 
@@ -288,7 +295,7 @@ export function PlanResultStep() {
             className="card icon-motif-card"
             style={{ marginTop: 12, ["--motif-url" as string]: `url(${wowPackUrl("Trade", "engineering.png")})` }}
           >
-            <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>How close is this to what you wanted?</p>
+            <p className="ui-caption">How close is this to what you wanted?</p>
             <div className="flow-nav" style={{ marginTop: 10 }}>
               <button
                 type="button"
@@ -343,7 +350,7 @@ export function PlanResultStep() {
             </div>
           ) : null}
           <div className="card" style={{ marginTop: 12 }}>
-            <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Name this build before commit</p>
+            <p className="ui-caption">Name this build before commit</p>
             <input
               value={commitName}
               onChange={(event) => setCommitName(event.target.value)}
@@ -394,7 +401,7 @@ export function PlanResultStep() {
                 Humor
               </button>
             </div>
-            <label style={{ display: "block", marginTop: 8, fontSize: 12, color: "var(--ts)" }}>
+            <label className="ui-caption" style={{ display: "block", marginTop: 8 }}>
               Name variance: {Math.round(nameVariance * 100)}%
               <input
                 type="range"
@@ -434,7 +441,7 @@ export function PlanResultStep() {
         <p style={{ margin: 0, fontSize: 13, color: "var(--ts)" }}>
           Before rerolling, tell us what felt off so the next result mutates in the right direction.
         </p>
-        <label style={{ marginTop: 10, display: "block", fontSize: 12, color: "var(--ts)" }}>
+        <label className="ui-caption" style={{ marginTop: 10, display: "block" }}>
           Optional note
           <textarea
             value={note}
@@ -487,7 +494,7 @@ export function PlanResultStep() {
         ) : null}
 
         {actionMessage ? (
-          <p style={{ marginTop: 10, marginBottom: 0, fontSize: 12, color: "var(--ts)" }} role="status" aria-live="polite">
+          <p className="ui-caption" style={{ marginTop: 10, marginBottom: 0 }} role="status" aria-live="polite">
             {actionMessage}
           </p>
         ) : null}

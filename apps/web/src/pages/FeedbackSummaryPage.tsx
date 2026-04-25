@@ -45,11 +45,11 @@ export function FeedbackSummaryPage() {
 
       <div className="flow-nav" style={{ marginTop: 14 }}>
         <div className="card" style={{ minWidth: 150 }}>
-          <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Total ratings</p>
+          <p className="ui-caption">Total ratings</p>
           <p style={{ margin: "6px 0 0", fontSize: 26, fontWeight: 700 }}>{summary.total}</p>
         </div>
         <div className="card" style={{ minWidth: 150 }}>
-          <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Rerolls</p>
+          <p className="ui-caption">Rerolls</p>
           <p style={{ margin: "6px 0 0", fontSize: 26, fontWeight: 700 }}>{summary.rerollsFromAlmostRight}</p>
         </div>
       </div>
@@ -86,7 +86,9 @@ export function FeedbackSummaryPage() {
       </div>
 
       {error ? (
-        <p style={{ marginTop: 10, marginBottom: 0, fontSize: 12, color: "#ef4444" }}>{error}</p>
+        <p className="ui-caption" style={{ marginTop: 10, marginBottom: 0, color: "#ef4444" }}>
+          {error}
+        </p>
       ) : null}
 
       <div className="flow-nav" style={{ marginTop: 14 }}>

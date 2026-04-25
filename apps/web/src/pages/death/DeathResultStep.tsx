@@ -18,6 +18,7 @@ import { readBuildIntent } from "../../lib/readBuildIntent";
 import { SessionKeys } from "../../lib/sessionKeys";
 import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 import { buildMemoryHints, rememberAccept, rememberReroll } from "../../lib/memoryProfile";
+import { debugClientIgnored } from "../../lib/clientDebug";
 import { readStoredDestiny } from "../../lib/flowDestinyState";
 import { augmentMoodWithPower } from "../../lib/journeySignalsExtras";
 
@@ -86,7 +87,10 @@ export function DeathResultStep() {
       entryPath: "release_spirit",
     })
       .then((assignment) => setRecommendVariantId(assignment.variantId))
-      .catch(() => null);
+      .catch((err) => {
+        debugClientIgnored("death_result.growth_assignment", err);
+        return null;
+      });
   }, []);
 
   useEffect(() => {
@@ -100,7 +104,10 @@ export function DeathResultStep() {
     setIsLoadingNames(true);
     void fetchNameCandidates({ lane: nameLane, limit: 6 })
       .then((res) => setNameSuggestions(res.names.map((row) => row.name)))
-      .catch(() => setNameSuggestions([]))
+      .catch((err) => {
+        debugClientIgnored("death_result.name_candidates", err);
+        setNameSuggestions([]);
+      })
       .finally(() => setIsLoadingNames(false));
   }, [nameLane]);
 
@@ -315,7 +322,7 @@ export function DeathResultStep() {
                   Memorials now live on the committed build URL after you mark a death. Share exports still use the{" "}
                   <Link to="/design/cards">card shells</Link> reference layout.
                 </p>
-                <label style={{ marginTop: 10, display: "block", fontSize: 12, color: "var(--ts)" }}>
+                <label className="ui-caption" style={{ marginTop: 10, display: "block" }}>
                   Optional note
                   <textarea
                     value={note}
@@ -371,7 +378,7 @@ export function DeathResultStep() {
                   </div>
                 ) : null}
                 {actionMessage ? (
-                  <p style={{ marginTop: 10, marginBottom: 0, fontSize: 12, color: "var(--ts)" }} role="status" aria-live="polite">
+                  <p className="ui-caption" style={{ marginTop: 10, marginBottom: 0 }} role="status" aria-live="polite">
                     {actionMessage}
                   </p>
                 ) : null}
@@ -381,7 +388,7 @@ export function DeathResultStep() {
                 className="card icon-motif-card"
                 style={{ marginTop: 12, ["--motif-url" as string]: `url(${wowPackUrl("Trade", "WeightStone_01.png")})` }}
               >
-                <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>How close is this to what you wanted?</p>
+                <p className="ui-caption">How close is this to what you wanted?</p>
                 <div className="flow-nav" style={{ marginTop: 10 }}>
                   <button
                     type="button"
@@ -430,7 +437,7 @@ export function DeathResultStep() {
               </div>
 
               <div className="card" style={{ marginTop: 12 }}>
-                <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Name this build before commit</p>
+                <p className="ui-caption">Name this build before commit</p>
                 <input
                   value={commitName}
                   onChange={(event) => setCommitName(event.target.value)}
@@ -481,7 +488,7 @@ export function DeathResultStep() {
                     Humor
                   </button>
                 </div>
-                <label style={{ display: "block", marginTop: 8, fontSize: 12, color: "var(--ts)" }}>
+                <label className="ui-caption" style={{ display: "block", marginTop: 8 }}>
                   Name variance: {Math.round(nameVariance * 100)}%
                   <input
                     type="range"

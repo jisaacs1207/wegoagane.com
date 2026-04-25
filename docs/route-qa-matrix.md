@@ -79,5 +79,5 @@ Client throws `label:status:error` (e.g. `journey_commit:404:destiny_not_found`)
 
 ## Validation runs completed
 
-- `apps/web`: `npm run lint` + `npm run test` + `npm run build`
+- `apps/web`: `npm run lint` + `npm run test` + `npm run build` + `npx playwright install chromium` + `npm run test:e2e` (CI runs E2E after build; [`playwright.config.ts`](../apps/web/playwright.config.ts) starts `vite preview` on port 4173)
 - `packages/api`: `npm run typecheck` + `npm test`

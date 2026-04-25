@@ -14,6 +14,7 @@ import {
   recommendErrorSuggestsSoftenFilters,
   submitGrowthOutcome,
 } from "../../lib/recommendClient";
+import { debugClientIgnored } from "../../lib/clientDebug";
 import { SessionKeys } from "../../lib/sessionKeys";
 import { buildMemoryHints } from "../../lib/memoryProfile";
 import { writeStoredDestiny } from "../../lib/flowDestinyState";
@@ -47,8 +48,8 @@ export function PlanJourneyStep() {
             if (fac === "horde" || fac === "alliance") seedFaction = fac;
           }
           sessionStorage.removeItem(SessionKeys.plan.seedDestinyId);
-        } catch {
-          /* prior row missing or offline */
+        } catch (err) {
+          debugClientIgnored("plan_journey.seed_build_commit", err);
         }
       }
 
@@ -56,7 +57,10 @@ export function PlanJourneyStep() {
         sessionId,
         surface: "recommendation",
         entryPath: "draft_a_run",
-      }).catch(() => null);
+      }).catch((err) => {
+        debugClientIgnored("plan_journey.growth_assignment", err);
+        return null;
+      });
 
       const result = await fetchDestiny({
         entryPath: "draft_a_run",
@@ -83,7 +87,9 @@ export function PlanJourneyStep() {
           assignmentId: assignment.assignmentId,
           converted: true,
           outcome: { event: "recommend_rendered", destinyId: result.destinyId },
-        }).catch(() => {});
+        }).catch((err) => {
+          debugClientIgnored("plan_journey.growth_outcome", err);
+        });
       }
       navigate("/draft-a-run/result");
     } catch (err) {

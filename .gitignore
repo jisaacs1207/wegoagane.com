@@ -45,6 +45,10 @@ Thumbs.db
 coverage/
 .nyc_output/
 
+# Playwright (apps/web)
+apps/web/test-results/
+apps/web/playwright-report/
+
 # --- IDE (uncomment if you prefer not to commit editor settings) ---
 # .idea/
 # .vscode/

@@ -10,6 +10,7 @@ import { buildMemoryHints } from "../lib/memoryProfile";
 import { BuildIntentChips } from "../components/BuildIntentChips";
 import type { BuildIntentSignals } from "../lib/buildIntentTypes";
 import { AnalyticsEvent, trackEvent } from "../lib/analytics";
+import { debugClientIgnored } from "../lib/clientDebug";
 
 export function LuckyRollPage() {
   const [destiny, setDestiny] = useState<DestinyFixture | null>(null);
@@ -31,7 +32,9 @@ export function LuckyRollPage() {
         setAssignmentId(assignment.assignmentId);
         setVariantId(assignment.variantId);
       })
-      .catch(() => {});
+      .catch((err) => {
+        debugClientIgnored("lucky_roll_page.growth_assignment", err);
+      });
   }, []);
 
   useEffect(() => {
@@ -63,7 +66,9 @@ export function LuckyRollPage() {
           assignmentId,
           converted: true,
           outcome: { event: "recommend_rendered", destinyId: result.destinyId },
-        }).catch(() => {});
+        }).catch((err) => {
+          debugClientIgnored("lucky_roll_page.growth_outcome", err);
+        });
       }
     } catch (err) {
       setLoadError(destinyRecommendErrorHint(err));
@@ -94,7 +99,7 @@ export function LuckyRollPage() {
       {destiny ? <DestinyCard data={destiny} intentSignals={readBuildIntent(SessionKeys.lucky.buildIntent)} /> : null}
       {destiny ? (
         <div className="card" style={{ marginTop: 12 }}>
-          <p style={{ margin: 0, fontSize: 12, color: "var(--ts)" }}>Was this close to what you wanted?</p>
+          <p className="ui-caption">Was this close to what you wanted?</p>
           <div className="flow-nav" style={{ marginTop: 10 }}>
             <button
               type="button"

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { IdentityPortrait } from "../components/IdentityPortrait";
 import { wowPackUrl } from "../content/identityAssets";
 import { fetchGrowthAssignment, submitGrowthOutcome } from "../lib/recommendClient";
+import { debugClientIgnored } from "../lib/clientDebug";
 import { SessionKeys } from "../lib/sessionKeys";
 
 function sanitizeUiExperiment(payload: { headline?: string; subline?: string }) {
@@ -35,12 +36,14 @@ export function HomePage() {
         if (safePayload.subline) setHeroSub(safePayload.subline);
         // Entry row titles stay fixed per route so sublines never mismatch (growth CTAs are optional copy experiments only).
       })
-      .catch(() => {
-        // Keep baseline copy if assignment fails.
+      .catch((err) => {
+        debugClientIgnored("home.growth_assignment", err);
       });
     return () => {
       if (!assignmentId) return;
-      void submitGrowthOutcome({ assignmentId, converted: false, outcome: { location: "home_unmount" } }).catch(() => {});
+      void submitGrowthOutcome({ assignmentId, converted: false, outcome: { location: "home_unmount" } }).catch((err) => {
+        debugClientIgnored("home.growth_outcome_unmount", err);
+      });
     };
   }, []);
 
@@ -62,7 +65,9 @@ export function HomePage() {
               sessionStorage.removeItem(SessionKeys.death.generatedDestiny);
               sessionStorage.removeItem(SessionKeys.death.destinyId);
               if (!assignmentId) return;
-              void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_release_spirit" } }).catch(() => {});
+              void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_release_spirit" } }).catch((err) => {
+                debugClientIgnored("home.growth_outcome_release_spirit", err);
+              });
             }}
           >
             <IdentityPortrait src={wowPackUrl("Miscellaneous", "Tournaments_banner_Scourge.png")} alt="" className="entry-emblem" />
@@ -89,7 +94,9 @@ export function HomePage() {
               sessionStorage.removeItem(SessionKeys.plan.generatedDestiny);
               sessionStorage.removeItem(SessionKeys.plan.destinyId);
               if (!assignmentId) return;
-              void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_draft_run" } }).catch(() => {});
+              void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_draft_run" } }).catch((err) => {
+                debugClientIgnored("home.growth_outcome_draft_run", err);
+              });
             }}
           >
             <IdentityPortrait src={wowPackUrl("Abilities", "SwordandBoard.png")} alt="" className="entry-emblem" />
@@ -116,7 +123,9 @@ export function HomePage() {
               sessionStorage.removeItem(SessionKeys.lucky.generatedDestiny);
               sessionStorage.removeItem(SessionKeys.lucky.destinyId);
               if (!assignmentId) return;
-              void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_lucky_roll" } }).catch(() => {});
+              void submitGrowthOutcome({ assignmentId, converted: true, outcome: { event: "home_click_lucky_roll" } }).catch((err) => {
+                debugClientIgnored("home.growth_outcome_lucky_roll", err);
+              });
             }}
           >
             <IdentityPortrait src={wowPackUrl("Miscellaneous", "Dice_01.png")} alt="" className="entry-emblem" />
@@ -133,7 +142,7 @@ export function HomePage() {
             </span>
           </Link>
         </div>
-        <p style={{ margin: "18px 0 0", fontSize: 12, color: "var(--td)" }}>
+        <p className="ui-caption" style={{ margin: "18px 0 0", color: "var(--td)" }}>
           Every generation creates a bookmarkable build URL for revisits, help, and memorial updates.
         </p>
       </div>
