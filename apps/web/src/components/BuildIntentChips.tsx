@@ -8,24 +8,31 @@ import {
   mergeQuickRollPreserveIdentity,
   optionLabel,
   PROF_OPTIONS,
+  PROF_OPTIONS_ADVANCED,
   PROFESSION_INTENT_ANCHOR_TAGS,
+  RACE_MODES,
+  RACE_MODE_IDS,
   professionPickToTags,
   rollRandomQuickPickSignals,
   STAT_OPTIONS,
+  STAT_IDS,
   toggleList,
   type CorePreset,
   type IntentDepth,
   type ProfessionId,
+  VECTOR_IDS,
   VECTOR_OPTIONS,
 } from "./intent/intentOptions";
 import { ProfessionPicker } from "./intent/ProfessionPicker";
 import { balancedQuestionFor } from "./intent/vectorQuestions";
 import {
   DEPTH_JOURNEY_URL,
+  formatRaceLabel,
   type JourneyVectorKey,
   VECTOR_JOURNEY_URLS,
   wowPackUrl,
 } from "../content/identityAssets";
+import { CLASS_IDS, type ClassId } from "../icons/types";
 import { IdentityPortrait } from "./IdentityPortrait";
 import { readPowerCurve, type PowerCurveId } from "../lib/journeySignalsExtras";
 
@@ -85,9 +92,11 @@ const POWER_CURVE_OPTIONS: Array<{ id: PowerCurveId; label: string }> = [
   { id: "balanced", label: "Balanced curve" },
 ];
 
-const QUICK_ADD_STATS = ["stamina_forward", "balanced", "intellect_forward"] as const;
-const QUICK_ADD_PROF = ["engineering_outs", "herbalism_alchemy_pair", "tailoring_bags_arcane"] as const;
-const QUICK_ADD_VECTORS = ["solo", "hybrid", "ranged", "melee"] as const;
+const QUICK_ADD_STATS = STAT_IDS;
+const QUICK_ADD_PROF = PROF_OPTIONS_ADVANCED.map((o) => o.id);
+const QUICK_ADD_VECTORS = VECTOR_IDS;
+const QUICK_ADD_RACE_MODES = RACE_MODE_IDS;
+const RACE_FILTER_OPTIONS = ["human", "dwarf", "night_elf", "gnome", "orc", "troll", "tauren", "undead"] as const;
 function profPickStorageKey(storageKey: string) {
   return `${storageKey}.profPick`;
 }
@@ -166,6 +175,13 @@ function writeSsf(key: string, on: boolean) {
   }
 }
 
+function toggleIntentList<T extends string>(list: T[] | undefined, value: T, max: number): T[] {
+  const cur = list ?? [];
+  if (cur.includes(value)) return cur.filter((x) => x !== value);
+  if (cur.length >= max) return [...cur.slice(1), value];
+  return [...cur, value];
+}
+
 
 export function BuildIntentChips({
   storageKey,
@@ -230,6 +246,11 @@ export function BuildIntentChips({
     ids.push(...(value.professionIntents ?? []));
     ids.push(...(value.buildVectors ?? []));
     if (value.raceMode) ids.push(value.raceMode);
+    if (value.factionPreference) ids.push(`faction:${value.factionPreference}`);
+    ids.push(...(value.preferredClasses ?? []).map((c) => `class+${c}`));
+    ids.push(...(value.excludedClasses ?? []).map((c) => `class-${c}`));
+    ids.push(...(value.preferredRaces ?? []).map((r) => `race+${r}`));
+    ids.push(...(value.excludedRaces ?? []).map((r) => `race-${r}`));
     return ids;
   }, [value]);
   const eventContext = useMemo(
@@ -298,6 +319,42 @@ export function BuildIntentChips({
   }
 
   function removeActive(id: string) {
+    if (id.startsWith("faction:")) {
+      persist({ ...value, factionPreference: undefined });
+      return;
+    }
+    if (id.startsWith("class+")) {
+      const cls = id.slice("class+".length) as ClassId;
+      persist({
+        ...value,
+        preferredClasses: (value.preferredClasses ?? []).filter((c) => c !== cls),
+      });
+      return;
+    }
+    if (id.startsWith("class-")) {
+      const cls = id.slice("class-".length) as ClassId;
+      persist({
+        ...value,
+        excludedClasses: (value.excludedClasses ?? []).filter((c) => c !== cls),
+      });
+      return;
+    }
+    if (id.startsWith("race+")) {
+      const race = id.slice("race+".length);
+      persist({
+        ...value,
+        preferredRaces: (value.preferredRaces ?? []).filter((r) => r !== race),
+      });
+      return;
+    }
+    if (id.startsWith("race-")) {
+      const race = id.slice("race-".length);
+      persist({
+        ...value,
+        excludedRaces: (value.excludedRaces ?? []).filter((r) => r !== race),
+      });
+      return;
+    }
     if (value.statPhilosophy?.includes(id as never)) {
       persist({ ...value, statPhilosophy: value.statPhilosophy.filter((x) => x !== id) as BuildIntentSignals["statPhilosophy"] });
       return;
@@ -317,6 +374,18 @@ export function BuildIntentChips({
     if (value.raceMode === id) {
       persist({ ...value, raceMode: undefined });
     }
+  }
+
+  function activeLabel(id: string): string {
+    if (id.startsWith("faction:")) {
+      const v = id.slice("faction:".length);
+      return v === "horde" ? "Faction: Horde" : "Faction: Alliance";
+    }
+    if (id.startsWith("class+")) return `Class include: ${id.slice("class+".length)}`;
+    if (id.startsWith("class-")) return `Class exclude: ${id.slice("class-".length)}`;
+    if (id.startsWith("race+")) return `Race include: ${formatRaceLabel(id.slice("race+".length) as never)}`;
+    if (id.startsWith("race-")) return `Race exclude: ${formatRaceLabel(id.slice("race-".length) as never)}`;
+    return optionLabel(id);
   }
 
   function setStoredPowerCurve(next: PowerCurveId | null) {
@@ -356,7 +425,21 @@ export function BuildIntentChips({
         ...value,
         buildVectors: toggleList(value.buildVectors, id, 6) as BuildIntentSignals["buildVectors"],
       });
+      return;
     }
+    if (RACE_MODES.some((r) => r.id === id)) {
+      persist({
+        ...value,
+        raceMode: value.raceMode === id ? undefined : (id as BuildIntentSignals["raceMode"]),
+      });
+    }
+  }
+
+  function generateNowFromCurrent(currentDepth: IntentDepth) {
+    trackEvent(hasGenerated ? AnalyticsEvent.IntentRegenerateClicked : AnalyticsEvent.GenerateClicked, eventContext);
+    const base = currentDepth === "balanced" ? fillBalancedAssumptions(value) : value;
+    const payload: BuildIntentSignals = { ...base, soloSelfFound };
+    onGenerate(payload, currentDepth);
   }
 
   function resetJourneyFilters() {
@@ -560,10 +643,10 @@ export function BuildIntentChips({
                     type="button"
                     className="chip-btn chip-btn--on"
                     aria-pressed={true}
-                    aria-label={`${optionLabel(id)}, remove`}
+                    aria-label={`${activeLabel(id)}, remove`}
                     onClick={() => removeActive(id)}
                   >
-                    {optionLabel(id)} ×
+                    {activeLabel(id)} ×
                   </button>
                 ))}
               </div>
@@ -587,8 +670,16 @@ export function BuildIntentChips({
             >
               Roll again
             </button>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={isGenerating}
+              onClick={() => generateNowFromCurrent("quick")}
+            >
+              {isGenerating ? "Generating..." : "Generate now"}
+            </button>
             <button type="button" className="btn-primary" onClick={() => setStep("review")}>
-              Continue to review
+              Open full review
             </button>
           </div>
         </>
@@ -662,6 +753,21 @@ export function BuildIntentChips({
               buildVectors: toggleList(value.buildVectors, id, maxVectors) as BuildIntentSignals["buildVectors"],
             });
           }}
+          onToggleProfIntent={(id) => {
+            persist({
+              ...value,
+              professionIntents: toggleList(value.professionIntents, id, 12) as BuildIntentSignals["professionIntents"],
+            });
+            setProfPrimary(null);
+            setProfSecondary(null);
+            writeProfPick(storageKey, null, null);
+          }}
+          onToggleRaceMode={(id) => {
+            persist({
+              ...value,
+              raceMode: value.raceMode === id ? undefined : (id as BuildIntentSignals["raceMode"]),
+            });
+          }}
           onIdentityChange={(patch) => persist({ ...value, ...patch })}
           onBack={() => setStep("depth")}
           onContinue={() => setStep("review")}
@@ -703,8 +809,47 @@ export function BuildIntentChips({
             <p className="step-label" style={{ marginBottom: 6 }}>
               Quick add filters
             </p>
+            <p className="ui-caption ui-caption--xs" style={{ marginTop: 0, marginBottom: 8 }}>
+              Full catalog: stats, profession intents, vectors, and race mode.
+            </p>
             <div className="chip-row" style={{ marginTop: 6 }}>
-              {[...QUICK_ADD_STATS, ...QUICK_ADD_PROF, ...QUICK_ADD_VECTORS].map((id) => (
+              {QUICK_ADD_STATS.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={`chip-btn ${activeIds.includes(id) ? "chip-btn--on" : ""}`}
+                  onClick={() => quickToggle(id)}
+                >
+                  {optionLabel(id)}
+                </button>
+              ))}
+            </div>
+            <div className="chip-row" style={{ marginTop: 8 }}>
+              {QUICK_ADD_PROF.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={`chip-btn ${activeIds.includes(id) ? "chip-btn--on" : ""}`}
+                  onClick={() => quickToggle(id)}
+                >
+                  {optionLabel(id)}
+                </button>
+              ))}
+            </div>
+            <div className="chip-row" style={{ marginTop: 8 }}>
+              {QUICK_ADD_VECTORS.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={`chip-btn ${activeIds.includes(id) ? "chip-btn--on" : ""}`}
+                  onClick={() => quickToggle(id)}
+                >
+                  {optionLabel(id)}
+                </button>
+              ))}
+            </div>
+            <div className="chip-row" style={{ marginTop: 8 }}>
+              {QUICK_ADD_RACE_MODES.map((id) => (
                 <button
                   key={id}
                   type="button"
@@ -764,10 +909,10 @@ export function BuildIntentChips({
                     type="button"
                     className="chip-btn chip-btn--on"
                     aria-pressed={true}
-                    aria-label={`${optionLabel(id)}, remove`}
+                    aria-label={`${activeLabel(id)}, remove`}
                     onClick={() => removeActive(id)}
                   >
-                    {optionLabel(id)} ×
+                    {activeLabel(id)} ×
                   </button>
                 ))}
               </div>
@@ -781,38 +926,102 @@ export function BuildIntentChips({
             <p className="step-label" style={{ marginBottom: 6 }}>
               Identity preference (optional)
             </p>
-            <div className="flow-nav flow-nav--wrap">
-              <select
-                value={value.factionPreference ?? ""}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  persist({ ...value, factionPreference: v === "horde" || v === "alliance" ? v : undefined });
-                }}
-              >
-                <option value="">Faction: any</option>
-                <option value="alliance">Alliance</option>
-                <option value="horde">Horde</option>
-              </select>
-              <input
-                value={value.pickedRace ?? ""}
-                onChange={(e) => persist({ ...value, pickedRace: e.target.value.slice(0, 24), raceMode: "user_pick" })}
-                placeholder="Race (e.g. human, undead)"
-              />
-              <select
-                value={value.genderLean ?? ""}
-                onChange={(e) => {
-                  const g = e.target.value;
-                  persist({
-                    ...value,
-                    genderLean: g === "masculine" || g === "feminine" || g === "neutral" ? g : undefined,
-                  });
-                }}
-              >
-                <option value="">Gender lean: any</option>
-                <option value="masculine">Masculine</option>
-                <option value="feminine">Feminine</option>
-                <option value="neutral">Neutral</option>
-              </select>
+            <p className="ui-caption ui-caption--xs" style={{ marginTop: 0, marginBottom: 6 }}>
+              Faction
+            </p>
+            <div className="chip-row" style={{ marginBottom: 8 }}>
+              {[
+                { id: "all", label: "Any faction" },
+                { id: "alliance", label: "Alliance" },
+                { id: "horde", label: "Horde" },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  className={`chip-btn ${(f.id === "all" ? !value.factionPreference : value.factionPreference === f.id) ? "chip-btn--on" : ""}`}
+                  onClick={() => persist({ ...value, factionPreference: f.id === "all" ? undefined : (f.id as "horde" | "alliance") })}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            <p className="ui-caption ui-caption--xs" style={{ marginTop: 0, marginBottom: 6 }}>
+              Class intent (include / exclude)
+            </p>
+            <div className="chip-row" style={{ marginBottom: 8 }}>
+              {CLASS_IDS.map((c) => (
+                <button
+                  key={`review-class+${c}`}
+                  type="button"
+                  className={`chip-btn ${(value.preferredClasses ?? []).includes(c) ? "chip-btn--on" : ""}`}
+                  onClick={() =>
+                    persist({
+                      ...value,
+                      preferredClasses: toggleIntentList(value.preferredClasses, c, 6),
+                      excludedClasses: (value.excludedClasses ?? []).filter((x) => x !== c),
+                    })
+                  }
+                >
+                  + {c}
+                </button>
+              ))}
+            </div>
+            <div className="chip-row" style={{ marginBottom: 8 }}>
+              {CLASS_IDS.map((c) => (
+                <button
+                  key={`review-class-${c}`}
+                  type="button"
+                  className={`chip-btn ${(value.excludedClasses ?? []).includes(c) ? "chip-btn--on" : ""}`}
+                  onClick={() =>
+                    persist({
+                      ...value,
+                      excludedClasses: toggleIntentList(value.excludedClasses, c, 6),
+                      preferredClasses: (value.preferredClasses ?? []).filter((x) => x !== c),
+                    })
+                  }
+                >
+                  - {c}
+                </button>
+              ))}
+            </div>
+            <p className="ui-caption ui-caption--xs" style={{ marginTop: 0, marginBottom: 6 }}>
+              Race intent (include / exclude)
+            </p>
+            <div className="chip-row" style={{ marginBottom: 8 }}>
+              {RACE_FILTER_OPTIONS.map((r) => (
+                <button
+                  key={`review-race+${r}`}
+                  type="button"
+                  className={`chip-btn ${(value.preferredRaces ?? []).includes(r) ? "chip-btn--on" : ""}`}
+                  onClick={() =>
+                    persist({
+                      ...value,
+                      preferredRaces: toggleIntentList(value.preferredRaces, r, 8),
+                      excludedRaces: (value.excludedRaces ?? []).filter((x) => x !== r),
+                    })
+                  }
+                >
+                  + {formatRaceLabel(r)}
+                </button>
+              ))}
+            </div>
+            <div className="chip-row">
+              {RACE_FILTER_OPTIONS.map((r) => (
+                <button
+                  key={`review-race-${r}`}
+                  type="button"
+                  className={`chip-btn ${(value.excludedRaces ?? []).includes(r) ? "chip-btn--on" : ""}`}
+                  onClick={() =>
+                    persist({
+                      ...value,
+                      excludedRaces: toggleIntentList(value.excludedRaces, r, 8),
+                      preferredRaces: (value.preferredRaces ?? []).filter((x) => x !== r),
+                    })
+                  }
+                >
+                  - {formatRaceLabel(r)}
+                </button>
+              ))}
             </div>
           </div>
           {filterRecoveryAction ? (
@@ -833,12 +1042,7 @@ export function BuildIntentChips({
               type="button"
               className="btn-primary"
               disabled={isGenerating || (experimentalOffer === "cohort" && recommendLane === null)}
-              onClick={() => {
-                trackEvent(hasGenerated ? AnalyticsEvent.IntentRegenerateClicked : AnalyticsEvent.GenerateClicked, eventContext);
-                const base = depth === "balanced" ? fillBalancedAssumptions(value) : value;
-                const payload: BuildIntentSignals = { ...base, soloSelfFound };
-                onGenerate(payload, depth);
-              }}
+              onClick={() => generateNowFromCurrent(depth)}
             >
               {isGenerating ? "Generating..." : hasGenerated ? "Regenerate build" : "Generate build"}
             </button>
@@ -1003,6 +1207,8 @@ type DialedSheetProps = {
   onProfessionChange: (next: { primary: ProfessionId | null; secondary: ProfessionId | null }) => void;
   onToggleStat: (id: string) => void;
   onToggleVector: (id: string) => void;
+  onToggleProfIntent: (id: string) => void;
+  onToggleRaceMode: (id: string) => void;
   onIdentityChange: (patch: Partial<BuildIntentSignals>) => void;
   onBack: () => void;
   onContinue: () => void;
@@ -1017,6 +1223,8 @@ function DialedSheet({
   onProfessionChange,
   onToggleStat,
   onToggleVector,
+  onToggleProfIntent,
+  onToggleRaceMode,
   onIdentityChange,
   onBack,
   onContinue,
@@ -1024,6 +1232,7 @@ function DialedSheet({
 }: DialedSheetProps) {
   const activeStats = new Set<string>(value.statPhilosophy ?? []);
   const activeVectors = new Set<string>(value.buildVectors ?? []);
+  const activeProfIntents = new Set<string>(value.professionIntents ?? []);
   return (
     <>
       <p className="step-label" style={{ marginBottom: 6 }}>
@@ -1068,6 +1277,31 @@ function DialedSheet({
           />
         </div>
       </details>
+      <details className="dialed-sheet__section">
+        <summary className="dialed-sheet__summary">
+          Advanced profession intents <span className="ui-caption ui-caption--xs">{activeProfIntents.size}/12</span>
+        </summary>
+        <div className="dialed-sheet__body">
+          <p className="ui-caption ui-caption--xs" style={{ marginBottom: 8 }}>
+            Add profession strategy filters beyond your two primary crafts.
+          </p>
+          <div className="chip-row" role="group" aria-label="Advanced profession intents">
+            {PROF_OPTIONS_ADVANCED.map((o) => (
+              (soloSelfFound && o.id === "auction_house_play") ? null : (
+              <button
+                key={o.id}
+                type="button"
+                className={`chip-btn ${activeProfIntents.has(o.id) ? "chip-btn--on" : ""}`}
+                aria-pressed={activeProfIntents.has(o.id)}
+                onClick={() => onToggleProfIntent(o.id)}
+              >
+                {o.label}
+              </button>
+              )
+            ))}
+          </div>
+        </div>
+      </details>
       <details className="dialed-sheet__section" open>
         <summary className="dialed-sheet__summary">
           Vectors <span className="ui-caption ui-caption--xs">{activeVectors.size}/6</span>
@@ -1089,41 +1323,120 @@ function DialedSheet({
         </div>
       </details>
       <details className="dialed-sheet__section">
+        <summary className="dialed-sheet__summary">Race selection mode</summary>
+        <div className="dialed-sheet__body">
+          <div className="chip-row" role="group" aria-label="Race mode">
+            {RACE_MODES.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                className={`chip-btn ${value.raceMode === o.id ? "chip-btn--on" : ""}`}
+                aria-pressed={value.raceMode === o.id}
+                onClick={() => onToggleRaceMode(o.id)}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </details>
+      <details className="dialed-sheet__section">
         <summary className="dialed-sheet__summary">Identity (optional)</summary>
         <div className="dialed-sheet__body">
-          <div className="flow-nav flow-nav--wrap">
-            <select
-              value={value.factionPreference ?? ""}
-              onChange={(e) => {
-                const v = e.target.value;
-                onIdentityChange({ factionPreference: v === "horde" || v === "alliance" ? v : undefined });
-              }}
-            >
-              <option value="">Faction: any</option>
-              <option value="alliance">Alliance</option>
-              <option value="horde">Horde</option>
-            </select>
-            <input
-              value={value.pickedRace ?? ""}
-              onChange={(e) =>
-                onIdentityChange({ pickedRace: e.target.value.slice(0, 24), raceMode: "user_pick" })
-              }
-              placeholder="Race (e.g. human, undead)"
-            />
-            <select
-              value={value.genderLean ?? ""}
-              onChange={(e) => {
-                const g = e.target.value;
-                onIdentityChange({
-                  genderLean: g === "masculine" || g === "feminine" || g === "neutral" ? g : undefined,
-                });
-              }}
-            >
-              <option value="">Gender lean: any</option>
-              <option value="masculine">Masculine</option>
-              <option value="feminine">Feminine</option>
-              <option value="neutral">Neutral</option>
-            </select>
+          <p className="ui-caption ui-caption--xs" style={{ marginTop: 0, marginBottom: 6 }}>
+            Faction
+          </p>
+          <div className="chip-row" style={{ marginBottom: 8 }}>
+            {[
+              { id: "all", label: "Any faction" },
+              { id: "alliance", label: "Alliance" },
+              { id: "horde", label: "Horde" },
+            ].map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                className={`chip-btn ${(f.id === "all" ? !value.factionPreference : value.factionPreference === f.id) ? "chip-btn--on" : ""}`}
+                onClick={() =>
+                  onIdentityChange({ factionPreference: f.id === "all" ? undefined : (f.id as "horde" | "alliance") })
+                }
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <p className="ui-caption ui-caption--xs" style={{ marginTop: 0, marginBottom: 6 }}>
+            Class intent (include / exclude)
+          </p>
+          <div className="chip-row" style={{ marginBottom: 8 }}>
+            {CLASS_IDS.map((c) => (
+              <button
+                key={`class+${c}`}
+                type="button"
+                className={`chip-btn ${(value.preferredClasses ?? []).includes(c) ? "chip-btn--on" : ""}`}
+                onClick={() =>
+                  onIdentityChange({
+                    preferredClasses: toggleIntentList(value.preferredClasses, c, 6),
+                    excludedClasses: (value.excludedClasses ?? []).filter((x) => x !== c),
+                  })
+                }
+              >
+                + {c}
+              </button>
+            ))}
+          </div>
+          <div className="chip-row" style={{ marginBottom: 8 }}>
+            {CLASS_IDS.map((c) => (
+              <button
+                key={`class-${c}`}
+                type="button"
+                className={`chip-btn ${(value.excludedClasses ?? []).includes(c) ? "chip-btn--on" : ""}`}
+                onClick={() =>
+                  onIdentityChange({
+                    excludedClasses: toggleIntentList(value.excludedClasses, c, 6),
+                    preferredClasses: (value.preferredClasses ?? []).filter((x) => x !== c),
+                  })
+                }
+              >
+                - {c}
+              </button>
+            ))}
+          </div>
+          <p className="ui-caption ui-caption--xs" style={{ marginTop: 0, marginBottom: 6 }}>
+            Race intent (include / exclude)
+          </p>
+          <div className="chip-row" style={{ marginBottom: 8 }}>
+            {RACE_FILTER_OPTIONS.map((r) => (
+              <button
+                key={`race+${r}`}
+                type="button"
+                className={`chip-btn ${(value.preferredRaces ?? []).includes(r) ? "chip-btn--on" : ""}`}
+                onClick={() =>
+                  onIdentityChange({
+                    preferredRaces: toggleIntentList(value.preferredRaces, r, 8),
+                    excludedRaces: (value.excludedRaces ?? []).filter((x) => x !== r),
+                  })
+                }
+              >
+                + {formatRaceLabel(r)}
+              </button>
+            ))}
+          </div>
+          <div className="chip-row">
+            {RACE_FILTER_OPTIONS.map((r) => (
+              <button
+                key={`race-${r}`}
+                type="button"
+                className={`chip-btn ${(value.excludedRaces ?? []).includes(r) ? "chip-btn--on" : ""}`}
+                onClick={() =>
+                  onIdentityChange({
+                    excludedRaces: toggleIntentList(value.excludedRaces, r, 8),
+                    preferredRaces: (value.preferredRaces ?? []).filter((x) => x !== r),
+                  })
+                }
+              >
+                - {formatRaceLabel(r)}
+              </button>
+            ))}
           </div>
         </div>
       </details>

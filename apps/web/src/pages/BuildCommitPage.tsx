@@ -24,10 +24,16 @@ import { AnalyticsEvent, trackEvent } from "../lib/analytics";
 import { SessionKeys } from "../lib/sessionKeys";
 import { getProfessionIconUrl, getTalentIconUrl } from "../lib/talentIconMap";
 import { buildSpecSummary } from "../lib/buildSpecSummary";
+import type { DestinyFixture } from "../content/cardFixtures";
 
 type EffectivePlan = {
   meta?: { publishTier?: string; classId?: string; archetypeKey?: string; rulesetPin?: string };
-  talents?: { summary?: string; keyPicks?: Array<{ tier?: string; name?: string; rationale?: string }> };
+  talents?: {
+    summary?: string;
+    keyPicks?: Array<{ tier?: string; name?: string; rationale?: string }>;
+    treeAllocations?: Array<{ branch?: string; points?: number }>;
+    path?: Array<{ level?: number; branch?: string; talent?: string; rank?: number; rationale?: string }>;
+  };
   professions?: {
     primary?: string;
     secondary?: string;
@@ -134,6 +140,21 @@ export function BuildCommitPage() {
       signature: effectivePlan?.signature,
     });
   }, [destiny, effectivePlan?.talents, effectivePlan?.signature]);
+
+  const commitCardData = useMemo<DestinyFixture>(() => {
+    const strengthBullets = (effectivePlan?.signature?.strengths ?? [])
+      .map((s) => s?.trim())
+      .filter(Boolean)
+      .slice(0, 3) as string[];
+    return {
+      ...(destiny as DestinyFixture),
+      subline: effectivePlan?.identity?.buildFantasy?.trim() || destiny?.subline || "",
+      raceSuggestion: effectivePlan?.identity?.raceSuggestion ?? effectivePlan?.race?.suggestion ?? destiny?.raceSuggestion,
+      factionSuggestion: effectivePlan?.identity?.factionSuggestion ?? destiny?.factionSuggestion,
+      tierProse: effectivePlan?.talents?.summary?.trim() || effectivePlan?.signature?.whyDistinct?.trim() || destiny?.tierProse || "",
+      bullets: strengthBullets.length ? strengthBullets : destiny?.bullets ?? [],
+    };
+  }, [destiny, effectivePlan]);
 
   const shareUrl = useMemo(() => {
     if (typeof window === "undefined") return record ? `/build/commit/${record.slug}` : "";
@@ -275,7 +296,7 @@ export function BuildCommitPage() {
       <div className="commit-page-grid">
         <div className="commit-page-grid__primary">
           <div style={{ marginTop: 0 }}>
-            <DestinyCard data={destiny} compact />
+            <DestinyCard data={commitCardData} compact />
           </div>
 
           <div className="card commit-action-bar-wrap" style={{ marginTop: 12 }}>
@@ -448,6 +469,36 @@ export function BuildCommitPage() {
                     ))}
                   </ul>
                 </div>
+              ) : null}
+
+              {(effectivePlan?.talents?.path?.length ?? 0) > 0 ? (
+                <details className="build-sheet__section">
+                  <summary style={{ cursor: "pointer" }} className="step-label">
+                    Full talent path
+                  </summary>
+                  <ul className="build-sheet__talents" style={{ marginTop: 8 }}>
+                    {effectivePlan?.talents?.path?.slice(0, 60).map((row, idx) => (
+                      <li key={`${row.level ?? "lv"}-${row.talent ?? idx}-${idx}`} className="build-sheet__talent">
+                        <img
+                          src={getTalentIconUrl(row.talent, destiny.classId)}
+                          alt=""
+                          aria-hidden
+                          className="build-sheet__talent-icon"
+                          loading="lazy"
+                        />
+                        <div className="build-sheet__talent-body">
+                          <div className="build-sheet__talent-head">
+                            <strong>
+                              L{row.level ?? "?"} · {row.branch ?? "Tree"} · {row.talent ?? "Talent"}
+                              {typeof row.rank === "number" ? ` (Rank ${row.rank})` : ""}
+                            </strong>
+                          </div>
+                          {row.rationale ? <p className="ui-caption">{row.rationale}</p> : null}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
               ) : null}
 
               {keyItems.length ? (

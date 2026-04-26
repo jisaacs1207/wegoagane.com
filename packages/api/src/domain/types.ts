@@ -69,6 +69,7 @@ export type RecommendSignals = {
   factionPreference?: Faction;
   excludedClasses?: ClassId[];
   preferredClass?: ClassId;
+  preferredClasses?: ClassId[];
   memoryHints?: MemoryHints;
   recommendVariantId?: string;
   /** Structured build intent (merged with inferred tags from free text) */
@@ -78,6 +79,8 @@ export type RecommendSignals = {
   raceMode?: RaceMode;
   /** When raceMode is user_pick: race id string e.g. orc, human */
   pickedRace?: string;
+  preferredRaces?: string[];
+  excludedRaces?: string[];
   genderLean?: "masculine" | "feminine" | "neutral";
   /** Curated fixture ranker vs AI-prototyped archetype row (requires AI gateway). */
   recommendLane?: "curated" | "experimental";

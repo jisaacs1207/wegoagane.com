@@ -110,8 +110,10 @@ function buildGeneratorPrompt(
     `Ruleset pin: ${rulesetPin}. Prefer accurate Classic Era talent NAMES and real profession pairings. If unsure, say so in warnings[].`,
     "Do not emit keys outside the schema. Keep arrays within stated limits so the reply stays one valid JSON object.",
     "Return ONE JSON object only matching this shape:",
-    '{"v":1,"meta":{"publishTier":"draft","rulesetPin":"...","classId":"...","archetypeKey":"..."},"viabilityNotes":[],"warnings":[],"talents":{"summary":"...","keyPicks":[{"tier":"...","name":"talent name","rationale":"...","alternatives":[]}]},"professions":{"primary":"...","secondary":"...","rationale":"...","secondarySkills":{"firstAid":"...","cooking":"...","fishing":"..."}},"stats":{"priority":["stamina","..."],"rationale":"..."},"race":{"suggestion":"...","rationale":"...","alternatives":[]},"identity":{"raceSuggestion":"...","factionSuggestion":"horde|alliance|neutral","genderLean":"masculine|feminine|neutral","buildFantasy":"...","archetypeSummary":"..."},"signature":{"tree":{"branch":"Holy|Protection|Retribution|Arms|Fury|...","weight":0.0},"strengths":["..."],"weaknesses":["..."],"whyDistinct":"...","keyItems":[{"name":"...","slot":"weapon|chest|trinket|...","rationale":"..."}]},"namesByLane":{"lore_world":["NameOne"],"hc_practical":[],"light_humor":[],"grimdark":[],"neutral":[],"pop_culture":[]},"forks":[{"title":"...","optionA":"...","optionB":"...","why":"..."}]}',
+    '{"v":1,"meta":{"publishTier":"draft","rulesetPin":"...","classId":"...","archetypeKey":"..."},"viabilityNotes":[],"warnings":[],"talents":{"summary":"...","keyPicks":[{"tier":"...","name":"talent name","rationale":"...","alternatives":[]}],"treeAllocations":[{"branch":"Feral","points":31},{"branch":"Restoration","points":20}],"path":[{"level":10,"branch":"Feral","talent":"Ferocity","rank":1,"rationale":"..."}]},"professions":{"primary":"...","secondary":"...","rationale":"...","secondarySkills":{"firstAid":"...","cooking":"...","fishing":"..."}},"stats":{"priority":["stamina","..."],"rationale":"..."},"race":{"suggestion":"...","rationale":"...","alternatives":[]},"identity":{"raceSuggestion":"...","factionSuggestion":"horde|alliance|neutral","genderLean":"masculine|feminine|neutral","buildFantasy":"...","archetypeSummary":"..."},"signature":{"tree":{"branch":"Holy|Protection|Retribution|Arms|Fury|...","weight":0.0},"strengths":["..."],"weaknesses":["..."],"whyDistinct":"...","keyItems":[{"name":"...","slot":"weapon|chest|trinket|...","rationale":"..."}]},"namesByLane":{"lore_world":["NameOne"],"hc_practical":[],"light_humor":[],"grimdark":[],"neutral":[],"pop_culture":[]},"forks":[{"title":"...","optionA":"...","optionB":"...","why":"..."}]}',
+    "talents.treeAllocations + talents.path are REQUIRED when possible. Provide full or near-full leveling path (level 10 to 60 checkpoints) and realistic point allocations that sum to 51 by level 60.",
     "signature: REQUIRED for hardcore differentiation. tree.branch is the dominant talent tree by point spend; tree.weight is 0..1 share of points in that branch. strengths/weaknesses 3-5 short HC-specific bullets each (e.g. 'low downtime between pulls', 'weak vs casters'). whyDistinct: 1-2 sentences on what separates this build from a generic same-class run. keyItems 4-6 leveling-tier upgrades with slot.",
+    "Use widely accepted WoW Classic Era HC community guidance (e.g. Wowhead/classic forums/reddit consensus) for talent progression realism; never invent fake citations or URLs.",
     "namesByLane: each array 4-8 names; WoW rules: ASCII letters only, length 2-12 each, no spaces or punctuation. Include pop_culture lane with clever original blends (no trademark strings).",
     "forks: 2-3 entries for major build decisions.",
     `Player signals JSON: ${jsonForPrompt("signals", input.signals)}`,
@@ -174,6 +176,38 @@ function normalizeBuildPlanCandidate(input: unknown): unknown {
         // Hardcore mode: avoid dead-character recovery utility as recommended talent picks.
         return !/(soulstone|rebirth|reincarnation|divine intervention)/.test(name);
       });
+    }
+    if (Array.isArray(t.treeAllocations)) {
+      t.treeAllocations = t.treeAllocations
+        .slice(0, 3)
+        .map((row) => {
+          if (!row || typeof row !== "object") return null;
+          const r = { ...(row as Record<string, unknown>) };
+          r.branch = clampText(r.branch, 40);
+          const points = typeof r.points === "number" ? r.points : Number(r.points);
+          r.points = Number.isFinite(points) ? Math.max(0, Math.min(61, Math.round(points))) : 0;
+          return r.branch ? r : null;
+        })
+        .filter((row): row is Record<string, unknown> => Boolean(row));
+    }
+    if (Array.isArray(t.path)) {
+      t.path = t.path
+        .slice(0, 60)
+        .map((row) => {
+          if (!row || typeof row !== "object") return null;
+          const r = { ...(row as Record<string, unknown>) };
+          const lv = typeof r.level === "number" ? r.level : Number(r.level);
+          r.level = Number.isFinite(lv) ? Math.max(10, Math.min(60, Math.round(lv))) : 10;
+          r.branch = clampText(r.branch, 40);
+          r.talent = clampText(r.talent, 80);
+          if (r.rank !== undefined) {
+            const rank = typeof r.rank === "number" ? r.rank : Number(r.rank);
+            r.rank = Number.isFinite(rank) ? Math.max(1, Math.min(5, Math.round(rank))) : 1;
+          }
+          if (r.rationale !== undefined) r.rationale = clampText(r.rationale, 300);
+          return r.branch && r.talent ? r : null;
+        })
+        .filter((row): row is Record<string, unknown> => Boolean(row));
     }
     out.talents = t;
   }

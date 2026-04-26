@@ -12,6 +12,7 @@ export type SpecSummaryInput = {
   talents?: {
     keyPicks?: Array<{ tier?: string; name?: string; rationale?: string }>;
     summary?: string;
+    treeAllocations?: Array<{ branch?: string; points?: number }>;
   };
   signature?: {
     tree?: { branch?: string; weight?: number };
@@ -98,6 +99,14 @@ export function buildSpecSummary(input: SpecSummaryInput): SpecSummary {
   const branches = CLASS_BRANCHES[input.classId];
   const counts = new Map<string, number>(branches.map((b) => [b, 0]));
 
+  // Prefer explicit AI tree allocations when present.
+  for (const row of input.talents?.treeAllocations ?? []) {
+    const branch = (row.branch ?? "").trim();
+    if (!branches.includes(branch)) continue;
+    const points = typeof row.points === "number" && Number.isFinite(row.points) ? Math.max(0, Math.round(row.points)) : 0;
+    counts.set(branch, points);
+  }
+
   for (const pick of input.talents?.keyPicks ?? []) {
     const haystack = `${pick.tier ?? ""} ${pick.name ?? ""} ${pick.rationale ?? ""}`;
     const branch = detectBranchFromText(haystack, branches);
@@ -116,8 +125,14 @@ export function buildSpecSummary(input: SpecSummaryInput): SpecSummary {
   const aiBranch = input.signature?.tree?.branch?.trim();
   const treeBranch = aiBranch || detected || CLASS_DEFAULT_BRANCH[input.classId];
 
-  const totalCount = Array.from(counts.values()).reduce((a, b) => a + b, 0);
+  let totalCount = Array.from(counts.values()).reduce((a, b) => a + b, 0);
   const aiWeight = typeof input.signature?.tree?.weight === "number" ? input.signature.tree.weight : null;
+  if (totalCount === 0 && aiWeight !== null) {
+    // If AI gave branch+weight but not per-tree counts, synthesize readable bars (51 points @ level 60).
+    const primaryPts = Math.max(0, Math.min(51, Math.round(aiWeight * 51)));
+    counts.set(treeBranch, primaryPts);
+    totalCount = primaryPts;
+  }
   const heuristicWeight = totalCount > 0 ? (counts.get(treeBranch) ?? 0) / totalCount : 0;
   const treeWeight = aiWeight !== null ? Math.max(0, Math.min(1, aiWeight)) : heuristicWeight;
 

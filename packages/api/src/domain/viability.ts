@@ -180,6 +180,14 @@ export function computeViability(input: RecommendInput): ViabilityResult {
     notes.push("preferred_class_incompatible_with_constraints");
   }
 
+  const preferredClasses = signals.preferredClasses ?? [];
+  if (preferredClasses.length > 0) {
+    const preferredSet = new Set(preferredClasses);
+    const before = classes.length;
+    classes = classes.filter((c) => preferredSet.has(c));
+    if (before !== classes.length) notes.push("applied_preferred_classes");
+  }
+
   const excluded = new Set(signals.excludedClasses ?? []);
   classes = classes.filter((c) => !excluded.has(c));
 

@@ -73,6 +73,9 @@ export const PROF_OPTIONS = [
   { id: "auction_house_play", label: "Auction house" },
 ] as const;
 
+/** Extended profession-intent catalog for dialed/review advanced toggles. */
+export const PROF_OPTIONS_ADVANCED = PROF_OPTIONS;
+
 /**
  * Single-profession picker catalog (UI-only).
  * Fishing, Cooking, and First Aid are intentionally excluded — they're assumed always available.
@@ -225,14 +228,14 @@ export function applyCorePreset(value: BuildIntentSignals, preset: CorePreset): 
 }
 
 export function optionLabel(id: string): string {
-  const all = [...STAT_OPTIONS, ...PROF_OPTIONS, ...VECTOR_OPTIONS, ...RACE_MODES];
+  const all = [...STAT_OPTIONS, ...PROF_OPTIONS_ADVANCED, ...VECTOR_OPTIONS, ...RACE_MODES];
   return all.find((x) => x.id === id)?.label ?? id;
 }
 
-const STAT_IDS = STAT_OPTIONS.map((o) => o.id);
-const PROF_IDS = PROF_OPTIONS.map((o) => o.id);
-const VECTOR_IDS = VECTOR_OPTIONS.map((o) => o.id);
-const RACE_MODE_IDS = RACE_MODES.map((o) => o.id);
+export const STAT_IDS = STAT_OPTIONS.map((o) => o.id);
+export const PROF_IDS = PROF_OPTIONS_ADVANCED.map((o) => o.id);
+export const VECTOR_IDS = VECTOR_OPTIONS.map((o) => o.id);
+export const RACE_MODE_IDS = RACE_MODES.map((o) => o.id);
 
 function hashString(seed: string): number {
   let h = 2166136261;

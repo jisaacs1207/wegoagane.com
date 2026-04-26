@@ -17,6 +17,19 @@ const talentRowSchema = z.object({
   alternatives: z.array(z.string().max(80)).max(4).optional(),
 });
 
+const talentTreeAllocationSchema = z.object({
+  branch: z.string().max(40),
+  points: z.number().int().min(0).max(61),
+});
+
+const talentPathStepSchema = z.object({
+  level: z.number().int().min(10).max(60),
+  branch: z.string().max(40),
+  talent: z.string().max(80),
+  rank: z.number().int().min(1).max(5).optional(),
+  rationale: z.string().max(300).optional(),
+});
+
 const forkSchema = z.object({
   title: z.string().max(120),
   optionA: z.string().max(200),
@@ -48,6 +61,10 @@ export const buildPlanPayloadSchema = z.object({
   talents: z.object({
     summary: z.string().max(600).optional(),
     keyPicks: z.array(talentRowSchema).max(12),
+    /** Per-tree point allocation, e.g. Feral 31 / Resto 20. */
+    treeAllocations: z.array(talentTreeAllocationSchema).max(3).optional(),
+    /** Full leveling path (or near-full) so UI can show complete talent journey. */
+    path: z.array(talentPathStepSchema).max(60).optional(),
   }),
   professions: z.object({
     primary: z.string().max(40),
