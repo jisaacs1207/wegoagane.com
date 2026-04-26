@@ -191,8 +191,12 @@ export const RACE_MODES = [
 
 export const DEPTH_OPTIONS: Array<{ id: IntentDepth; label: string; helper: string }> = [
   { id: "quick", label: "Quick pick", helper: "Random bundle from the full filter catalog. Edit, reroll, generate." },
-  { id: "balanced", label: "Balanced", helper: "One primary pillar + one secondary pillar. We infer the rest." },
-  { id: "dialed_in", label: "Dialed-in", helper: "Open every category at once and tune chip-by-chip." },
+  {
+    id: "balanced",
+    label: "Guided pillars",
+    helper: "Pick a primary and secondary focus; we infer supporting picks from your answers.",
+  },
+  { id: "dialed_in", label: "Full sheet", helper: "Open every category at once and tune chip-by-chip." },
 ];
 
 export function toggleList(list: string[] | undefined, id: string, max: number): string[] {

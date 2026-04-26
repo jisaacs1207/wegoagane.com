@@ -41,6 +41,10 @@ type Props = {
   onGenerate: (signals: BuildIntentSignals, depth: IntentDepth) => void;
   isGenerating?: boolean;
   hasGenerated?: boolean;
+  /** Flow context: detailed draft skips depth and opens the full sheet immediately. */
+  intentSurface?: BuildIntentSurface;
+  /** Draft run only: back from the filter sheet returns to the run-goal step. */
+  onLeaveDetailedBuild?: () => void;
   /** Shown on the review step when recommend failed due to over-tight filters. */
   filterRecoveryAction?: { label: string; onSoften: () => void } | null;
   /** Server-driven cohort (`cohort`) or tight-filter recovery (`forced`). */
@@ -89,7 +93,16 @@ const POWER_CURVE_OPTIONS: Array<{ id: PowerCurveId; label: string }> = [
   { id: "early", label: "Early power" },
   { id: "mid", label: "Mid climb" },
   { id: "late", label: "Late spikes" },
-  { id: "balanced", label: "Balanced curve" },
+  { id: "balanced", label: "Even curve" },
+];
+
+/** Where chips are shown — draft run skips “depth” and matches Home’s detailed path. */
+type BuildIntentSurface = "lucky_roll" | "draft_a_run" | "release_spirit";
+
+const CORE_PRESET_UI: Array<{ id: CorePreset; label: string }> = [
+  { id: "safe", label: "Safety first" },
+  { id: "balanced", label: "Steady path" },
+  { id: "bold", label: "Push pace" },
 ];
 
 const QUICK_ADD_STATS = STAT_IDS;
@@ -182,20 +195,135 @@ function toggleIntentList<T extends string>(list: T[] | undefined, value: T, max
   return [...cur, value];
 }
 
+type RunContextFieldsProps = {
+  value: BuildIntentSignals;
+  corePreset: CorePreset;
+  setCorePreset: (p: CorePreset) => void;
+  persist: (next: BuildIntentSignals) => void;
+  soloSelfFound: boolean;
+  persistSsf: (on: boolean) => void;
+  powerCurve: PowerCurveId | null;
+  setStoredPowerCurve: (id: PowerCurveId | null) => void;
+  analyticsBase: Record<string, unknown>;
+};
+
+/** Core stat/prof/vector nudge, SSF, and power curve — shared by lucky depth step and draft-a-run sheet. */
+function RunContextFields({
+  value,
+  corePreset,
+  setCorePreset,
+  persist,
+  soloSelfFound,
+  persistSsf,
+  powerCurve,
+  setStoredPowerCurve,
+  analyticsBase,
+}: RunContextFieldsProps) {
+  return (
+    <>
+      <fieldset style={{ border: "none", padding: 0, margin: "0 0 12px 0" }}>
+        <legend className="ui-caption" style={{ marginBottom: 6 }}>
+          Starting kit bias (optional)
+        </legend>
+        <p className="ui-caption ui-caption--xs" style={{ marginTop: 0, marginBottom: 8 }}>
+          Quick nudge to stats, professions, and vectors. You can still override every chip below.
+        </p>
+        <div className="chip-row">
+          {CORE_PRESET_UI.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              className={`chip-btn ${corePreset === o.id ? "chip-btn--on" : ""}`}
+              aria-pressed={corePreset === o.id}
+              onClick={() => {
+                setCorePreset(o.id);
+                persist(applyCorePreset(value, o.id));
+              }}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+      <fieldset style={{ border: "none", padding: 0, margin: "0 0 12px 0" }}>
+        <legend className="ui-caption" style={{ marginBottom: 6 }}>
+          Run mode
+        </legend>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={soloSelfFound}
+          className={`ssf-toggle ${soloSelfFound ? "ssf-toggle--on" : ""}`}
+          onClick={() => persistSsf(!soloSelfFound)}
+        >
+          <IdentityPortrait src={DEPTH_JOURNEY_URL} alt="" className="ssf-toggle__icon" title="Solo Self Found" />
+          Solo Self Found
+        </button>
+        <p className="ui-caption ui-caption--xs" style={{ marginTop: 6 }}>
+          {soloSelfFound
+            ? "On: no Auction House, no trade buying — gather and craft your own gear."
+            : "Off: AH, trades, and group help are fair game."}
+        </p>
+      </fieldset>
+      <fieldset className="journey-power-fieldset" style={{ border: "none", padding: 0, margin: "0 0 12px 0" }}>
+        <legend className="ui-caption" style={{ marginBottom: 6 }}>
+          Power curve (optional)
+        </legend>
+        <p className="ui-caption ui-caption--xs" style={{ marginTop: 0, marginBottom: 8 }}>
+          Nudges the recommender toward early kit, mid climb, late spikes, or an even curve.
+        </p>
+        <div className="journey-power-curve" role="group" aria-label="Power curve bias">
+          {POWER_CURVE_OPTIONS.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              className={`journey-power-curve__btn ${powerCurve === o.id ? "journey-power-curve__btn--on" : ""}`}
+              aria-pressed={powerCurve === o.id}
+              onClick={() => {
+                setStoredPowerCurve(o.id);
+                trackEvent(AnalyticsEvent.IntentDepthSelected, { ...analyticsBase, powerCurve: o.id });
+              }}
+            >
+              {o.label}
+            </button>
+          ))}
+          <button
+            type="button"
+            className="journey-power-curve__clear"
+            aria-label="Clear power curve selection"
+            onClick={() => setStoredPowerCurve(null)}
+          >
+            Clear
+          </button>
+        </div>
+      </fieldset>
+    </>
+  );
+}
 
 export function BuildIntentChips({
   storageKey,
   onGenerate,
   isGenerating = false,
   hasGenerated = false,
+  intentSurface = "lucky_roll",
+  onLeaveDetailedBuild,
   filterRecoveryAction = null,
   experimentalOffer = "none",
   recommendLane = null,
   onRecommendLaneChange,
 }: Props) {
+  const isDraftRunSurface = intentSurface === "draft_a_run";
+
   const [value, setValue] = useState<BuildIntentSignals>(() => readStorage(storageKey));
-  const [depth, setDepth] = useState<IntentDepth>(() => readDepth(storageKey));
-  const [step, setStep] = useState<JourneyStep>("depth");
+  const [depth, setDepth] = useState<IntentDepth>(() => {
+    if (isDraftRunSurface) {
+      writeDepth(storageKey, "dialed_in");
+      return "dialed_in";
+    }
+    return readDepth(storageKey);
+  });
+  const [step, setStep] = useState<JourneyStep>(() => (isDraftRunSurface ? "dialed_sheet" : "depth"));
   const [pulseVector, setPulseVector] = useState<VectorKey | null>(null);
   const [corePreset, setCorePreset] = useState<CorePreset>("balanced");
   const [powerCurve, setPowerCurve] = useState<PowerCurveId | null>(() => readPowerCurve(storageKey));
@@ -286,23 +414,28 @@ export function BuildIntentChips({
     depth === "quick"
       ? "Random bundle from the full filter catalog. Edit, reroll, generate."
       : depth === "balanced"
-        ? "One primary pillar + one secondary pillar. We infer the rest."
+        ? "Pick a primary and secondary focus; we infer supporting picks from your answers."
         : "Open every category at once and tune chip-by-chip.";
 
   const { stepNumerator, stepDenominator } = useMemo(() => {
+    if (isDraftRunSurface) {
+      const order: JourneyStep[] = ["dialed_sheet", "review"];
+      const idx = Math.max(0, order.indexOf(step));
+      return { stepNumerator: idx + 1, stepDenominator: 2 };
+    }
     if (depth === "quick") {
       const order: JourneyStep[] = ["depth", "quick_roll", "review"];
       const idx = Math.max(0, order.indexOf(step));
       return { stepNumerator: idx + 1, stepDenominator: 3 };
     }
     if (depth === "dialed_in") {
-      // Single-sheet flow has no numeric counter.
+      // Single-sheet flow has no numeric counter (lucky / release spirit only).
       return { stepNumerator: 0, stepDenominator: 0 };
     }
     const order: JourneyStep[] = ["depth", "bal_primary", "bal_secondary", "review"];
     const idx = Math.max(0, order.indexOf(step));
     return { stepNumerator: idx + 1, stepDenominator: 4 };
-  }, [depth, step]);
+  }, [depth, isDraftRunSurface, step]);
 
   /**
    * Persist profession picker state into stored signals via professionPickToTags so the
@@ -453,9 +586,15 @@ export function BuildIntentChips({
       /* ignore */
     }
     setValue({});
-    setDepth("balanced");
-    writeDepth(storageKey, "balanced");
-    setStep("depth");
+    if (isDraftRunSurface) {
+      setDepth("dialed_in");
+      writeDepth(storageKey, "dialed_in");
+      setStep("dialed_sheet");
+    } else {
+      setDepth("balanced");
+      writeDepth(storageKey, "balanced");
+      setStep("depth");
+    }
     setBalPrimaryPillar(null);
     setBalSecondaryPillar(null);
     setProfPrimary(null);
@@ -481,32 +620,53 @@ export function BuildIntentChips({
   }
 
   function backToTuning() {
+    if (isDraftRunSurface) return setStep("dialed_sheet");
     if (depth === "quick") return setStep("quick_roll");
     if (depth === "balanced") return setStep(balSecondaryPillar ? "bal_secondary" : "bal_primary");
     return setStep("dialed_sheet");
   }
 
+  function sheetBack() {
+    if (isDraftRunSurface && onLeaveDetailedBuild) {
+      onLeaveDetailedBuild();
+      return;
+    }
+    setStep("depth");
+  }
+
   return (
     <div className="build-intent card" style={{ marginTop: 12 }}>
       <p className="step-label" style={{ marginBottom: 8 }}>
-        Build setup
+        {isDraftRunSurface ? "Detailed build · filters" : "Build setup"}
       </p>
       <p className="ui-caption" style={{ marginTop: 0, marginBottom: 10 }}>
-        Choose how much control you want — each path leads to its own setup before generate.
+        {isDraftRunSurface
+          ? "This step layers chips on the run goal you already picked. Use the sheet, review everything, then generate."
+          : "Choose how much control you want — each path leads to its own setup before generate."}
       </p>
       {stepDenominator > 0 ? (
         <p className="ui-caption" style={{ marginTop: 0, marginBottom: 12 }}>
-          {depth === "balanced" ? "Balanced · " : depth === "quick" ? "Quick pick · " : ""}Step {stepNumerator} of {stepDenominator}
-          {depth === "balanced" && (step === "bal_primary" || step === "bal_secondary") ? (
+          {isDraftRunSurface ? (
             <>
-              {" "}
-              — {step === "bal_primary" ? "Primary pillar" : "Secondary pillar"}
+              Sheet &amp; review · Step {stepNumerator} of {stepDenominator}
+              {step === "dialed_sheet" ? " — filter sheet" : " — review"}
             </>
-          ) : null}
+          ) : (
+            <>
+              {depth === "balanced" ? "Guided pillars · " : depth === "quick" ? "Quick pick · " : ""}Step {stepNumerator} of{" "}
+              {stepDenominator}
+              {depth === "balanced" && (step === "bal_primary" || step === "bal_secondary") ? (
+                <>
+                  {" "}
+                  — {step === "bal_primary" ? "Primary pillar" : "Secondary pillar"}
+                </>
+              ) : null}
+            </>
+          )}
         </p>
-      ) : depth === "dialed_in" && step === "dialed_sheet" ? (
+      ) : depth === "dialed_in" && step === "dialed_sheet" && !isDraftRunSurface ? (
         <p className="ui-caption" style={{ marginTop: 0, marginBottom: 12 }}>
-          Dialed-in · single sheet
+          Full sheet · single view
         </p>
       ) : null}
       {step === "depth" ? (
@@ -534,91 +694,20 @@ export function BuildIntentChips({
           <p className="ui-caption" style={{ marginTop: 8, marginBottom: 12 }}>
             {depthFlowCaption}
           </p>
-          <fieldset style={{ border: "none", padding: 0, margin: "0 0 12px 0" }}>
-            <legend className="ui-caption" style={{ marginBottom: 6 }}>
-              Core preference
-            </legend>
-            <div className="chip-row">
-              {[
-                { id: "safe" as CorePreset, label: "Safety first" },
-                { id: "balanced" as CorePreset, label: "Balanced" },
-                { id: "bold" as CorePreset, label: "Push pace" },
-              ].map((o) => (
-                <button
-                  key={o.id}
-                  type="button"
-                  className={`chip-btn ${corePreset === o.id ? "chip-btn--on" : ""}`}
-                  aria-pressed={corePreset === o.id}
-                  onClick={() => {
-                    setCorePreset(o.id);
-                    persist(applyCorePreset(value, o.id));
-                  }}
-                >
-                  {o.label}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-          <fieldset style={{ border: "none", padding: 0, margin: "0 0 12px 0" }}>
-            <legend className="ui-caption" style={{ marginBottom: 6 }}>
-              Run mode
-            </legend>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={soloSelfFound}
-              className={`ssf-toggle ${soloSelfFound ? "ssf-toggle--on" : ""}`}
-              onClick={() => persistSsf(!soloSelfFound)}
-            >
-              <IdentityPortrait
-                src={DEPTH_JOURNEY_URL}
-                alt=""
-                className="ssf-toggle__icon"
-                title="Solo Self Found"
-              />
-              Solo Self Found
-            </button>
-            <p className="ui-caption ui-caption--xs" style={{ marginTop: 6 }}>
-              {soloSelfFound
-                ? "On: no Auction House, no trade buying — gather and craft your own gear."
-                : "Off: AH, trades, and group help are fair game."}
-            </p>
-          </fieldset>
-          <fieldset className="journey-power-fieldset" style={{ border: "none", padding: 0, margin: "0 0 12px 0" }}>
-            <legend className="ui-caption" style={{ marginBottom: 6 }}>
-              Power curve (optional)
-            </legend>
-            <p className="ui-caption ui-caption--xs" style={{ marginTop: 0, marginBottom: 8 }}>
-              Nudges the recommender toward early kit, mid climb, late spikes, or an even curve.
-            </p>
-            <div className="journey-power-curve" role="group" aria-label="Power curve bias">
-              {POWER_CURVE_OPTIONS.map((o) => (
-                <button
-                  key={o.id}
-                  type="button"
-                  className={`journey-power-curve__btn ${powerCurve === o.id ? "journey-power-curve__btn--on" : ""}`}
-                  aria-pressed={powerCurve === o.id}
-                  onClick={() => {
-                    setStoredPowerCurve(o.id);
-                    trackEvent(AnalyticsEvent.IntentDepthSelected, { ...eventContext, powerCurve: o.id });
-                  }}
-                >
-                  {o.label}
-                </button>
-              ))}
-              <button
-                type="button"
-                className="journey-power-curve__clear"
-                aria-label="Clear power curve selection"
-                onClick={() => setStoredPowerCurve(null)}
-              >
-                Clear
-              </button>
-            </div>
-          </fieldset>
+          <RunContextFields
+            value={value}
+            corePreset={corePreset}
+            setCorePreset={setCorePreset}
+            persist={persist}
+            soloSelfFound={soloSelfFound}
+            persistSsf={persistSsf}
+            powerCurve={powerCurve}
+            setStoredPowerCurve={setStoredPowerCurve}
+            analyticsBase={eventContext}
+          />
           <div className="flow-nav">
             <button type="button" className="btn-primary" onClick={startDepthFlow}>
-              {depth === "quick" ? "Roll random filters" : depth === "balanced" ? "Pick primary pillar" : "Open dialed-in sheet"}
+              {depth === "quick" ? "Roll random filters" : depth === "balanced" ? "Pick primary pillar" : "Open full sheet"}
             </button>
           </div>
         </>
@@ -733,78 +822,102 @@ export function BuildIntentChips({
         />
       ) : null}
       {step === "dialed_sheet" ? (
-        <DialedSheet
-          value={value}
-          soloSelfFound={soloSelfFound}
-          profPrimary={profPrimary}
-          profSecondary={profSecondary}
-          onProfessionChange={({ primary, secondary }) => {
-            commitProfessionPicker(primary, secondary);
-          }}
-          onToggleStat={(id) => {
-            persist({
-              ...value,
-              statPhilosophy: toggleList(value.statPhilosophy, id, 3) as BuildIntentSignals["statPhilosophy"],
-            });
-          }}
-          onToggleVector={(id) => {
-            persist({
-              ...value,
-              buildVectors: toggleList(value.buildVectors, id, maxVectors) as BuildIntentSignals["buildVectors"],
-            });
-          }}
-          onToggleProfIntent={(id) => {
-            persist({
-              ...value,
-              professionIntents: toggleList(value.professionIntents, id, 12) as BuildIntentSignals["professionIntents"],
-            });
-            setProfPrimary(null);
-            setProfSecondary(null);
-            writeProfPick(storageKey, null, null);
-          }}
-          onToggleRaceMode={(id) => {
-            persist({
-              ...value,
-              raceMode: value.raceMode === id ? undefined : (id as BuildIntentSignals["raceMode"]),
-            });
-          }}
-          onIdentityChange={(patch) => persist({ ...value, ...patch })}
-          onBack={() => setStep("depth")}
-          onContinue={() => setStep("review")}
-          onReset={resetJourneyFilters}
-        />
+        <>
+          {isDraftRunSurface ? (
+            <RunContextFields
+              value={value}
+              corePreset={corePreset}
+              setCorePreset={setCorePreset}
+              persist={persist}
+              soloSelfFound={soloSelfFound}
+              persistSsf={persistSsf}
+              powerCurve={powerCurve}
+              setStoredPowerCurve={setStoredPowerCurve}
+              analyticsBase={eventContext}
+            />
+          ) : null}
+          <DialedSheet
+            variant={isDraftRunSurface ? "draft" : "default"}
+            value={value}
+            soloSelfFound={soloSelfFound}
+            profPrimary={profPrimary}
+            profSecondary={profSecondary}
+            onProfessionChange={({ primary, secondary }) => {
+              commitProfessionPicker(primary, secondary);
+            }}
+            onToggleStat={(id) => {
+              persist({
+                ...value,
+                statPhilosophy: toggleList(value.statPhilosophy, id, 3) as BuildIntentSignals["statPhilosophy"],
+              });
+            }}
+            onToggleVector={(id) => {
+              persist({
+                ...value,
+                buildVectors: toggleList(value.buildVectors, id, maxVectors) as BuildIntentSignals["buildVectors"],
+              });
+            }}
+            onToggleProfIntent={(id) => {
+              persist({
+                ...value,
+                professionIntents: toggleList(value.professionIntents, id, 12) as BuildIntentSignals["professionIntents"],
+              });
+              setProfPrimary(null);
+              setProfSecondary(null);
+              writeProfPick(storageKey, null, null);
+            }}
+            onToggleRaceMode={(id) => {
+              persist({
+                ...value,
+                raceMode: value.raceMode === id ? undefined : (id as BuildIntentSignals["raceMode"]),
+              });
+            }}
+            onIdentityChange={(patch) => persist({ ...value, ...patch })}
+            onBack={sheetBack}
+            onContinue={() => setStep("review")}
+            onReset={resetJourneyFilters}
+          />
+        </>
       ) : null}
       {step === "review" ? (
         <>
-          <div className="flow-nav flow-nav--wrap" style={{ marginBottom: 12 }}>
-            <button type="button" className="btn-ghost" onClick={() => setStep("depth")}>
-              Open guided tuning
-            </button>
-            <button
-              type="button"
-              className={`btn-ghost ${depth === "quick" ? "chip-btn--on" : ""}`}
-              aria-pressed={depth === "quick"}
-              onClick={() => persistDepth("quick")}
-            >
-              Quick mode
-            </button>
-            <button
-              type="button"
-              className={`btn-ghost ${depth === "balanced" ? "chip-btn--on" : ""}`}
-              aria-pressed={depth === "balanced"}
-              onClick={() => persistDepth("balanced")}
-            >
-              Balanced mode
-            </button>
-            <button
-              type="button"
-              className={`btn-ghost ${depth === "dialed_in" ? "chip-btn--on" : ""}`}
-              aria-pressed={depth === "dialed_in"}
-              onClick={() => persistDepth("dialed_in")}
-            >
-              Dialed-in mode
-            </button>
-          </div>
+          {isDraftRunSurface ? (
+            <div className="flow-nav flow-nav--wrap" style={{ marginBottom: 12 }}>
+              <button type="button" className="btn-ghost" onClick={() => setStep("dialed_sheet")}>
+                Back to filter sheet
+              </button>
+            </div>
+          ) : (
+            <div className="flow-nav flow-nav--wrap" style={{ marginBottom: 12 }}>
+              <button type="button" className="btn-ghost" onClick={backToTuning}>
+                Back to tuning
+              </button>
+              <button
+                type="button"
+                className={`btn-ghost ${depth === "quick" ? "chip-btn--on" : ""}`}
+                aria-pressed={depth === "quick"}
+                onClick={() => persistDepth("quick")}
+              >
+                Quick mode
+              </button>
+              <button
+                type="button"
+                className={`btn-ghost ${depth === "balanced" ? "chip-btn--on" : ""}`}
+                aria-pressed={depth === "balanced"}
+                onClick={() => persistDepth("balanced")}
+              >
+                Guided pillars
+              </button>
+              <button
+                type="button"
+                className={`btn-ghost ${depth === "dialed_in" ? "chip-btn--on" : ""}`}
+                aria-pressed={depth === "dialed_in"}
+                onClick={() => persistDepth("dialed_in")}
+              >
+                Full sheet
+              </button>
+            </div>
+          )}
           <div className="card" style={{ marginBottom: 12, padding: 10 }}>
             <p className="step-label" style={{ marginBottom: 6 }}>
               Quick add filters
@@ -1200,6 +1313,7 @@ function BalancedPillarStep({
 }
 
 type DialedSheetProps = {
+  variant?: "default" | "draft";
   value: BuildIntentSignals;
   soloSelfFound: boolean;
   profPrimary: ProfessionId | null;
@@ -1216,6 +1330,7 @@ type DialedSheetProps = {
 };
 
 function DialedSheet({
+  variant = "default",
   value,
   soloSelfFound,
   profPrimary,
@@ -1233,13 +1348,16 @@ function DialedSheet({
   const activeStats = new Set<string>(value.statPhilosophy ?? []);
   const activeVectors = new Set<string>(value.buildVectors ?? []);
   const activeProfIntents = new Set<string>(value.professionIntents ?? []);
+  const isDraft = variant === "draft";
   return (
     <>
       <p className="step-label" style={{ marginBottom: 6 }}>
-        Dialed-in sheet
+        {isDraft ? "Filter sheet" : "Full sheet"}
       </p>
       <p className="ui-caption" style={{ marginTop: 0, marginBottom: 12 }}>
-        Open every category and tune chip-by-chip. Each section is multi-select up to its cap.
+        {isDraft
+          ? "Tune every category below. SSF and power curve sit above this sheet for quick access."
+          : "Open every category and tune chip-by-chip. Each section is multi-select up to its cap."}
       </p>
       <details className="dialed-sheet__section" open>
         <summary className="dialed-sheet__summary">
@@ -1442,7 +1560,7 @@ function DialedSheet({
       </details>
       <div className="flow-nav flow-nav--wrap" style={{ marginTop: 12 }}>
         <button type="button" className="btn-ghost" onClick={onBack}>
-          Back
+          {isDraft ? "Back to run goal" : "Back"}
         </button>
         <button type="button" className="btn-ghost" onClick={onReset}>
           Reset

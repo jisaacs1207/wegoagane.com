@@ -302,7 +302,22 @@ export function PlanResultStep() {
     <div>
       {!destiny || !sessionId || !destinyId ? (
         <div className="card" style={{ marginTop: 14 }}>
-          <p className="step-label">Draft a run</p>
+          <div className="flow-crumbs" aria-label="Flow navigation">
+            <span className="flow-crumb">
+              <Link to="/">Home</Link>
+            </span>
+            <span className="flow-crumb">/</span>
+            <span className="flow-crumb">
+              <Link to="/draft-a-run/intent">Detailed setup</Link>
+            </span>
+            <span className="flow-crumb">/</span>
+            <span className="flow-crumb">
+              <Link to="/draft-a-run/journey">Tune filters</Link>
+            </span>
+            <span className="flow-crumb">/</span>
+            <span className="flow-crumb">Your build</span>
+          </div>
+          <p className="step-label">Draft a run · step 3 of 3</p>
           <h1 className="hero-question">Journey required</h1>
           <p className="hero-sub" role="status" aria-live="polite">
             {loadError || "Complete your build journey first."}
@@ -318,6 +333,24 @@ export function PlanResultStep() {
         </div>
       ) : (
         <>
+          <div className="flow-crumbs" aria-label="Flow navigation">
+            <span className="flow-crumb">
+              <Link to="/">Home</Link>
+            </span>
+            <span className="flow-crumb">/</span>
+            <span className="flow-crumb">
+              <Link to="/draft-a-run/intent">Detailed setup</Link>
+            </span>
+            <span className="flow-crumb">/</span>
+            <span className="flow-crumb">
+              <Link to="/draft-a-run/journey">Tune filters</Link>
+            </span>
+            <span className="flow-crumb">/</span>
+            <span className="flow-crumb">Your build</span>
+          </div>
+          <p className="step-label" style={{ marginTop: 0, marginBottom: 10 }}>
+            Draft a run · step 3 of 3
+          </p>
           {showExperimentalBanner ? (
             <p className="ui-body-sm" style={{ marginTop: 0, marginBottom: 10 }} role="status">
               <strong>Experimental lane</strong> — generated from an AI candidate in normal rotation. Use with care, and rate/reroll so it can be promoted or retired automatically.
