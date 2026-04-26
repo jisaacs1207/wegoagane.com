@@ -1,5 +1,7 @@
 /** Canonical sessionStorage keys — single source for flows and docs alignment. */
 export const SessionKeys = {
+  /** Set when generating a build so `/build/commit/:slug` can recover intent if `?flow=` is missing on a shared URL. */
+  lastBuildFlow: "wega.lastBuildFlow",
   home: {
     sessionId: "session.id",
     lastAcceptedClassId: "last.acceptedClassId",

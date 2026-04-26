@@ -40,6 +40,9 @@ type RecommendResponse = {
   sessionId: string;
   destinyId: string;
   buildPlanId?: string;
+  buildCommitId?: string;
+  buildCommitSlug?: string;
+  buildCommitPath?: string;
   buildSheetPath?: string;
   viabilityNotes?: string[];
   /** API widened class eligibility so template+AI could run (strict filters had zero matches). */
@@ -88,6 +91,10 @@ export type DestinyResult = {
   sessionId: string;
   destinyId: string;
   buildPlanId?: string;
+  /** Auto-minted draft `build_commits` row id; same row is renamed/published on commit. */
+  buildCommitId?: string;
+  buildCommitSlug?: string;
+  buildCommitPath?: string;
   buildSheetPath?: string;
   viabilityNotes?: string[];
   filterRelaxedForAi?: boolean;
@@ -128,6 +135,14 @@ export type BuildCommitRecord = {
   buildPlanId: string | null;
   commitName: string | null;
   sourceType: string;
+  /** When undefined, treat as "draft". */
+  status?: "draft" | "published";
+  publishedAt?: number | null;
+  thumbsUp?: number;
+  thumbsDown?: number;
+  ratingScore?: number;
+  classId?: string | null;
+  archetypeKey?: string | null;
   payload: {
     destiny?: DestinyFixture;
     plan?: unknown;
@@ -232,6 +247,9 @@ function destinyResultFromJson(data: RecommendResponse): DestinyResult {
     sessionId: data.sessionId,
     destinyId: data.destinyId,
     buildPlanId: data.buildPlanId,
+    buildCommitId: data.buildCommitId,
+    buildCommitSlug: data.buildCommitSlug,
+    buildCommitPath: data.buildCommitPath,
     buildSheetPath: data.buildSheetPath,
     viabilityNotes: data.viabilityNotes,
     filterRelaxedForAi: data.filterRelaxedForAi,
@@ -575,4 +593,67 @@ export async function submitBuildCommitMemorial(
     body: JSON.stringify(input),
   });
   if (!response.ok) await throwApiFailure(response, "journey_memorial");
+}
+
+export type BuildVote = "up" | "down" | null;
+
+export type BuildSummary = {
+  slug: string;
+  path: string;
+  classId: string | null;
+  archetypeKey: string | null;
+  commitName: string | null;
+  headline: string;
+  subline: string;
+  thumbsUp: number;
+  thumbsDown: number;
+  ratingScore: number;
+  publishedAt: number | null;
+  createdAt: number;
+};
+
+export type BuildRateResponse = {
+  slug: string;
+  yourVote: BuildVote;
+  thumbsUp: number;
+  thumbsDown: number;
+  ratingScore: number;
+  status: "draft" | "published";
+};
+
+export async function rateBuild(slug: string, vote: "up" | "down" | "clear", sessionId: string): Promise<BuildRateResponse> {
+  const response = await fetch(`/api/v1/builds/${encodeURIComponent(slug)}/rate`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ sessionId, vote }),
+  });
+  return parseJsonOk<BuildRateResponse>(response, "build_rate");
+}
+
+export type BuildMyVoteResponse = {
+  slug: string;
+  yourVote: BuildVote;
+  /** Present when the server has aggregate counters; keeps UI in sync on first paint. */
+  thumbsUp?: number;
+  thumbsDown?: number;
+};
+
+export async function fetchMyBuildVote(slug: string, sessionId: string): Promise<BuildMyVoteResponse> {
+  const q = new URLSearchParams({ sessionId });
+  const response = await fetch(`/api/v1/builds/${encodeURIComponent(slug)}/my-vote?${q.toString()}`);
+  return parseJsonOk<BuildMyVoteResponse>(response, "build_my_vote");
+}
+
+export async function fetchRecentBuilds(limit = 5): Promise<{ builds: BuildSummary[] }> {
+  const q = new URLSearchParams({ limit: String(limit) });
+  const response = await fetch(`/api/v1/builds/recent?${q.toString()}`);
+  return parseJsonOk<{ builds: BuildSummary[] }>(response, "builds_recent");
+}
+
+export async function fetchTopBuilds(input?: { limit?: number; window?: "7d" | "30d" | "all" }): Promise<{ builds: BuildSummary[] }> {
+  const q = new URLSearchParams();
+  if (input?.limit) q.set("limit", String(input.limit));
+  if (input?.window) q.set("window", input.window);
+  const response = await fetch(`/api/v1/builds/top?${q.toString()}`);
+  return parseJsonOk<{ builds: BuildSummary[] }>(response, "builds_top");
 }

@@ -3,7 +3,6 @@ import { DeathDetailStep } from "./death/DeathDetailStep";
 import { DeathJourneyStep } from "./death/DeathJourneyStep";
 import { DeathMoodStep } from "./death/DeathMoodStep";
 import { DeathNextSignalStep } from "./death/DeathNextSignalStep";
-import { DeathResultStep } from "./death/DeathResultStep";
 
 export function DeathFlowPage() {
   return (
@@ -13,7 +12,7 @@ export function DeathFlowPage() {
       <Route path="next" element={<DeathNextSignalStep />} />
       <Route path="detail" element={<DeathDetailStep />} />
       <Route path="journey" element={<DeathJourneyStep />} />
-      <Route path="result" element={<DeathResultStep />} />
+      {/* Result step deleted; journey step navigates straight to /build/commit/:slug. */}
       <Route path="*" element={<Navigate to="next" replace />} />
     </Routes>
   );

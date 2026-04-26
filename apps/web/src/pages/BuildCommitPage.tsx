@@ -1,7 +1,9 @@
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DestinyCard } from "../components/cards/DestinyCard";
 import { IdentityPortrait } from "../components/IdentityPortrait";
+import { TalentTreeView } from "../components/talents/TalentTreeView";
+import { RatingBar } from "../components/builds/RatingBar";
 import {
   CLASS_ASSET_URLS,
   FACTION_ASSET_URLS,
@@ -13,18 +15,20 @@ import {
 } from "../content/identityAssets";
 import { debugClient, debugClientIgnored } from "../lib/clientDebug";
 import {
+  commitJourneyBuild,
   createShareRun,
   fetchBuildCommit,
   fetchBuildPlan,
   flowApiErrorHint,
-  submitBuildCommitMemorial,
   type BuildCommitRecord,
 } from "../lib/recommendClient";
 import { AnalyticsEvent, trackEvent } from "../lib/analytics";
 import { SessionKeys } from "../lib/sessionKeys";
-import { getProfessionIconUrl, getTalentIconUrl } from "../lib/talentIconMap";
+import { getProfessionIconUrl } from "../lib/talentIconMap";
 import { buildSpecSummary } from "../lib/buildSpecSummary";
 import type { DestinyFixture } from "../content/cardFixtures";
+import type { ClassId } from "../icons/types";
+import type { BuildIntentSignals } from "../lib/buildIntentTypes";
 
 type EffectivePlan = {
   meta?: { publishTier?: string; classId?: string; archetypeKey?: string; rulesetPin?: string };
@@ -61,23 +65,66 @@ type EffectivePlan = {
   aiRaw?: { generatorJson?: string; reviewerJson?: string };
 };
 
+const BOOKMARK_STORAGE_KEY = "wega.bookmarks.v1";
+
+function readBookmarkSet(): Set<string> {
+  try {
+    const raw = localStorage.getItem(BOOKMARK_STORAGE_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return new Set(parsed.filter((s) => typeof s === "string"));
+  } catch {
+    // localStorage may be disabled or value corrupted; treat as empty.
+  }
+  return new Set();
+}
+
+function writeBookmarkSet(set: Set<string>): void {
+  try {
+    localStorage.setItem(BOOKMARK_STORAGE_KEY, JSON.stringify(Array.from(set)));
+  } catch {
+    // Best effort; silently ignore quota errors.
+  }
+}
+
 export function BuildCommitPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const isFresh = params.get("fresh") === "1";
+  const flow = useMemo(() => {
+    const p = params.get("flow");
+    if (p === "death" || p === "lucky" || p === "plan") return p;
+    try {
+      const last = sessionStorage.getItem(SessionKeys.lastBuildFlow);
+      if (last === "death" || last === "lucky" || last === "plan") return last;
+    } catch {
+      /* ignore */
+    }
+    return "plan";
+  }, [params]);
+
   const [record, setRecord] = useState<BuildCommitRecord | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [level, setLevel] = useState("");
-  const [zone, setZone] = useState("");
-  const [cause, setCause] = useState("");
-  const [killer, setKiller] = useState("");
-  const [note, setNote] = useState("");
-  const [rating, setRating] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
   const [livePlan, setLivePlan] = useState<unknown | null>(null);
-  const [copyState, setCopyState] = useState<"" | "url" | "md">("");
+  const [copyState, setCopyState] = useState<"" | "url">("");
   const [shareBusy, setShareBusy] = useState(false);
+  const [bookmarked, setBookmarked] = useState(false);
+
+  // Editable build name with debounced rename via journey/commit (idempotent server-side).
+  const [nameInput, setNameInput] = useState("");
+  const lastSavedName = useRef<string>("");
+  const renameTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (renameTimer.current) {
+        window.clearTimeout(renameTimer.current);
+        renameTimer.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!slug) return;
@@ -85,6 +132,9 @@ export function BuildCommitPage() {
     void fetchBuildCommit(slug)
       .then((res) => {
         setRecord(res);
+        const initialName = res.commitName ?? "";
+        setNameInput(initialName);
+        lastSavedName.current = initialName;
         setError("");
       })
       .catch((e) => {
@@ -94,13 +144,20 @@ export function BuildCommitPage() {
       .finally(() => setLoading(false));
   }, [slug]);
 
+  useEffect(() => {
+    if (!slug) return;
+    setBookmarked(readBookmarkSet().has(slug));
+  }, [slug]);
+
   const destiny = useMemo(() => record?.payload?.destiny ?? null, [record?.payload]);
   const buildPlan = useMemo(
     () => (record?.payload?.plan ?? null) as EffectivePlan | null,
     [record?.payload],
   );
   const effectivePlan: EffectivePlan | null = buildPlan ?? (livePlan as EffectivePlan | null) ?? null;
-  const planReady = Boolean(effectivePlan && (effectivePlan.talents || effectivePlan.professions || effectivePlan.signature));
+  const planReady = Boolean(
+    effectivePlan && (effectivePlan.talents || effectivePlan.professions || effectivePlan.signature),
+  );
   const raceFromPlan = effectivePlan?.identity?.raceSuggestion ?? effectivePlan?.race?.suggestion;
   const raceId = useMemo(() => {
     if (raceFromPlan) return inferRaceFromHeadline(raceFromPlan);
@@ -111,6 +168,8 @@ export function BuildCommitPage() {
     [effectivePlan?.identity?.factionSuggestion, raceId],
   );
 
+  // Poll the build plan endpoint until the AI run completes. Keeps the page live without a
+  // manual refresh, especially important when the user lands on /build/commit/:slug?fresh=1.
   useEffect(() => {
     if (!record?.destinyId || planReady) return;
     let cancelled = false;
@@ -129,8 +188,18 @@ export function BuildCommitPage() {
     };
   }, [record?.destinyId, planReady]);
 
-  // Spec summary is derived from the plan + destiny class so the UI never goes empty,
-  // even before the AI plan has finished generating.
+  const intentFromSession = useMemo((): BuildIntentSignals | null => {
+    try {
+      const key =
+        flow === "death" ? SessionKeys.death.buildIntent : flow === "lucky" ? SessionKeys.lucky.buildIntent : SessionKeys.plan.buildIntent;
+      const raw = sessionStorage.getItem(key);
+      if (!raw?.trim()) return null;
+      return JSON.parse(raw) as BuildIntentSignals;
+    } catch {
+      return null;
+    }
+  }, [flow]);
+
   const spec = useMemo(() => {
     if (!destiny) return null;
     return buildSpecSummary({
@@ -141,18 +210,24 @@ export function BuildCommitPage() {
     });
   }, [destiny, effectivePlan?.talents, effectivePlan?.signature]);
 
-  const commitCardData = useMemo<DestinyFixture>(() => {
+  const commitCardData = useMemo<DestinyFixture | null>(() => {
+    if (!destiny) return null;
     const strengthBullets = (effectivePlan?.signature?.strengths ?? [])
       .map((s) => s?.trim())
       .filter(Boolean)
       .slice(0, 3) as string[];
     return {
       ...(destiny as DestinyFixture),
-      subline: effectivePlan?.identity?.buildFantasy?.trim() || destiny?.subline || "",
-      raceSuggestion: effectivePlan?.identity?.raceSuggestion ?? effectivePlan?.race?.suggestion ?? destiny?.raceSuggestion,
-      factionSuggestion: effectivePlan?.identity?.factionSuggestion ?? destiny?.factionSuggestion,
-      tierProse: effectivePlan?.talents?.summary?.trim() || effectivePlan?.signature?.whyDistinct?.trim() || destiny?.tierProse || "",
-      bullets: strengthBullets.length ? strengthBullets : destiny?.bullets ?? [],
+      subline: effectivePlan?.identity?.buildFantasy?.trim() || destiny.subline || "",
+      raceSuggestion:
+        effectivePlan?.identity?.raceSuggestion ?? effectivePlan?.race?.suggestion ?? destiny.raceSuggestion,
+      factionSuggestion: effectivePlan?.identity?.factionSuggestion ?? destiny.factionSuggestion,
+      tierProse:
+        effectivePlan?.talents?.summary?.trim() ||
+        effectivePlan?.signature?.whyDistinct?.trim() ||
+        destiny.tierProse ||
+        "",
+      bullets: strengthBullets.length ? strengthBullets : destiny.bullets ?? [],
     };
   }, [destiny, effectivePlan]);
 
@@ -161,12 +236,113 @@ export function BuildCommitPage() {
     return record ? `${window.location.origin}/build/commit/${record.slug}` : window.location.href;
   }, [record]);
 
+  const sessionId = record?.sessionId ?? "";
+
+  // Rename / publish: writes happen on blur and after a typing debounce so taps stay snappy.
+  // commitJourneyBuild is idempotent server-side; sending the same name twice is a no-op.
+  const persistName = useCallback(
+    async (name: string) => {
+      if (!record?.destinyId || !record.sessionId) return;
+      const trimmed = name.trim();
+      if (trimmed === (lastSavedName.current ?? "")) return;
+      try {
+        await commitJourneyBuild({
+          sessionId: record.sessionId,
+          destinyId: record.destinyId,
+          commitName: trimmed,
+        });
+        lastSavedName.current = trimmed;
+        trackEvent(AnalyticsEvent.BuildRenamed, { slug: record.slug, length: trimmed.length });
+      } catch (err) {
+        debugClientIgnored("build_commit.rename", err);
+      }
+    },
+    [record?.destinyId, record?.sessionId, record?.slug],
+  );
+
+  function onNameChange(value: string) {
+    setNameInput(value);
+    if (renameTimer.current) window.clearTimeout(renameTimer.current);
+    renameTimer.current = window.setTimeout(() => {
+      void persistName(value);
+    }, 800);
+  }
+
+  async function copyText(value: string, kind: "url") {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopyState(kind);
+      window.setTimeout(() => setCopyState(""), 1600);
+      trackEvent(AnalyticsEvent.BuildBookmarkCopied, { slug: record?.slug, kind });
+    } catch (err) {
+      debugClientIgnored("build_commit.clipboard", err);
+    }
+  }
+
+  async function nativeShare() {
+    if (!record) return;
+    const title = nameInput.trim() || destiny?.headline || "Build";
+    const text = destiny?.subline ?? "";
+    trackEvent(AnalyticsEvent.BuildShareOpened, { slug: record.slug });
+    if (typeof navigator !== "undefined" && "share" in navigator) {
+      try {
+        await (navigator as Navigator).share({ title, text, url: shareUrl });
+        return;
+      } catch (err) {
+        // User cancelled or share rejected; fall through to clipboard fallback.
+        debugClientIgnored("build_commit.native_share", err);
+      }
+    }
+    await copyText(shareUrl, "url");
+  }
+
+  function toggleBookmark() {
+    if (!record) return;
+    const set = readBookmarkSet();
+    if (set.has(record.slug)) {
+      set.delete(record.slug);
+      setBookmarked(false);
+    } else {
+      set.add(record.slug);
+      setBookmarked(true);
+      trackEvent(AnalyticsEvent.BuildBookmarked, { slug: record.slug });
+    }
+    writeBookmarkSet(set);
+  }
+
+  async function openShareImage() {
+    if (!record || shareBusy) return;
+    setShareBusy(true);
+    try {
+      const share = await createShareRun({ sessionId: record.sessionId, destinyId: record.destinyId });
+      navigate(`/share/${share.runId}`);
+    } catch (err) {
+      debugClient("build_commit.share_create", err);
+    } finally {
+      setShareBusy(false);
+    }
+  }
+
+  function handleReroll() {
+    if (!record) return;
+    sessionStorage.setItem(SessionKeys.plan.seedDestinyId, record.destinyId);
+    trackEvent(AnalyticsEvent.BuildRerolled, { slug: record.slug, fromFlow: flow });
+    navigate("/draft-a-run/intent");
+  }
+
+  function handleRetool() {
+    if (!record) return;
+    sessionStorage.setItem(SessionKeys.plan.seedDestinyId, record.destinyId);
+    trackEvent(AnalyticsEvent.RetoolStarted, { slug: record.slug, destinyId: record.destinyId });
+    navigate("/draft-a-run/intent");
+  }
+
   if (loading) {
     return (
       <div className="card commit-page-shell" style={{ padding: 22 }}>
         <p className="step-label">Build artifact</p>
         <h1 className="hero-question" style={{ marginBottom: 8 }}>
-          Loading your build…
+          Loading your build...
         </h1>
         <p className="hero-sub" style={{ marginBottom: 0 }}>
           Pulling the saved sheet and talents. Almost there.
@@ -197,61 +373,11 @@ export function BuildCommitPage() {
   const rulesetPin = effectivePlan?.meta?.rulesetPin ?? "classic-era";
 
   const keyItems = effectivePlan?.signature?.keyItems ?? [];
-  const keyPicks = (effectivePlan?.talents?.keyPicks ?? []).slice(0, 8);
   const statPriority = effectivePlan?.stats?.priority ?? [];
 
-  async function copyText(value: string, kind: "url" | "md") {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopyState(kind);
-      window.setTimeout(() => setCopyState(""), 1600);
-      trackEvent(AnalyticsEvent.BuildBookmarkCopied, { slug: record?.slug, kind });
-    } catch (err) {
-      debugClientIgnored("build_commit.clipboard", err);
-    }
-  }
-
-  async function openShareImage() {
-    if (!record || shareBusy) return;
-    setShareBusy(true);
-    try {
-      const share = await createShareRun({ sessionId: record.sessionId, destinyId: record.destinyId });
-      navigate(`/share/${share.runId}`);
-    } catch (err) {
-      debugClient("build_commit.share_create", err);
-      setMessage(flowApiErrorHint(err));
-    } finally {
-      setShareBusy(false);
-    }
-  }
-
-  async function onMemorialSubmit() {
-    const activeRecord = record;
-    if (!slug || !activeRecord || !zone.trim() || !cause.trim()) return;
-    setBusy(true);
-    setMessage("");
-    trackEvent(AnalyticsEvent.MemorialCreateClicked, { slug });
-    try {
-      const parsedLevel = Number(level);
-      await submitBuildCommitMemorial(slug, {
-        sessionId: activeRecord.sessionId,
-        level: level && Number.isFinite(parsedLevel) ? parsedLevel : undefined,
-        zone: zone.trim(),
-        cause: cause.trim(),
-        killer: killer.trim() || undefined,
-        note: note.trim() || undefined,
-        rating: rating.trim() || undefined,
-      });
-      trackEvent(AnalyticsEvent.MemorialSubmitted, { slug });
-      setMessage("Memorial captured. You can retool from this run.");
-      sessionStorage.setItem(SessionKeys.plan.seedDestinyId, activeRecord.destinyId);
-    } catch (e) {
-      debugClient("memorialSubmit", e);
-      setMessage(flowApiErrorHint(e));
-    } finally {
-      setBusy(false);
-    }
-  }
+  const treeAllocations = effectivePlan?.talents?.treeAllocations ?? null;
+  const keyPicks = effectivePlan?.talents?.keyPicks ?? null;
+  const fullPath = effectivePlan?.talents?.path ?? null;
 
   return (
     <div className="commit-page-shell">
@@ -263,15 +389,58 @@ export function BuildCommitPage() {
         <span className="flow-crumb">Build artifact</span>
       </div>
 
+      {isFresh && !planReady ? (
+        <p className="ui-caption" role="status" aria-live="polite" style={{ marginTop: 6 }}>
+          AI is finalising your talents. The page updates the moment it lands; the URL is already
+          shareable.
+        </p>
+      ) : null}
+
       <div className="card commit-hero">
         <div className="commit-hero__title">
           <p className="step-label">Your saved build</p>
-          <h1 className="hero-question" style={{ marginBottom: 4 }}>
-            {headline}
-          </h1>
-          <p className="hero-sub" style={{ marginTop: 0 }}>
+          <input
+            className="commit-hero__name-input"
+            value={nameInput}
+            placeholder={headline}
+            onChange={(e) => onNameChange(e.target.value)}
+            onBlur={() => void persistName(nameInput)}
+            aria-label="Build name"
+            maxLength={80}
+          />
+          <p className="hero-sub" style={{ marginTop: 4 }}>
             {subline}
           </p>
+          <div className="commit-hero__rating-row">
+            {sessionId ? (
+              <RatingBar
+                slug={record.slug}
+                sessionId={sessionId}
+                initialThumbsUp={record.thumbsUp ?? 0}
+                initialThumbsDown={record.thumbsDown ?? 0}
+              />
+            ) : (
+              <p className="ui-caption" style={{ color: "var(--ts)", margin: 0 }}>
+                Ratings need the browser session from generation; this link has no session id.
+              </p>
+            )}
+            <details className="commit-rating-help">
+              <summary className="ui-caption commit-rating-help__summary" title="Help">
+                What is this?
+              </summary>
+              <p className="ui-caption" style={{ margin: "6px 0 0", maxWidth: 320, color: "var(--ts)" }}>
+                Thumbs help other players find solid builds. One vote per browser session; you can
+                change your mind. Your first vote can publish a draft to the public lists.
+              </p>
+            </details>
+            <span className="ui-caption" style={{ color: "var(--ts)" }}>
+              ruleset: {rulesetPin}
+              {" "}
+              {"\u00b7"}
+              {" "}
+              {tierLabel} tier
+            </span>
+          </div>
         </div>
         <div className="share-rail" role="group" aria-label="Share this build">
           <input
@@ -284,61 +453,116 @@ export function BuildCommitPage() {
           />
           <button
             type="button"
-            className="btn-primary share-rail__btn"
+            className="commit-icon-btn"
+            title={copyState === "url" ? "Copied!" : "Copy build URL"}
+            aria-label="Copy build URL"
             onClick={() => void copyText(shareUrl, "url")}
           >
-            {copyState === "url" ? "Copied" : "Copy link"}
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"
+              />
+            </svg>
           </button>
-          <details className="share-rail__details">
-            <summary className="btn-ghost share-rail__btn share-rail__summary">More export</summary>
-            <div className="share-rail__details-body">
-              <button
-                type="button"
-                className="btn-ghost share-rail__btn"
-                onClick={() => void copyText(`[${headline}](${shareUrl})`, "md")}
-              >
-                {copyState === "md" ? "Copied" : "Copy as markdown"}
-              </button>
-              <button
-                type="button"
-                className="btn-ghost share-rail__btn"
-                disabled={shareBusy}
-                onClick={() => void openShareImage()}
-              >
-                {shareBusy ? "Opening…" : "Open share image"}
-              </button>
-            </div>
-          </details>
+          <button
+            type="button"
+            className={`commit-icon-btn ${bookmarked ? "commit-icon-btn--on" : ""}`}
+            title={bookmarked ? "Bookmarked" : "Bookmark this build"}
+            aria-label="Bookmark this build"
+            aria-pressed={bookmarked}
+            onClick={toggleBookmark}
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path
+                fill={bookmarked ? "currentColor" : "none"}
+                stroke="currentColor"
+                strokeWidth="2"
+                d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"
+              />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="commit-icon-btn"
+            title="Share"
+            aria-label="Share this build"
+            onClick={() => void nativeShare()}
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92S21 20.61 21 19s-1.34-2.92-3-2.92z"
+              />
+            </svg>
+          </button>
         </div>
       </div>
 
       <div className="commit-page-grid">
         <div className="commit-page-grid__primary">
-          <div style={{ marginTop: 0 }}>
-            <DestinyCard data={commitCardData} compact />
+          {commitCardData ? (
+            <div style={{ marginTop: 0 }}>
+              <DestinyCard data={commitCardData} compact intentSignals={intentFromSession} />
+            </div>
+          ) : null}
+
+          <div className="card" style={{ marginTop: 12, padding: "16px 18px" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                flexWrap: "wrap",
+                marginBottom: 8,
+              }}
+            >
+              <p className="step-label" style={{ margin: 0 }}>
+                Talent grid
+              </p>
+              {effectivePlan?.talents?.summary ? (
+                <span className="ui-caption" style={{ color: "var(--ts)", maxWidth: 460 }}>
+                  {effectivePlan.talents.summary}
+                </span>
+              ) : null}
+            </div>
+            <TalentTreeView
+              classId={destiny.classId as ClassId}
+              treeAllocations={treeAllocations ?? undefined}
+              keyPicks={keyPicks ?? undefined}
+              path={fullPath ?? undefined}
+              loading={!planReady}
+              summary={effectivePlan?.talents?.summary}
+            />
           </div>
 
           <div className="card commit-action-bar-wrap" style={{ marginTop: 12 }}>
             <div className="commit-action-bar">
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => {
-                  sessionStorage.setItem(SessionKeys.plan.seedDestinyId, record.destinyId);
-                  trackEvent(AnalyticsEvent.RetoolStarted, { slug: record.slug, destinyId: record.destinyId });
-                  navigate("/draft-a-run/intent");
-                }}
-              >
+              <button type="button" className="btn-primary" onClick={handleRetool}>
                 Retool from this build
               </button>
+              <details className="commit-reroll" style={{ marginLeft: "auto" }}>
+                <summary className="btn-ghost share-rail__btn share-rail__summary" style={{ minHeight: 38 }}>
+                  Reroll with note
+                </summary>
+                <div className="share-rail__details-body" style={{ minWidth: 260 }}>
+                  <p className="ui-caption" style={{ marginTop: 0 }}>
+                    Carry this class + faction as a soft hint into a fresh detailed setup.
+                  </p>
+                  <button type="button" className="btn-primary share-rail__btn" onClick={handleReroll}>
+                    Open detailed setup
+                  </button>
+                </div>
+              </details>
               <div className="commit-action-bar__tools">
                 <button
                   type="button"
                   className="commit-icon-btn"
                   onClick={() => void copyText(shareUrl, "url")}
                   title="Copy build URL"
+                  aria-label="Copy build URL"
                 >
-                  <span className="sr-only">Copy build URL</span>
                   <span aria-hidden>⎘</span>
                 </button>
                 <button
@@ -347,49 +571,12 @@ export function BuildCommitPage() {
                   disabled={shareBusy}
                   onClick={() => void openShareImage()}
                   title="Open share image"
+                  aria-label="Open share image"
                 >
-                  <span className="sr-only">Open share image</span>
                   <span aria-hidden>↗</span>
                 </button>
               </div>
             </div>
-          </div>
-
-          <div className="card" style={{ marginTop: 12 }}>
-            <p style={{ marginTop: 0, marginBottom: 6 }}>Remember this death (optional)</p>
-            <p className="ui-caption" style={{ marginTop: 0, marginBottom: 10, color: "var(--ts)" }}>
-              Adds a memorial note to this run. Your build link stays the same either way.
-            </p>
-            <div className="memorial-quick-grid">
-              <input value={zone} onChange={(e) => setZone(e.target.value)} placeholder="Zone" />
-              <input value={cause} onChange={(e) => setCause(e.target.value)} placeholder="Cause of death" />
-            </div>
-            <details style={{ marginTop: 10 }}>
-              <summary className="ui-caption" style={{ cursor: "pointer" }}>
-                Add optional details
-              </summary>
-              <div className="chip-row" style={{ marginTop: 8 }}>
-                <input
-                  value={level}
-                  onChange={(e) => setLevel(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))}
-                  placeholder="Level (optional)"
-                />
-                <input value={killer} onChange={(e) => setKiller(e.target.value)} placeholder="Killed by (optional)" />
-                <input value={rating} onChange={(e) => setRating(e.target.value)} placeholder="Run rating (optional)" />
-                <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Memorial note (optional)" />
-              </div>
-            </details>
-            <div className="flow-nav" style={{ marginTop: 10 }}>
-              <button
-                type="button"
-                className="btn-primary"
-                disabled={busy || !zone.trim() || !cause.trim()}
-                onClick={() => void onMemorialSubmit()}
-              >
-                Submit memorial
-              </button>
-            </div>
-            {message ? <p style={{ marginBottom: 0, marginTop: 10 }}>{message}</p> : null}
           </div>
         </div>
 
@@ -430,9 +617,6 @@ export function BuildCommitPage() {
                 <figcaption style={{ textTransform: "capitalize" }}>{factionId}</figcaption>
               </figure>
             </div>
-            <p className="ui-caption" style={{ marginTop: 10, marginBottom: 0, color: "var(--ts)" }}>
-              ruleset: {rulesetPin} · publish tier: {tierLabel}
-            </p>
           </div>
 
           {spec ? (
@@ -441,90 +625,6 @@ export function BuildCommitPage() {
               <p className="hero-sub" style={{ marginTop: 4 }}>
                 {spec.whyDistinct}
               </p>
-
-              <div className="spec-tree-meter" aria-label="Talent tree distribution">
-                <div className="spec-tree-meter__head">
-                  <strong>{spec.treeBranch}</strong>
-                  <span className="ui-caption" style={{ color: "var(--ts)" }}>
-                    primary tree
-                  </span>
-                </div>
-                <div className="spec-tree-meter__bars">
-                  {spec.treeCounts.map((row) => {
-                    const total = spec.treeCounts.reduce((a, b) => a + b.count, 0);
-                    const pct = total > 0 ? Math.round((row.count / total) * 100) : 0;
-                    const isPrimary = row.branch === spec.treeBranch;
-                    return (
-                      <div
-                        key={row.branch}
-                        className={`spec-tree-meter__row${isPrimary ? " spec-tree-meter__row--primary" : ""}`}
-                      >
-                        <span className="spec-tree-meter__label">{row.branch}</span>
-                        <div className="spec-tree-meter__track" aria-hidden>
-                          <div className="spec-tree-meter__fill" style={{ width: `${pct}%` }} />
-                        </div>
-                        <span className="spec-tree-meter__pct">{pct}%</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {keyPicks.length ? (
-                <div className="build-sheet__section">
-                  <p className="step-label">Key talents</p>
-                  <ul className="build-sheet__talents">
-                    {keyPicks.map((t, idx) => (
-                      <li key={`${t.name ?? "pick"}-${idx}`} className="build-sheet__talent">
-                        <img
-                          src={getTalentIconUrl(t.name, destiny.classId)}
-                          alt=""
-                          aria-hidden
-                          className="build-sheet__talent-icon"
-                          loading="lazy"
-                        />
-                        <div className="build-sheet__talent-body">
-                          <div className="build-sheet__talent-head">
-                            <strong>{t.name ?? "Talent pick"}</strong>
-                            {t.tier ? <span className="spec-pill">{t.tier}</span> : null}
-                          </div>
-                          {t.rationale ? <p className="ui-caption">{t.rationale}</p> : null}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-
-              {(effectivePlan?.talents?.path?.length ?? 0) > 0 ? (
-                <details className="build-sheet__section">
-                  <summary style={{ cursor: "pointer" }} className="step-label">
-                    Full talent path
-                  </summary>
-                  <ul className="build-sheet__talents" style={{ marginTop: 8 }}>
-                    {effectivePlan?.talents?.path?.slice(0, 60).map((row, idx) => (
-                      <li key={`${row.level ?? "lv"}-${row.talent ?? idx}-${idx}`} className="build-sheet__talent">
-                        <img
-                          src={getTalentIconUrl(row.talent, destiny.classId)}
-                          alt=""
-                          aria-hidden
-                          className="build-sheet__talent-icon"
-                          loading="lazy"
-                        />
-                        <div className="build-sheet__talent-body">
-                          <div className="build-sheet__talent-head">
-                            <strong>
-                              L{row.level ?? "?"} · {row.branch ?? "Tree"} · {row.talent ?? "Talent"}
-                              {typeof row.rank === "number" ? ` (Rank ${row.rank})` : ""}
-                            </strong>
-                          </div>
-                          {row.rationale ? <p className="ui-caption">{row.rationale}</p> : null}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              ) : null}
 
               {keyItems.length ? (
                 <div className="build-sheet__section">
@@ -558,7 +658,7 @@ export function BuildCommitPage() {
                   <div className="kv-list">
                     <div className="kv-list__row">
                       <span className="kv-list__key">Order</span>
-                      <span className="kv-list__val">{statPriority.join(" → ")}</span>
+                      <span className="kv-list__val">{statPriority.join(" -> ")}</span>
                     </div>
                     {effectivePlan?.stats?.rationale ? (
                       <div className="kv-list__row">
@@ -581,7 +681,13 @@ export function BuildCommitPage() {
                         return (
                           <span className="build-sheet__prof" key={`${prof}-${idx}`}>
                             {icon ? (
-                              <img src={icon} alt="" aria-hidden className="build-sheet__prof-icon" loading="lazy" />
+                              <img
+                                src={icon}
+                                alt=""
+                                aria-hidden
+                                className="build-sheet__prof-icon"
+                                loading="lazy"
+                              />
                             ) : null}
                             <strong>{prof}</strong>
                           </span>
@@ -631,7 +737,7 @@ export function BuildCommitPage() {
                     {effectivePlan?.forks?.map((fork, idx) => (
                       <li key={`${fork.title ?? "fork"}-${idx}`} style={{ marginBottom: 6 }}>
                         <strong>{fork.title}</strong>
-                        {fork.why ? <> — {fork.why}</> : null}
+                        {fork.why ? <> - {fork.why}</> : null}
                         {fork.optionA || fork.optionB ? (
                           <div style={{ color: "var(--ts)" }}>
                             A) {fork.optionA} · B) {fork.optionB}
@@ -642,26 +748,10 @@ export function BuildCommitPage() {
                   </ul>
                 </details>
               ) : null}
-
-              {effectivePlan?.aiRaw?.generatorJson ? (
-                <details style={{ marginTop: 12 }}>
-                  <summary style={{ cursor: "pointer", color: "var(--gold-bright)" }}>
-                    Raw AI output (full)
-                  </summary>
-                  <pre
-                    className="ui-caption ui-caption--xs"
-                    style={{ marginTop: 8, maxHeight: 260, overflow: "auto" }}
-                  >
-                    {effectivePlan.aiRaw.generatorJson}
-                    {"\n\n-- reviewer --\n"}
-                    {effectivePlan.aiRaw.reviewerJson ?? ""}
-                  </pre>
-                </details>
-              ) : null}
             </div>
           ) : (
             <div className="card build-sheet build-sheet--loading">
-              <p className="step-label">Building your build sheet…</p>
+              <p className="step-label">Building your build sheet...</p>
               <p className="hero-sub" style={{ marginTop: 4 }}>
                 AI is forging key talents, items, and tradeoffs. This page updates automatically.
               </p>

@@ -6,6 +6,7 @@ import { handleCreateShare, handleGetShare, handleGetShareImage, handleGetShareO
 import { handleAnalyticsConfig, handleExperimentalHealth, handleMemoryHealth } from "./routes/analytics";
 import { growthRouter } from "./routes/growth";
 import { buildRouter } from "./routes/build";
+import { buildsRouter, handleCommitOg, handleRobots, handleSitemap } from "./routes/builds";
 import { journeyRouter } from "./routes/journey";
 import { runExperimentalLearningTick } from "./db/archetypeLearning";
 import type { ApiEnv } from "./db/client";
@@ -46,6 +47,14 @@ app.get("/", (c) =>
       "POST /v1/journey/commit",
       "GET /v1/journey/commit/:slug",
       "POST /v1/journey/commit/:slug/memorial",
+      "POST /v1/builds/:slug/rate",
+      "GET /v1/builds/:slug/my-vote",
+      "GET /v1/builds/recent",
+      "GET /v1/builds/top",
+      "GET /v1/builds/:slug/og",
+      "GET /sitemap.xml",
+      "GET /robots.txt",
+      "GET /build/commit/:slug",
     ],
   }),
 );
@@ -65,7 +74,18 @@ app.get("/v1/analytics/memory-health", handleMemoryHealth);
 app.get("/v1/analytics/experimental-health", handleExperimentalHealth);
 app.route("/v1/growth", growthRouter);
 app.route("/v1/build", buildRouter);
+app.route("/v1/builds", buildsRouter);
 app.route("/v1/journey", journeyRouter);
+
+// SEO + bot-friendly endpoints at the document root so worker routes intercept before the SPA.
+app.get("/sitemap.xml", handleSitemap);
+app.get("/robots.txt", handleRobots);
+/**
+ * SSR entry for committed builds. The Worker route should be configured to forward
+ * `/build/commit/*` to this app; the response replaces the SPA shell with metadata + a JS redirect
+ * to the canonical SPA URL so crawlers and humans both end up on the same page.
+ */
+app.get("/build/commit/:slug", handleCommitOg);
 
 // Same handlers under /api/* for live domain Worker Route patterns.
 app.get("/api/health", (c) => c.json({ ok: true, ts: Date.now() }));
@@ -83,6 +103,7 @@ app.get("/api/v1/analytics/memory-health", handleMemoryHealth);
 app.get("/api/v1/analytics/experimental-health", handleExperimentalHealth);
 app.route("/api/v1/growth", growthRouter);
 app.route("/api/v1/build", buildRouter);
+app.route("/api/v1/builds", buildsRouter);
 app.route("/api/v1/journey", journeyRouter);
 
 export default {

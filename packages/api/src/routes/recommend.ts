@@ -3,10 +3,18 @@ import { captureServerEvent } from "../analytics/posthog";
 import { AnalyticsEvent } from "../analytics/events";
 import { buildExperimentalRankedArchetype } from "../ai/experimentalArchetype";
 import { enrichDestiny, getAiGateStatus } from "../ai/adapter";
+import {
+  destinyEnrichmentCanonicalSignals,
+  getFragment,
+  hashSignalsForCache,
+  putFragment,
+} from "../ai/fragmentCache";
+import { deepStripFancyPunctuation } from "../ai/punctuation";
 import { loadPromotedArchetypes, markArchetypeCandidateExposed, recordExperimentalArchetypeCandidate } from "../db/archetypeLearning";
 import { getDb, type ApiEnv } from "../db/client";
 import { archetypes } from "../domain/archetypes";
-import { buildPlans, destinies, questionAnswers, recommendationLogs, sessions } from "../db/schema";
+import { buildCommits, buildPlans, destinies, questionAnswers, recommendationLogs, sessions } from "../db/schema";
+import { generateBuildSlug } from "../domain/buildSlug";
 import { rankArchetypes } from "../domain/ranker";
 import type { Archetype, MemoryFeatures, MemoryRankingConfig, RankedArchetype } from "../domain/types";
 import { renderTemplateDestiny } from "../domain/template";
@@ -331,7 +339,66 @@ export async function handleRecommend(c: Context<ApiEnv>) {
       }
     }
     const templateOutput = renderTemplateDestiny(top);
-    const aiResult = await enrichDestiny(c.env, input, templateOutput);
+
+    // Reuse a previously-validated AI enrichment when the canonical signal hash matches. The cached
+    // payload is stored *after* punctuation sanitisation, so we can skip the model call entirely on
+    // a hit. We still mark sourceType as "ai" because that is what the cached row holds.
+    let signalsHash: string | null = null;
+    try {
+      signalsHash = await hashSignalsForCache(
+        destinyEnrichmentCanonicalSignals({
+          classId: templateOutput.classId,
+          signals: (input.signals ?? {}) as Record<string, unknown>,
+        }),
+      );
+    } catch {
+      signalsHash = null;
+    }
+
+    let cachedDestinyOutput = null as ReturnType<typeof renderTemplateDestiny> | null;
+    if (signalsHash) {
+      cachedDestinyOutput = await getFragment<typeof templateOutput>(c.env, {
+        kind: "destiny_enrichment",
+        classId: templateOutput.classId,
+        archetypeKey: top.archetype.key,
+        signalsHash,
+      });
+    }
+
+    const aiResult = cachedDestinyOutput
+      ? {
+          output: cachedDestinyOutput,
+          validationFailures: [] as string[],
+          telemetry: {
+            enabled: true,
+            modelId: null,
+            resolvedModelId: null,
+            latencyMs: 0,
+            retries: 0,
+            fallbackUsed: false,
+            providerError: null,
+            inputTokens: 0,
+            outputTokens: 0,
+          },
+        }
+      : await enrichDestiny(c.env, input, templateOutput);
+
+    if (cachedDestinyOutput) {
+      try {
+        await captureServerEvent(c.env, AnalyticsEvent.AiFragmentCacheHit, input.sessionId ?? "anonymous", {
+          kind: "destiny_enrichment",
+          classId: templateOutput.classId,
+          archetypeKey: top.archetype.key,
+        });
+      } catch {
+        // Telemetry must never fail a request.
+      }
+    }
+
+    // Sanitise prose. `enrichDestiny` returns a real DestinyOutput shape; cached payloads are also
+    // already sanitised, but a second pass is idempotent and protects against stale rows.
+    aiResult.output = deepStripFancyPunctuation(aiResult.output);
+
     const output = aiResult.output;
     const failures =
       aiResult.validationFailures.length > 0
@@ -399,6 +466,29 @@ export async function handleRecommend(c: Context<ApiEnv>) {
       sourceType: output.sourceType,
     });
 
+    /**
+     * Write the cacheable fragment if we did not hit the cache and the AI actually produced output.
+     * We only cache `ai`-sourced outputs (template fallbacks always re-render quickly and would
+     * pollute the cache with class+archetype boilerplate).
+     */
+    if (signalsHash && !cachedDestinyOutput && output.sourceType === "ai") {
+      try {
+        await putFragment(c.env, {
+          kind: "destiny_enrichment",
+          classId: output.classId,
+          archetypeKey: top.archetype.key,
+          signalsHash,
+        }, output);
+        await captureServerEvent(c.env, AnalyticsEvent.AiFragmentCacheMiss, sessionId, {
+          kind: "destiny_enrichment",
+          classId: output.classId,
+          archetypeKey: top.archetype.key,
+        });
+      } catch {
+        // Cache writes are advisory.
+      }
+    }
+
     if (experimentalLane) {
       const promptRev = (c.env.EXPERIMENTAL_PROMPT_REVISION ?? "1").toString().slice(0, 64);
       c.executionCtx.waitUntil(
@@ -442,6 +532,57 @@ export async function handleRecommend(c: Context<ApiEnv>) {
       );
     } catch {
       buildPlanId = undefined;
+    }
+
+    /**
+     * Auto-mint a `build_commits` row in `draft` status so the result has a stable URL the moment we
+     * generate. The same row is later flipped to `published` by rename/rate. Slug retries up to 3 times
+     * on uniqueness collision (10 random base32 chars => effectively zero collision risk in practice).
+     */
+    let buildCommitSlug: string | undefined;
+    let buildCommitId: string | undefined;
+    try {
+      buildCommitId = crypto.randomUUID();
+      const headlineForCard = typeof output.headline === "string" && output.headline.trim().length > 0 ? output.headline.trim() : "Saved build";
+      const draftPayload = {
+        destiny: output,
+        plan: null,
+        buildPlanId: buildPlanId ?? null,
+      };
+      let attempt = 0;
+      while (attempt < 3) {
+        attempt += 1;
+        const candidateSlug = generateBuildSlug();
+        try {
+          await db.insert(buildCommits).values({
+            id: buildCommitId,
+            slug: candidateSlug,
+            sessionId,
+            destinyId,
+            buildPlanId: buildPlanId ?? null,
+            commitName: null,
+            payloadJson: JSON.stringify(draftPayload),
+            cardJson: JSON.stringify({ headline: headlineForCard, destinyId }),
+            sourceType: output.sourceType,
+            status: "draft",
+            publishedAt: null,
+            thumbsUp: 0,
+            thumbsDown: 0,
+            ratingScore: 0,
+            classId: output.classId,
+            archetypeKey: top.archetype.key,
+            createdAt: new Date(now),
+            updatedAt: new Date(now),
+          });
+          buildCommitSlug = candidateSlug;
+          break;
+        } catch {
+          if (attempt >= 3) throw new Error("build_commit_slug_collision");
+        }
+      }
+    } catch {
+      buildCommitSlug = undefined;
+      buildCommitId = undefined;
     }
 
     const confidenceScore = Math.min(1, Math.max(0.1, top.score / 10));
@@ -500,6 +641,9 @@ export async function handleRecommend(c: Context<ApiEnv>) {
       sessionId,
       destinyId,
       buildPlanId,
+      buildCommitId,
+      buildCommitSlug,
+      buildCommitPath: buildCommitSlug ? `/build/commit/${buildCommitSlug}` : undefined,
       buildSheetPath: `/build/${destinyId}`,
       viabilityNotes: viability.notes,
       filterRelaxedForAi,

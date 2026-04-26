@@ -1,4 +1,4 @@
-import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const sessions = sqliteTable("sessions", {
   id: text("id").primaryKey(),
@@ -223,9 +223,24 @@ export const buildCommits = sqliteTable("build_commits", {
   payloadJson: text("payload_json").notNull(),
   cardJson: text("card_json"),
   sourceType: text("source_type").notNull().default("hybrid"),
+  /** draft: auto-created on roll, hidden from listings. published: surfaced on home recents/top + sitemap. */
+  status: text("status").notNull().default("draft"),
+  publishedAt: integer("published_at", { mode: "timestamp_ms" }),
+  thumbsUp: integer("thumbs_up").notNull().default(0),
+  thumbsDown: integer("thumbs_down").notNull().default(0),
+  /** Wilson lower bound; sortable for "top builds" without flapping at low N. */
+  ratingScore: real("rating_score").notNull().default(0),
+  /** Denormalised from destiny payload so listings don't have to parse JSON for every row. */
+  classId: text("class_id"),
+  archetypeKey: text("archetype_key"),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
-});
+},
+(t) => [
+  index("idx_build_commits_status_created_at").on(t.status, t.createdAt),
+  index("idx_build_commits_status_rating").on(t.status, t.ratingScore),
+],
+);
 
 export const buildCommitFeedback = sqliteTable("build_commit_feedback", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -235,7 +250,9 @@ export const buildCommitFeedback = sqliteTable("build_commit_feedback", {
   note: text("note"),
   action: text("action"),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
-});
+},
+(t) => [index("idx_build_commit_feedback_commit_session").on(t.buildCommitId, t.sessionId)],
+);
 
 export const memorialRuns = sqliteTable("memorial_runs", {
   id: text("id").primaryKey(),
@@ -300,6 +317,30 @@ export const archetypeCandidates = sqliteTable("archetype_candidates", {
   promotedAt: integer("promoted_at", { mode: "timestamp_ms" }),
   retiredAt: integer("retired_at", { mode: "timestamp_ms" }),
 });
+
+/**
+ * Reusable AI fragments keyed by (kind, class, archetype, signals_hash).
+ * Kinds: `destiny_enrichment` | `build_plan` | `name_pack`.
+ * Lookup before calling AI; populate after schema-validated parse succeeds.
+ */
+export const aiFragmentCache = sqliteTable("ai_fragment_cache", {
+  key: text("key").primaryKey(),
+  kind: text("kind").notNull(),
+  classId: text("class_id"),
+  archetypeKey: text("archetype_key"),
+  signalsHash: text("signals_hash").notNull(),
+  payloadJson: text("payload_json").notNull(),
+  /** Bumped when the schema or sanitiser shape changes; old rows ignored on lookup. */
+  version: integer("version").notNull().default(1),
+  hitCount: integer("hit_count").notNull().default(0),
+  lastUsedAt: integer("last_used_at", { mode: "timestamp_ms" }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+},
+(t) => [
+  index("idx_ai_fragment_cache_kind_class_arch").on(t.kind, t.classId, t.archetypeKey),
+  index("idx_ai_fragment_cache_last_used").on(t.lastUsedAt),
+],
+);
 
 export const candidateEvents = sqliteTable("candidate_events", {
   id: text("id").primaryKey(),

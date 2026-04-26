@@ -169,7 +169,22 @@ export function PlanJourneyStep() {
           debugClientIgnored("plan_journey.growth_outcome", err);
         });
       }
-      navigate("/draft-a-run/result");
+      // Single-page model: every roll has a stable `/build/commit/:slug` URL the moment recommend
+      // returns. Skip the legacy result step entirely. `?fresh=1` tells the commit page to poll
+      // build_plans + open the rename affordance; `flow=plan` keeps analytics attribution accurate.
+      const slug = result.buildCommitSlug ?? null;
+      if (slug) {
+        try {
+          sessionStorage.setItem(SessionKeys.lastBuildFlow, "plan");
+        } catch {
+          /* ignore */
+        }
+        navigate(`/build/commit/${slug}?fresh=1&flow=plan`);
+      } else {
+        // Defensive fallback: if for any reason the auto-commit row was not minted, fall back to
+        // the legacy plan-based view path so the user is never left without a URL.
+        navigate(`/build/${result.destinyId}?fresh=1&flow=plan`);
+      }
     } catch (err) {
       setLastRecommendErr(err);
       setError(destinyRecommendErrorHint(err));
@@ -235,7 +250,7 @@ export function PlanJourneyStep() {
               Optional notes
             </p>
             <p className="ui-caption ui-caption--xs" style={{ margin: 0 }}>
-              Dealbreakers or must-haves — one place, optional.
+              Dealbreakers or must-haves, one place, optional.
             </p>
           </div>
           <button

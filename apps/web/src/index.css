@@ -1171,6 +1171,65 @@ textarea::placeholder {
   margin-left: auto;
 }
 
+.commit-hero__name-input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--text);
+  background: transparent;
+  border: 1px dashed transparent;
+  border-radius: 8px;
+  padding: 4px 6px;
+  margin: 4px 0 0;
+  transition: border-color 0.18s, background 0.18s;
+}
+
+.commit-hero__name-input:hover,
+.commit-hero__name-input:focus {
+  border-color: color-mix(in srgb, var(--gold), transparent 50%);
+  background: rgba(0, 0, 0, 0.18);
+  outline: none;
+}
+
+.commit-hero__rating-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.commit-rating-help {
+  margin: 0;
+  max-width: 280px;
+}
+
+.commit-rating-help__summary {
+  cursor: pointer;
+  color: var(--gold-bright);
+  list-style: none;
+}
+
+.commit-rating-help__summary::-webkit-details-marker {
+  display: none;
+}
+
+.commit-icon-btn--on {
+  background: color-mix(in srgb, var(--gold), rgba(0, 0, 0, 0.4) 60%);
+  color: var(--gold-bright);
+  border-color: var(--gold-bright);
+}
+
+.commit-reroll {
+  position: relative;
+}
+
+.commit-reroll[open] > summary {
+  border-color: var(--gold-bright);
+}
+
 .memorial-quick-grid {
   display: grid;
   gap: 10px;

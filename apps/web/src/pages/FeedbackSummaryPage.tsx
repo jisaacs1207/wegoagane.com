@@ -95,7 +95,7 @@ export function FeedbackSummaryPage() {
         <Link to="/" className="btn-ghost" style={{ display: "inline-flex", alignItems: "center" }}>
           Home
         </Link>
-        <Link to="/release-spirit/result" className="btn-primary" style={{ textDecoration: "none" }}>
+        <Link to="/release-spirit" className="btn-primary" style={{ textDecoration: "none" }}>
           Test death flow
         </Link>
       </div>

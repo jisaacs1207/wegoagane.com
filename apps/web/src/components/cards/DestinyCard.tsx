@@ -86,7 +86,6 @@ export function DestinyCard({ data, compact, intentSignals }: Props) {
           </div>
           {intentSignals && signalSummaryLabels(intentSignals).length > 0 ? (
             <div className="destiny-card__intent-wrap">
-              <p className="destiny-card__intent-label">From your journey</p>
               <div className="destiny-card__intent-chips">
                 {signalSummaryLabels(intentSignals).map((label) => (
                   <span key={label} className="destiny-card__intent-chip">
