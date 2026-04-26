@@ -16,6 +16,7 @@ export const WOW_HC_JSON_GUARDS = [
   "REALM: World of Warcraft Classic ERA HARDCORE only (level 60 cap, permanent death). Do not use retail, Dragonflight, Season of Discovery–exclusive, TBC-only, or Wrath-only spells, talents, or systems.",
   "OUTPUT: One JSON object only — no markdown, no code fences, no commentary before or after the object. Every string must be valid JSON (escape quotes and newlines).",
   "CONCISION: Prefer short fields so the object stays parseable; avoid dumping long guides into a single string.",
+  "SSF: If signals.soloSelfFound is true, never recommend Auction House economy, trade buying, or party-only loops; assume gather-and-craft self-found play.",
 ] as const;
 
 /** Cloudflare / Wrangler may supply booleans or strings ("true", "TRUE", "1"). */

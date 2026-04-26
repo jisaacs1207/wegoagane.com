@@ -95,6 +95,7 @@ export const recommendInputSchema = z.object({
     genderLean: z.enum(["masculine", "feminine", "neutral"]).optional(),
     recommendLane: z.enum(["curated", "experimental"]).optional(),
     intentDepth: z.enum(["quick", "balanced", "dialed_in"]).optional(),
+    soloSelfFound: z.boolean().optional(),
     memoryHints: z
       .object({
         version: z.number().int().min(1).max(8),

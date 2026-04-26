@@ -31,6 +31,7 @@ export type RecommendRequest = {
     recommendVariantId?: string;
     recommendLane?: "curated" | "experimental";
     intentDepth?: "quick" | "balanced" | "dialed_in";
+    soloSelfFound?: boolean;
   } & BuildIntentSignals;
 };
 

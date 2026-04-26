@@ -146,8 +146,22 @@ export function computeViability(input: RecommendInput): ViabilityResult {
   classes = applyFaction(classes, signals.factionPreference);
 
   const stat = signals.statPhilosophy ?? [];
-  const prof = signals.professionIntents ?? [];
-  const vec = signals.buildVectors ?? [];
+  let prof = signals.professionIntents ?? [];
+  let vec = signals.buildVectors ?? [];
+
+  if (signals.soloSelfFound) {
+    const before = prof.length;
+    prof = prof.filter((p) => p !== "auction_house_play");
+    if (prof.length !== before) notes.push("ssf_dropped_auction_house_play");
+    if (!vec.includes("solo")) {
+      vec = [...vec, "solo"];
+      notes.push("ssf_added_solo_vector");
+    }
+    if (vec.includes("group_ok")) {
+      vec = vec.filter((v) => v !== "group_ok");
+      notes.push("ssf_dropped_group_ok");
+    }
+  }
 
   const byStat = classesForStatPhilosophy(stat);
   const byProf = classesForProfessionIntents(prof);
@@ -160,6 +174,7 @@ export function computeViability(input: RecommendInput): ViabilityResult {
   if (stat.length) notes.push("applied_stat_philosophy");
   if (prof.length) notes.push("applied_profession_intents");
   if (vec.length) notes.push("applied_build_vectors");
+  if (signals.soloSelfFound) notes.push("applied_solo_self_found");
 
   if (signals.preferredClass && !classes.includes(signals.preferredClass)) {
     notes.push("preferred_class_incompatible_with_constraints");

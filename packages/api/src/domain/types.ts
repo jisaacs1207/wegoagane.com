@@ -83,6 +83,8 @@ export type RecommendSignals = {
   recommendLane?: "curated" | "experimental";
   /** Client journey: quick random roll vs partial guided vs full question stack. */
   intentDepth?: "quick" | "balanced" | "dialed_in";
+  /** Player declared a Solo Self Found run: no AH, no trade buying, gather/craft only. */
+  soloSelfFound?: boolean;
 };
 
 export type RecommendInput = {
