@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { BuildIntentChips } from "../../components/BuildIntentChips";
+import { IdentityPortrait } from "../../components/IdentityPortrait";
+import { wowPackUrl } from "../../content/identityAssets";
 import { inferFactionFromRace, inferRaceFromHeadline } from "../../content/identityAssets";
 import type { ClassId } from "../../icons/types";
 import type { BuildIntentSignals, IntentDepth } from "../../lib/buildIntentTypes";
@@ -25,6 +27,10 @@ import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 export function PlanJourneyStep() {
   const navigate = useNavigate();
   const [seedBanner, setSeedBanner] = useState(() => Boolean(sessionStorage.getItem(SessionKeys.plan.seedDestinyId)));
+  const [showConstraints, setShowConstraints] = useState(() =>
+    Boolean((sessionStorage.getItem(SessionKeys.plan.freeform) ?? "").trim()),
+  );
+  const [freeformNote, setFreeformNote] = useState(() => sessionStorage.getItem(SessionKeys.plan.freeform) ?? "");
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState("");
   const [lastRecommendErr, setLastRecommendErr] = useState<unknown>(null);
@@ -41,6 +47,16 @@ export function PlanJourneyStep() {
       /* ignore */
     }
   }, []);
+
+  useEffect(() => {
+    try {
+      if (!sessionStorage.getItem(SessionKeys.plan.intent)) {
+        navigate("/draft-a-run/intent", { replace: true });
+      }
+    } catch {
+      navigate("/draft-a-run/intent", { replace: true });
+    }
+  }, [navigate]);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,6 +85,9 @@ export function PlanJourneyStep() {
     sessionStorage.setItem(SessionKeys.plan.sessionId, sessionId);
     const intent = sessionStorage.getItem(SessionKeys.plan.intent) ?? undefined;
     const freeform = sessionStorage.getItem(SessionKeys.plan.freeform) ?? undefined;
+    const ipRaw = sessionStorage.getItem(SessionKeys.plan.identityPriority);
+    const identityPriority =
+      ipRaw === "class_first" || ipRaw === "race_first" ? (ipRaw as "class_first" | "race_first") : undefined;
 
     if (experimentalOffer === "cohort" && recommendLane === null) {
       setError("Pick curated deck or experimental AI lane before generating.");
@@ -113,6 +132,7 @@ export function PlanJourneyStep() {
         signals: {
           intent,
           freeform: augmentFreeformWithPower(freeform, SessionKeys.plan.buildIntent),
+          identityPriority,
           memoryHints: buildMemoryHints(),
           recommendVariantId: assignment?.variantId ?? undefined,
           preferredClass: seedClass,
@@ -202,6 +222,51 @@ export function PlanJourneyStep() {
           generate once.
         </p>
       ) : null}
+      <div className="card plan-constraints-card" style={{ marginBottom: 12 }}>
+        <div className="plan-constraints-card__head">
+          <IdentityPortrait
+            src={wowPackUrl("Miscellaneous", "QuestionMark.png")}
+            alt=""
+            className="plan-constraints-card__icon"
+            aria-hidden
+          />
+          <div>
+            <p className="step-label" style={{ marginBottom: 4 }}>
+              Optional notes
+            </p>
+            <p className="ui-caption ui-caption--xs" style={{ margin: 0 }}>
+              Dealbreakers or must-haves — one place, optional.
+            </p>
+          </div>
+          <button
+            type="button"
+            className={`btn-ghost plan-constraints-card__toggle ${showConstraints ? "chip-btn--on" : ""}`}
+            onClick={() => setShowConstraints((v) => !v)}
+          >
+            {showConstraints ? "Hide" : "Add"}
+          </button>
+        </div>
+        {showConstraints ? (
+          <label className="ui-caption" style={{ display: "block" }}>
+            Optional constraints
+            <textarea
+              value={freeformNote}
+              onChange={(e) => {
+                const next = e.target.value.slice(0, 120);
+                setFreeformNote(next);
+                try {
+                  sessionStorage.setItem(SessionKeys.plan.freeform, next);
+                } catch {
+                  /* ignore */
+                }
+              }}
+              placeholder="e.g. no pet micromanagement, avoid mage, prioritize sustain"
+              rows={3}
+              style={{ width: "100%", marginTop: 6 }}
+            />
+          </label>
+        ) : null}
+      </div>
       <BuildIntentChips
         key={chipNonce}
         storageKey={SessionKeys.plan.buildIntent}

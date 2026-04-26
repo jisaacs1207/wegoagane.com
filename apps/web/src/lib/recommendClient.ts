@@ -24,6 +24,7 @@ export type RecommendRequest = {
     nextSignal?: string;
     intent?: string;
     freeform?: string;
+    identityPriority?: "class_first" | "race_first";
     factionPreference?: "horde" | "alliance";
     excludedClasses?: ClassId[];
     preferredClass?: ClassId;

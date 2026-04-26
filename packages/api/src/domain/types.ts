@@ -61,11 +61,15 @@ export type BuildVectorTag =
 
 export type RaceMode = "user_pick" | "signal_inferred" | "optimize_theme" | "surprise";
 
+export type IdentityPriority = "class_first" | "race_first";
+
 export type RecommendSignals = {
   mood?: string;
   nextSignal?: string;
   intent?: string;
   freeform?: string;
+  /** Draft-a-run: whether recommender should lean class-first or race-first for identity. */
+  identityPriority?: IdentityPriority;
   factionPreference?: Faction;
   excludedClasses?: ClassId[];
   preferredClass?: ClassId;

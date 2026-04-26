@@ -7,6 +7,10 @@ export const SessionKeys = {
   plan: {
     sessionId: "plan.sessionId",
     intent: "plan.intent",
+    /** Stable id for `INTENTS` ritual tile (e.g. safe_60); `intent` holds API-facing label. */
+    intentGoalId: "plan.intentGoalId",
+    /** draft_a_run: ranker hint — resolve class fantasy before race, or the reverse. */
+    identityPriority: "plan.identityPriority",
     freeform: "plan.freeform",
     destinyId: "plan.destinyId",
     seedDestinyId: "plan.seedDestinyId",
