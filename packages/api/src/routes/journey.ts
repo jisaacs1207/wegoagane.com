@@ -4,6 +4,7 @@ import { z } from "zod";
 import { applyArchetypeCandidateCommitSignal } from "../db/archetypeLearning";
 import { getDb, type ApiEnv } from "../db/client";
 import { buildCommits, buildPlans, buildRunsDraft, destinies, memorialRuns, nameSuggestions } from "../db/schema";
+import { generateBuildSlug } from "../domain/buildSlug";
 
 const startSchema = z.object({
   sessionId: z.string().min(1).max(80),
@@ -212,6 +213,15 @@ journeyRouter.post("/refine", async (c) => {
   return c.json({ draftId: row.id, next, canGenerate: true, questionCount: row.questionCount, maxQuestions: 5 });
 });
 
+/**
+ * `journey/commit` is now "rename + publish". Recommend already auto-creates a draft `build_commits`
+ * row, so this endpoint:
+ *  - Finds (or creates as fallback) the row.
+ *  - Refreshes the payload with the latest plan (in case the AI plan finished after the draft was minted).
+ *  - Sets `commitName` if provided.
+ *  - Flips status to `published` and stamps `publishedAt`.
+ *  - Idempotent: re-publishing keeps existing slug; `publishedAt` is only set on the first publish.
+ */
 journeyRouter.post("/commit", async (c) => {
   const parsed = await parseBody(c, commitSchema);
   if (parsed.error) return parsed.error;
@@ -220,10 +230,13 @@ journeyRouter.post("/commit", async (c) => {
   const destiny = (await db.select().from(destinies).where(and(eq(destinies.id, destinyId), eq(destinies.sessionId, sessionId))).limit(1))[0];
   if (!destiny) return c.json({ error: "destiny_not_found" }, 404);
   const plan = (await db.select().from(buildPlans).where(eq(buildPlans.destinyId, destinyId)).limit(1))[0];
-  /** Slug is the full destiny id so commit URLs stay unique (short-prefix slugs could collide). */
-  const slug = destinyId;
-  const existing = (await db.select().from(buildCommits).where(eq(buildCommits.destinyId, destinyId)).limit(1))[0];
-  if (existing) return c.json({ commitId: existing.id, slug: existing.slug, path: `/build/commit/${existing.slug}` });
+
+  let destinyPayload: unknown = null;
+  try {
+    destinyPayload = JSON.parse(destiny.contentJson) as unknown;
+  } catch {
+    return c.json({ error: "invalid_destiny_payload" }, 500);
+  }
 
   let planPayload: unknown = null;
   if (plan?.payloadJson) {
@@ -233,37 +246,62 @@ journeyRouter.post("/commit", async (c) => {
       planPayload = null;
     }
   }
-  const id = crypto.randomUUID();
-  const now = new Date();
-  let destinyPayload: unknown = null;
-  try {
-    destinyPayload = JSON.parse(destiny.contentJson) as unknown;
-  } catch {
-    return c.json({ error: "invalid_destiny_payload" }, 500);
-  }
   const payload = {
     destiny: destinyPayload,
     plan: planPayload,
     buildPlanId: plan?.id ?? null,
   };
-  // Card headline now comes from the AI-generated destiny so the artifact has a single canonical name.
-  // commitName is retained as an optional player annotation (used for memorials), not the artifact title.
   const destinyHeadline = destinyHeadlineFromPayload(destinyPayload);
+  const trimmedCommitName = commitName?.trim();
+
+  const existing = (await db.select().from(buildCommits).where(eq(buildCommits.destinyId, destinyId)).limit(1))[0];
+  if (existing) {
+    const wasDraft = existing.status !== "published";
+    const now = new Date();
+    await db
+      .update(buildCommits)
+      .set({
+        commitName: trimmedCommitName && trimmedCommitName.length > 0 ? trimmedCommitName : existing.commitName,
+        payloadJson: JSON.stringify(payload),
+        cardJson: JSON.stringify({ headline: destinyHeadline, destinyId }),
+        buildPlanId: plan?.id ?? existing.buildPlanId,
+        status: "published",
+        publishedAt: existing.publishedAt ?? now,
+        updatedAt: now,
+      })
+      .where(eq(buildCommits.id, existing.id));
+    if (wasDraft) {
+      c.executionCtx.waitUntil(applyArchetypeCandidateCommitSignal(c.env.DB, destinyId, sessionId));
+    }
+    return c.json({ commitId: existing.id, slug: existing.slug, path: `/build/commit/${existing.slug}`, status: "published" });
+  }
+
+  // Fallback: recommend.ts failed to insert the draft (or this destiny pre-dates auto-commit).
+  const id = crypto.randomUUID();
+  const slug = generateBuildSlug();
+  const now = new Date();
   await db.insert(buildCommits).values({
     id,
     slug,
     sessionId,
     destinyId,
     buildPlanId: plan?.id ?? null,
-    commitName: commitName ?? null,
+    commitName: trimmedCommitName ?? null,
     payloadJson: JSON.stringify(payload),
     cardJson: JSON.stringify({ headline: destinyHeadline, destinyId }),
     sourceType: "hybrid",
+    status: "published",
+    publishedAt: now,
+    thumbsUp: 0,
+    thumbsDown: 0,
+    ratingScore: 0,
+    classId: destiny.classId,
+    archetypeKey: destiny.archetypeKey,
     createdAt: now,
     updatedAt: now,
   });
   c.executionCtx.waitUntil(applyArchetypeCandidateCommitSignal(c.env.DB, destinyId, sessionId));
-  return c.json({ commitId: id, slug, path: `/build/commit/${slug}` }, 201);
+  return c.json({ commitId: id, slug, path: `/build/commit/${slug}`, status: "published" }, 201);
 });
 
 journeyRouter.get("/commit/:slug", async (c) => {
@@ -293,6 +331,13 @@ journeyRouter.get("/commit/:slug", async (c) => {
     buildPlanId: row.buildPlanId,
     commitName: row.commitName,
     sourceType: row.sourceType,
+    status: row.status,
+    publishedAt: row.publishedAt ? row.publishedAt.getTime?.() ?? row.publishedAt : null,
+    thumbsUp: row.thumbsUp,
+    thumbsDown: row.thumbsDown,
+    ratingScore: row.ratingScore,
+    classId: row.classId,
+    archetypeKey: row.archetypeKey,
     payload,
     path: `/build/commit/${row.slug}`,
   });

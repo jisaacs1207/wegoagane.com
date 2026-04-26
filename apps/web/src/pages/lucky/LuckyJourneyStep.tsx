@@ -134,7 +134,17 @@ export function LuckyJourneyStep() {
             debugClientIgnored("lucky_journey.growth_outcome", err);
           });
         }
-        navigate("/lucky-roll/result");
+        const slug = result.buildCommitSlug ?? null;
+        if (slug) {
+          try {
+            sessionStorage.setItem(SessionKeys.lastBuildFlow, "lucky");
+          } catch {
+            /* ignore */
+          }
+          navigate(`/build/commit/${slug}?fresh=1&flow=lucky`);
+        } else {
+          navigate(`/build/${result.destinyId}?fresh=1&flow=lucky`);
+        }
       } catch (err) {
         setLastRecommendErr(err);
         setError(destinyRecommendErrorHint(err));

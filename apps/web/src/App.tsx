@@ -10,7 +10,6 @@ import { FeedbackSummaryPage } from "./pages/FeedbackSummaryPage";
 import { GrowthOpsPage } from "./pages/GrowthOpsPage";
 import { BuildPlanPage } from "./pages/BuildPlanPage";
 import { BuildCommitPage } from "./pages/BuildCommitPage";
-import { RerollTriagePage } from "./pages/RerollTriagePage";
 
 export function App() {
   return (
@@ -20,9 +19,9 @@ export function App() {
         <Route path="/release-spirit/*" element={<DeathFlowPage />} />
         <Route path="/draft-a-run/*" element={<PlanFlowPage />} />
         <Route path="/lucky-roll/*" element={<LuckyFlowPage />} />
+        {/* Legacy plan-only path retained as a fallback if recommend ever fails to mint a slug. */}
         <Route path="/build/:destinyId" element={<BuildPlanPage />} />
         <Route path="/build/commit/:slug" element={<BuildCommitPage />} />
-        <Route path="/reroll/:flow" element={<RerollTriagePage />} />
         <Route path="/share/:runId" element={<SharePlaceholderPage />} />
         <Route path="/design/cards" element={<DesignCardsPage />} />
         <Route path="/ops/feedback" element={<FeedbackSummaryPage />} />

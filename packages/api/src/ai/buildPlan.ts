@@ -12,6 +12,15 @@ import { callAiGateway, extractJsonPayload, getAiGateStatus, isTruthyEnv, WOW_HC
 import type { ClassId, RecommendInput } from "../domain/types";
 import { computeViability } from "../domain/viability";
 import { coerceClassRaceSuggestions } from "../domain/classRaceRules";
+import { deepStripFancyPunctuation } from "./punctuation";
+import {
+  buildPlanCanonicalSignals,
+  getFragment,
+  hashSignalsForCache,
+  putFragment,
+} from "./fragmentCache";
+import { captureServerEvent } from "../analytics/posthog";
+import { AnalyticsEvent } from "../analytics/events";
 
 function rulesetPinFromEnv(env: ApiEnv["Bindings"]): string {
   return (env.RULESET_PIN ?? "classic-era-hc-2026-04").trim().slice(0, 120);
@@ -25,7 +34,7 @@ function jsonForPrompt(label: string, value: unknown): string {
   try {
     const raw = JSON.stringify(value);
     if (raw.length <= PROMPT_JSON_BUDGET) return raw;
-    return `${raw.slice(0, PROMPT_JSON_BUDGET)}\n/* ${label}: truncated for token safety — infer missing tail conservatively */`;
+    return `${raw.slice(0, PROMPT_JSON_BUDGET)}\n/* ${label}: truncated for token safety - infer missing tail conservatively */`;
   } catch {
     return "{}";
   }
@@ -126,7 +135,7 @@ function buildGeneratorPrompt(
 function buildReviewerPrompt(draft: string, input: RecommendInput, rulesetPin: string): string {
   const draftBody =
     draft.length > REVIEWER_DRAFT_BUDGET
-      ? `${draft.slice(0, REVIEWER_DRAFT_BUDGET)}\n/* DRAFT truncated for reviewer context — preserve schema and fix top issues */`
+      ? `${draft.slice(0, REVIEWER_DRAFT_BUDGET)}\n/* DRAFT truncated for reviewer context - preserve schema and fix top issues */`
       : draft;
   return [
     ...WOW_HC_JSON_GUARDS,
@@ -366,6 +375,52 @@ export async function runBuildPlanGeneration(
 
   const model = env.AI_MODEL_BUILD ?? env.AI_MODEL_DESTINY ?? "openrouter/auto";
 
+  // Fragment cache short-circuit. Identical signals + class + archetype + ruleset reuse the prior
+  // sanitised payload; we still write a fresh `build_plans` row so analytics/logs stay per-session.
+  let signalsHash: string | null = null;
+  try {
+    signalsHash = await hashSignalsForCache(
+      buildPlanCanonicalSignals({
+        classId: destiny.classId,
+        archetypeKey: params.archetypeKey,
+        rulesetPin,
+        signals: (params.input.signals ?? {}) as Record<string, unknown>,
+      }),
+    );
+  } catch {
+    signalsHash = null;
+  }
+
+  if (signalsHash) {
+    const cached = await getFragment<BuildPlanPayload>(env, {
+      kind: "build_plan",
+      classId: destiny.classId,
+      archetypeKey: params.archetypeKey,
+      signalsHash,
+    });
+    if (cached) {
+      await db
+        .update(buildPlans)
+        .set({
+          status: "ready",
+          payloadJson: JSON.stringify(cached),
+          error: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(buildPlans.id, params.buildPlanId));
+      try {
+        await captureServerEvent(env, AnalyticsEvent.AiFragmentCacheHit, params.sessionId, {
+          kind: "build_plan",
+          classId: destiny.classId,
+          archetypeKey: params.archetypeKey,
+        });
+      } catch {
+        // Telemetry must never fail a build.
+      }
+      return;
+    }
+  }
+
   try {
     await db
       .update(buildPlans)
@@ -412,6 +467,7 @@ export async function runBuildPlanGeneration(
           reviewerJson: rawReviewerContent.slice(0, 50000),
         },
       });
+      parsed = deepStripFancyPunctuation(parsed);
     } catch (e) {
       throw new Error(e instanceof Error ? e.message : "parse_failed");
     }
@@ -425,6 +481,27 @@ export async function runBuildPlanGeneration(
         updatedAt: new Date(),
       })
       .where(eq(buildPlans.id, params.buildPlanId));
+
+    if (signalsHash) {
+      try {
+        // Store the cacheable subset only; aiRaw is per-generation and bloats the row.
+        const { aiRaw: _omit, ...cacheable } = parsed as BuildPlanPayload & { aiRaw?: unknown };
+        void _omit;
+        await putFragment(env, {
+          kind: "build_plan",
+          classId: destiny.classId,
+          archetypeKey: params.archetypeKey,
+          signalsHash,
+        }, cacheable);
+        await captureServerEvent(env, AnalyticsEvent.AiFragmentCacheMiss, params.sessionId, {
+          kind: "build_plan",
+          classId: destiny.classId,
+          archetypeKey: params.archetypeKey,
+        });
+      } catch {
+        // Cache write is advisory.
+      }
+    }
   } catch (e) {
     const msg = e instanceof Error ? e.message.slice(0, 500) : "build_failed";
     await db

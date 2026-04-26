@@ -149,7 +149,17 @@ export function DeathJourneyStep() {
           debugClientIgnored("death_journey.growth_outcome", err);
         });
       }
-      navigate("/release-spirit/result");
+      const slug = result.buildCommitSlug ?? null;
+      if (slug) {
+        try {
+          sessionStorage.setItem(SessionKeys.lastBuildFlow, "death");
+        } catch {
+          /* ignore */
+        }
+        navigate(`/build/commit/${slug}?fresh=1&flow=death`);
+      } else {
+        navigate(`/build/${result.destinyId}?fresh=1&flow=death`);
+      }
     } catch (err) {
       setLastRecommendErr(err);
       setError(destinyRecommendErrorHint(err));

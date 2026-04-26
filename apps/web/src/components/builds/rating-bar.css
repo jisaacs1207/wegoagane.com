@@ -1,0 +1,100 @@
+.rating-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(6px);
+}
+
+.rating-bar--compact {
+  padding: 4px 6px;
+  gap: 6px;
+}
+
+.rating-bar__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--ts);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.rating-bar__btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+  transform: translateY(-1px);
+}
+
+.rating-bar__btn:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.rating-bar__btn--up.rating-bar__btn--active {
+  background: color-mix(in srgb, var(--good, #4caf50) 32%, rgba(0, 0, 0, 0.4));
+  border-color: color-mix(in srgb, var(--good, #4caf50) 60%, transparent);
+  color: #d6ffd9;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--good, #4caf50) 25%, transparent);
+}
+
+.rating-bar__btn--down.rating-bar__btn--active {
+  background: color-mix(in srgb, var(--bad, #d44) 28%, rgba(0, 0, 0, 0.45));
+  border-color: color-mix(in srgb, var(--bad, #d44) 55%, transparent);
+  color: #ffd6d6;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--bad, #d44) 22%, transparent);
+}
+
+.rating-bar__btn--pulse {
+  animation: rating-bar-pulse 0.32s ease;
+}
+
+@keyframes rating-bar-pulse {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+.rating-bar__icon {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.rating-bar--compact .rating-bar__btn {
+  padding: 4px 10px;
+  font-size: 0.85rem;
+}
+
+.rating-bar__count {
+  font-variant-numeric: tabular-nums;
+  min-width: 1.6em;
+  text-align: left;
+}
+
+.rating-bar__caption {
+  font-size: 0.85rem;
+  color: var(--ts);
+  margin-left: 4px;
+}
+
+@media (max-width: 480px) {
+  .rating-bar {
+    gap: 8px;
+    padding: 6px 8px;
+  }
+  .rating-bar__btn {
+    padding: 6px 10px;
+  }
+  .rating-bar__caption {
+    display: none;
+  }
+}

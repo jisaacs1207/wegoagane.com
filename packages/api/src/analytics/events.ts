@@ -18,6 +18,10 @@ export const AnalyticsEvent = {
   BuildPlanStarted: "build_plan_started",
   BuildPlanReady: "build_plan_ready",
   BuildPlanFailed: "build_plan_failed",
+  BuildRated: "build_rated",
+  BuildAutoPublished: "build_auto_published",
+  AiFragmentCacheHit: "ai_fragment_cache_hit",
+  AiFragmentCacheMiss: "ai_fragment_cache_miss",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvent)[keyof typeof AnalyticsEvent];

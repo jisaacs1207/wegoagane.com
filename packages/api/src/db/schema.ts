@@ -223,6 +223,16 @@ export const buildCommits = sqliteTable("build_commits", {
   payloadJson: text("payload_json").notNull(),
   cardJson: text("card_json"),
   sourceType: text("source_type").notNull().default("hybrid"),
+  /** draft: auto-created on roll, hidden from listings. published: surfaced on home recents/top + sitemap. */
+  status: text("status").notNull().default("draft"),
+  publishedAt: integer("published_at", { mode: "timestamp_ms" }),
+  thumbsUp: integer("thumbs_up").notNull().default(0),
+  thumbsDown: integer("thumbs_down").notNull().default(0),
+  /** Wilson lower bound; sortable for "top builds" without flapping at low N. */
+  ratingScore: real("rating_score").notNull().default(0),
+  /** Denormalised from destiny payload so listings don't have to parse JSON for every row. */
+  classId: text("class_id"),
+  archetypeKey: text("archetype_key"),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 });
@@ -299,6 +309,25 @@ export const archetypeCandidates = sqliteTable("archetype_candidates", {
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   promotedAt: integer("promoted_at", { mode: "timestamp_ms" }),
   retiredAt: integer("retired_at", { mode: "timestamp_ms" }),
+});
+
+/**
+ * Reusable AI fragments keyed by (kind, class, archetype, signals_hash).
+ * Kinds: `destiny_enrichment` | `build_plan` | `name_pack`.
+ * Lookup before calling AI; populate after schema-validated parse succeeds.
+ */
+export const aiFragmentCache = sqliteTable("ai_fragment_cache", {
+  key: text("key").primaryKey(),
+  kind: text("kind").notNull(),
+  classId: text("class_id"),
+  archetypeKey: text("archetype_key"),
+  signalsHash: text("signals_hash").notNull(),
+  payloadJson: text("payload_json").notNull(),
+  /** Bumped when the schema or sanitiser shape changes; old rows ignored on lookup. */
+  version: integer("version").notNull().default(1),
+  hitCount: integer("hit_count").notNull().default(0),
+  lastUsedAt: integer("last_used_at", { mode: "timestamp_ms" }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
 
 export const candidateEvents = sqliteTable("candidate_events", {

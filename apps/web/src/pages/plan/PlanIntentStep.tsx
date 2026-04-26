@@ -79,7 +79,7 @@ export function PlanIntentStep() {
       </div>
       <p className="step-label">Draft a run · step 1 of 3</p>
       <h1 className="hero-question">What is this run trying to achieve?</h1>
-      <p className="hero-sub">Choose identity order, then tap a goal — you go straight to filters.</p>
+      <p className="hero-sub">Choose identity order, then tap a goal; you go straight to filters.</p>
       <fieldset style={{ border: "none", padding: 0, margin: "0 0 18px 0" }}>
         <legend className="ui-caption" style={{ marginBottom: 8 }}>
           Resolve first

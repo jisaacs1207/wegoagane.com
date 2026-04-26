@@ -98,10 +98,17 @@ preview_bucket_name = "wegoagane-share-images-preview"
 
 [env.production]
 name = "wegoagane-api-production"
-# Route API traffic on the live domain through production only.
+# Route API + SSR traffic on the live domain through production only. The Worker SSR endpoints
+# below MUST take precedence over the Pages SPA fallback so crawlers see real metadata.
 routes = [
   { pattern = "wegoagane.com/api/*", zone_name = "wegoagane.com" },
-  { pattern = "www.wegoagane.com/api/*", zone_name = "wegoagane.com" }
+  { pattern = "www.wegoagane.com/api/*", zone_name = "wegoagane.com" },
+  { pattern = "wegoagane.com/build/commit/*", zone_name = "wegoagane.com" },
+  { pattern = "www.wegoagane.com/build/commit/*", zone_name = "wegoagane.com" },
+  { pattern = "wegoagane.com/sitemap.xml", zone_name = "wegoagane.com" },
+  { pattern = "www.wegoagane.com/sitemap.xml", zone_name = "wegoagane.com" },
+  { pattern = "wegoagane.com/robots.txt", zone_name = "wegoagane.com" },
+  { pattern = "www.wegoagane.com/robots.txt", zone_name = "wegoagane.com" }
 ]
 # Without this, deploys that only set zonal routes often disable *.workers.dev; CI/ops then get 404 + "error code: 1042" on the dev hostname.
 workers_dev = true

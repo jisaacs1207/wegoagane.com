@@ -3,8 +3,9 @@ import type { DestinyOutput, MemorialOutput, RecommendInput } from "../domain/ty
 import { validateMemorialOutput, validateTemplateOutput } from "../domain/validator";
 import { coerceClassRaceSuggestions } from "../domain/classRaceRules";
 import type { AiTelemetry, DestinyAiResult, MemorialAiResult } from "./types";
+import { deepStripFancyPunctuation } from "./punctuation";
 
-/** Hard cap on model text before extraction — avoids pathological multi‑MB replies OOMing the worker. */
+/** Hard cap on model text before extraction - avoids pathological multi-MB replies OOMing the worker. */
 export const AI_RESPONSE_MAX_CHARS = 450_000;
 
 /** Default completion budget; overridden per call for large artifacts (e.g. build plans). */
@@ -13,10 +14,11 @@ const AI_MAX_TOKENS_CAP = 100_000;
 
 /** Reusable prompt rails: Classic Era HC scope + strict JSON shape (pairs with `response_format: json_object`). */
 export const WOW_HC_JSON_GUARDS = [
-  "REALM: World of Warcraft Classic ERA HARDCORE only (level 60 cap, permanent death). Do not use retail, Dragonflight, Season of Discovery–exclusive, TBC-only, or Wrath-only spells, talents, or systems.",
-  "OUTPUT: One JSON object only — no markdown, no code fences, no commentary before or after the object. Every string must be valid JSON (escape quotes and newlines).",
+  "REALM: World of Warcraft Classic ERA HARDCORE only (level 60 cap, permanent death). Do not use retail, Dragonflight, Season of Discovery-exclusive, TBC-only, or Wrath-only spells, talents, or systems.",
+  "OUTPUT: One JSON object only - no markdown, no code fences, no commentary before or after the object. Every string must be valid JSON (escape quotes and newlines).",
   "CONCISION: Prefer short fields so the object stays parseable; avoid dumping long guides into a single string.",
   "SSF: If signals.soloSelfFound is true, never recommend Auction House economy, trade buying, or party-only loops; assume gather-and-craft self-found play.",
+  "ASCII PUNCTUATION ONLY: Never output em dashes (U+2014), en dashes (U+2013), ellipsis chars (U+2026), or smart/curly quotes. Use a hyphen, three dots, or straight quotes (', \") instead. Avoid the words 'em dash' and 'en dash' as well.",
 ] as const;
 
 /** Cloudflare / Wrangler may supply booleans or strings ("true", "TRUE", "1"). */
@@ -257,7 +259,7 @@ async function callGateway(
 
 /**
  * OpenRouter-compatible chat completion with JSON mode.
- * @param maxTokens — completion token budget (capped server-side); raise for large artifacts (build plans).
+ * @param maxTokens - completion token budget (capped server-side); raise for large artifacts (build plans).
  */
 export async function callAiGateway(
   env: ApiEnv["Bindings"],
@@ -333,7 +335,7 @@ export async function enrichDestiny(
       continue;
     }
 
-    const candidate: DestinyOutput = {
+    const candidate: DestinyOutput = deepStripFancyPunctuation({
       ...template,
       ...overrides,
       classId: template.classId,
@@ -344,7 +346,7 @@ export async function enrichDestiny(
           ? overrides.genderLean
           : template.genderLean,
       sourceType: "ai",
-    };
+    });
     const fixedIdentity = coerceClassRaceSuggestions({
       classId: template.classId,
       raceSuggestion: candidate.raceSuggestion,
@@ -408,13 +410,13 @@ export async function enrichMemorial(
       continue;
     }
 
-    const candidate: MemorialOutput = {
+    const candidate: MemorialOutput = deepStripFancyPunctuation({
       ...template,
       ...overrides,
       location: template.location,
       cause: template.cause,
       sourceType: "ai",
-    };
+    });
     const failures = validateMemorialOutput(candidate);
     if (failures.length === 0) {
       telemetry.fallbackUsed = false;
@@ -425,3 +427,6 @@ export async function enrichMemorial(
   }
   return fallback();
 }
+
+// (cache wrapper for destiny enrichment lives in routes/recommend.ts so it can hold the DB binding)
+

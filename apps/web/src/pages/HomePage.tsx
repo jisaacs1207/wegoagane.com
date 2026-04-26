@@ -5,6 +5,7 @@ import type { BuildIntentSignals } from "../lib/buildIntentTypes";
 import { fetchGrowthAssignment, submitGrowthOutcome } from "../lib/recommendClient";
 import { debugClientIgnored } from "../lib/clientDebug";
 import { SessionKeys } from "../lib/sessionKeys";
+import { BuildShowcase } from "../components/home/BuildShowcase";
 
 function sanitizeUiExperiment(payload: { headline?: string; subline?: string }) {
   const headline = payload.headline?.trim();
@@ -92,7 +93,7 @@ export function HomePage() {
             }}
           >
             <span className="entry-btn-title">Quick build</span>
-            <span className="entry-btn-desc">One tap — we roll safe filters and generate a run you can save.</span>
+            <span className="entry-btn-desc">One tap: we roll safe filters and generate a run you can save.</span>
             <span className="entry-pill-row">
               <span className="entry-pill">Fastest</span>
               <span className="entry-pill">Commit-ready</span>
@@ -132,13 +133,16 @@ export function HomePage() {
         </div>
         <div className="flow-nav" style={{ marginTop: 12 }}>
           <Link to="/release-spirit/next" className="btn-ghost">
-            I died — pick up from here
+            I died: pick up from here
           </Link>
         </div>
         <p className="ui-caption" style={{ margin: "18px 0 0", color: "var(--td)" }}>
           Saved builds get a stable link for guides, guild help, and memorials.
         </p>
       </div>
+
+      <BuildShowcase title="Latest builds" subtitle="Fresh rolls from the community" source="recent" limit={5} />
+      <BuildShowcase title="Top builds this month" subtitle="Highest thumbs-up rated" source="top" limit={5} />
     </div>
   );
 }
