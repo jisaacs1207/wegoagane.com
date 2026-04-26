@@ -58,12 +58,22 @@ export const QUESTIONS_BY_VECTOR: Record<JourneyVectorKey, VectorQuestion[]> = {
     {
       id: "style_risk",
       prompt: "How much risk are you comfortable with?",
-      answers: ["Very low", "Low", "Balanced", "High"],
+      answers: ["Very low", "Low", "Balanced", "High", "High but controlled", "Chaotic is fine"],
       apply: (value, a) => ({
         ...value,
         statPhilosophy: toggleList(
           value.statPhilosophy,
-          a === "Very low" ? "stamina_forward" : a === "Low" ? "balanced" : a === "Balanced" ? "balanced" : "meme_glass",
+          a === "Very low"
+            ? "stamina_forward"
+            : a === "Low"
+              ? "balanced"
+              : a === "Balanced"
+                ? "balanced"
+                : a === "High but controlled"
+                  ? "agility_forward"
+                  : a === "Chaotic is fine"
+                    ? "meme_glass"
+                    : "meme_glass",
           3,
         ) as BuildIntentSignals["statPhilosophy"],
       }),
@@ -71,12 +81,22 @@ export const QUESTIONS_BY_VECTOR: Record<JourneyVectorKey, VectorQuestion[]> = {
     {
       id: "style_pulls",
       prompt: "Preferred pull cadence?",
-      answers: ["Singles only", "Controlled chains", "Mixed", "Fast pulls"],
+      answers: ["Singles only", "Controlled chains", "Mixed", "Fast pulls", "Kite-heavy", "Group-ready cadence"],
       apply: (value, a) => ({
         ...value,
         buildVectors: toggleList(
           value.buildVectors,
-          a === "Singles only" ? "solo" : a === "Controlled chains" ? "tank" : a === "Mixed" ? "hybrid" : "rage",
+          a === "Singles only"
+            ? "solo"
+            : a === "Controlled chains"
+              ? "tank"
+              : a === "Mixed"
+                ? "hybrid"
+                : a === "Kite-heavy"
+                  ? "ranged"
+                  : a === "Group-ready cadence"
+                    ? "group_ok"
+                    : "rage",
           6,
         ) as BuildIntentSignals["buildVectors"],
       }),
@@ -114,12 +134,20 @@ export const QUESTIONS_BY_VECTOR: Record<JourneyVectorKey, VectorQuestion[]> = {
     {
       id: "combat_distance",
       prompt: "Preferred combat distance?",
-      answers: ["Melee", "Ranged", "Hybrid", "No preference"],
+      answers: ["Melee", "Ranged", "Hybrid", "No preference", "Pet-led", "Spell-leaning"],
       apply: (value, a) => ({
         ...value,
         buildVectors: toggleList(
           value.buildVectors,
-          a === "Melee" ? "melee" : a === "Ranged" ? "ranged" : a === "Hybrid" ? "hybrid" : "hybrid",
+          a === "Melee"
+            ? "melee"
+            : a === "Ranged"
+              ? "ranged"
+              : a === "Pet-led"
+                ? "pet"
+                : a === "Spell-leaning"
+                  ? "caster"
+                  : "hybrid",
           6,
         ) as BuildIntentSignals["buildVectors"],
       }),
@@ -155,12 +183,20 @@ export const QUESTIONS_BY_VECTOR: Record<JourneyVectorKey, VectorQuestion[]> = {
     {
       id: "survival_recovery",
       prompt: "Recovery style?",
-      answers: ["Slow and steady", "Burst recovery", "Minimize downtime", "Map aware"],
+      answers: ["Slow and steady", "Burst recovery", "Minimize downtime", "Map aware", "Potion-heavy", "Duo-friendly"],
       apply: (value, a) => ({
         ...value,
         buildVectors: toggleList(
           value.buildVectors,
-          a === "Slow and steady" ? "tank" : a === "Burst recovery" ? "hybrid" : a === "Minimize downtime" ? "solo" : "group_ok",
+          a === "Slow and steady"
+            ? "tank"
+            : a === "Burst recovery"
+              ? "hybrid"
+              : a === "Minimize downtime"
+                ? "solo"
+                : a === "Potion-heavy"
+                  ? "mana"
+                  : "group_ok",
           6,
         ) as BuildIntentSignals["buildVectors"],
       }),

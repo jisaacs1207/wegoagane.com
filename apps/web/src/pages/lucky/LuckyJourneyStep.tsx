@@ -26,6 +26,7 @@ import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 export function LuckyJourneyStep() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const quickEntry = searchParams.get("quick") === "1";
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState("");
   const [lastRecommendErr, setLastRecommendErr] = useState<unknown>(null);
@@ -180,6 +181,49 @@ export function LuckyJourneyStep() {
           },
         }
       : null;
+
+  if (quickEntry && !error) {
+    return (
+      <div>
+        <div className="flow-crumbs" aria-label="Flow navigation">
+          <span className="flow-crumb">
+            <Link to="/">Home</Link>
+          </span>
+          <span className="flow-crumb">/</span>
+          <span className="flow-crumb">Quick build</span>
+        </div>
+        <div className="card" style={{ marginBottom: 12 }}>
+          <p className="step-label">Lucky roll</p>
+          <h1 className="hero-question">Forging your quick build...</h1>
+          <p className="hero-sub" style={{ marginBottom: 0 }}>
+            Rolling HC-safe filters and generating your run now.
+          </p>
+          <div className="entry-icon-row entry-icon-row--overlap" style={{ marginTop: 10 }}>
+            <IdentityPortrait src={wowPackUrl("Miscellaneous", "Dice_02.png")} alt="" className="entry-icon" />
+            <IdentityPortrait src={wowPackUrl("Spells", "StarFire.png")} alt="" className="entry-icon" />
+            <IdentityPortrait src={wowPackUrl("Abilities", "BloodFrenzy.png")} alt="" className="entry-icon" />
+          </div>
+          <div className="flow-nav" style={{ marginTop: 12 }}>
+            <button
+              type="button"
+              className="btn-ghost"
+              disabled={isGenerating}
+              onClick={() => {
+                const seeded = readBuildIntent(SessionKeys.lucky.buildIntent);
+                setQuickAutoTriggered(true);
+                void onGenerate(seeded, "quick");
+              }}
+            >
+              {isGenerating ? "Generating..." : "Retry quick build"}
+            </button>
+            <Link to="/lucky-roll/journey" className="btn-ghost">
+              Open setup instead
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

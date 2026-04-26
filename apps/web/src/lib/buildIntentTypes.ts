@@ -1,3 +1,5 @@
+import type { ClassId } from "../icons/types";
+
 /** How the player scoped the lucky-roll setup (client + API telemetry). */
 export type IntentDepth = "quick" | "balanced" | "dialed_in";
 
@@ -54,5 +56,14 @@ export type BuildIntentSignals = {
   raceMode?: "user_pick" | "signal_inferred" | "optimize_theme" | "surprise";
   pickedRace?: string;
   factionPreference?: "horde" | "alliance";
+  /**
+   * Optional class/race intent vectors:
+   * - preferred* = whitelist bias
+   * - excluded* = blacklist hard filter
+   */
+  preferredClasses?: ClassId[];
+  excludedClasses?: ClassId[];
+  preferredRaces?: string[];
+  excludedRaces?: string[];
   genderLean?: "masculine" | "feminine" | "neutral";
 };

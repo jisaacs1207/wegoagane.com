@@ -29,6 +29,25 @@ function envNumber(value: string | undefined, fallback: number): number {
   return parsed;
 }
 
+function normalizeRaceToken(v: string): string {
+  return v.trim().toLowerCase().replace(/\s+/g, "_");
+}
+
+function filterByRaceIntents(
+  pool: Archetype[],
+  preferredRaces: string[] | undefined,
+  excludedRaces: string[] | undefined,
+): Archetype[] {
+  const pref = new Set((preferredRaces ?? []).map(normalizeRaceToken));
+  const excl = new Set((excludedRaces ?? []).map(normalizeRaceToken));
+  return pool.filter((a) => {
+    const race = normalizeRaceToken(a.raceSuggestion ?? "");
+    if (race && excl.has(race)) return false;
+    if (pref.size === 0) return true;
+    return race ? pref.has(race) : false;
+  });
+}
+
 function readMemoryConfig(c: Context<ApiEnv>): MemoryRankingConfig & { lookbackLimit: number } {
   return {
     enabled: envFlag(c.env.MEMORY_BIAS_ENABLED, true),
@@ -164,6 +183,7 @@ export async function handleRecommend(c: Context<ApiEnv>) {
     const strictViability = computeViability(input);
     let viability = strictViability;
     let archetypePool = filterArchetypesByViability(archetypeCatalog, viability);
+    archetypePool = filterByRaceIntents(archetypePool, input.signals.preferredRaces, input.signals.excludedRaces);
     const aiReady = getAiGateStatus(c.env).ready;
     let filterRelaxedForAi = false;
 
@@ -184,6 +204,7 @@ export async function handleRecommend(c: Context<ApiEnv>) {
         notes: [...strictViability.notes, ...relaxed.notes],
       };
       archetypePool = filterArchetypesByViability(archetypeCatalog, viability);
+      archetypePool = filterByRaceIntents(archetypePool, input.signals.preferredRaces, input.signals.excludedRaces);
       filterRelaxedForAi = true;
       if (archetypePool.length === 0) {
         c.executionCtx.waitUntil(
@@ -274,6 +295,7 @@ export async function handleRecommend(c: Context<ApiEnv>) {
           notes: [...strictViability.notes, ...relaxed.notes],
         };
         archetypePool = filterArchetypesByViability(archetypeCatalog, viability);
+        archetypePool = filterByRaceIntents(archetypePool, input.signals.preferredRaces, input.signals.excludedRaces);
         filterRelaxedForAi = true;
         if (archetypePool.length === 0) {
           c.executionCtx.waitUntil(
