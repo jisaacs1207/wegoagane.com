@@ -1,7 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { type DestinyFixture } from "../../content/cardFixtures";
-import { wowPackUrl } from "../../content/identityAssets";
 import { DestinyCard } from "../../components/cards/DestinyCard";
 import {
   commitJourneyBuild,
@@ -159,6 +158,9 @@ export function PlanResultStep() {
     try {
       const intent = sessionStorage.getItem(SessionKeys.plan.intent) ?? undefined;
       const freeform = sessionStorage.getItem(SessionKeys.plan.freeform) ?? undefined;
+      const ipRaw = sessionStorage.getItem(SessionKeys.plan.identityPriority);
+      const identityPriority =
+        ipRaw === "class_first" || ipRaw === "race_first" ? (ipRaw as "class_first" | "race_first") : undefined;
 
       if (reason === "wrong_goals") {
         rememberReroll(reason, destiny.classId);
@@ -186,12 +188,14 @@ export function PlanResultStep() {
         signals: {
           intent,
           freeform: augmentFreeformWithPower(freeform, SessionKeys.plan.buildIntent),
+          identityPriority,
           memoryHints: buildMemoryHints(),
           recommendVariantId: recommendVariantId ?? undefined,
           ...readBuildIntent(SessionKeys.plan.buildIntent),
           excludedClasses:
             reason === "wrong_class" || reason === "just_curious" ? [destiny.classId] : undefined,
           preferredClass: reason === "wrong_energy" || reason === "almost_right" ? destiny.classId : undefined,
+          intentDepth: "dialed_in",
         },
       });
       rememberReroll(reason, destiny.classId);
@@ -333,6 +337,7 @@ export function PlanResultStep() {
         </div>
       ) : (
         <>
+          <div className="plan-result-hero">
           <div className="flow-crumbs" aria-label="Flow navigation">
             <span className="flow-crumb">
               <Link to="/">Home</Link>
@@ -366,12 +371,11 @@ export function PlanResultStep() {
             data={destiny}
             intentSignals={cardIntentSignals ?? readBuildIntent(SessionKeys.plan.buildIntent)}
           />
-          <div
-            className="card icon-motif-card"
-            style={{ marginTop: 12, ["--motif-url" as string]: `url(${wowPackUrl("Trade", "engineering.png")})` }}
-          >
-            <p className="ui-caption">How close is this to what you wanted?</p>
-            <div className="flow-nav" style={{ marginTop: 10 }}>
+          <div className="card" style={{ marginTop: 12 }}>
+            <p className="ui-caption" style={{ marginBottom: 8 }}>
+              Quick vibe check — helps us tune copy and defaults.
+            </p>
+            <div className="flow-nav flow-nav--wrap" style={{ marginTop: 0 }}>
               <button
                 type="button"
                 className={`btn-ghost ${feedbackChoice === "closer" ? "chip-btn--on" : ""}`}
@@ -384,14 +388,14 @@ export function PlanResultStep() {
                   });
                 }}
               >
-                Pretty close
+                Feels right
               </button>
               <button
                 type="button"
                 className={`btn-ghost ${feedbackChoice === "off" ? "chip-btn--on" : ""}`}
                 onClick={() => setFeedbackChoice("off")}
               >
-                Off target
+                Not quite
               </button>
             </div>
             {feedbackChoice === "off" ? (
@@ -417,22 +421,20 @@ export function PlanResultStep() {
               </div>
             ) : null}
           </div>
-          {destinyId ? (
-            <div className="flow-nav" style={{ marginTop: 12 }}>
-              <Link to="/draft-a-run/intent" className="btn-ghost">
-                Edit setup
-              </Link>
-            </div>
-          ) : null}
+          </div>
+
           <div className="card" style={{ marginTop: 12 }}>
-            <p className="ui-caption">Character name (optional, used on memorial only)</p>
+            <p className="step-label">Optional name</p>
+            <p className="ui-caption" style={{ marginTop: 0, marginBottom: 8 }}>
+              For memorials only. Tap a suggestion or type your own.
+            </p>
             <input
               value={commitName}
               onChange={(event) => setCommitName(event.target.value)}
               maxLength={80}
               placeholder="e.g. Stonkee"
-              aria-label="Character name (optional, used on memorial only)"
-              style={{ marginTop: 8, width: "100%" }}
+              aria-label="Optional character name for memorial"
+              style={{ width: "100%" }}
             />
             {nameSuggestions.length > 0 ? (
               <div className="chip-row" style={{ marginTop: 8 }}>
@@ -443,122 +445,119 @@ export function PlanResultStep() {
                 ))}
               </div>
             ) : null}
-            <div className="flow-nav flow-nav--wrap" style={{ marginTop: 8 }}>
-              <button
-                type="button"
-                className={`btn-ghost ${nameLane === "hc_practical" ? "chip-btn--on" : ""}`}
-                onClick={() => setNameLane("hc_practical")}
-              >
-                Practical
-              </button>
-              <button
-                type="button"
-                className={`btn-ghost ${nameLane === "lore_world" ? "chip-btn--on" : ""}`}
-                onClick={() => setNameLane("lore_world")}
-              >
-                Lore
-              </button>
-              <button
-                type="button"
-                className={`btn-ghost ${nameLane === "neutral" ? "chip-btn--on" : ""}`}
-                onClick={() => setNameLane("neutral")}
-              >
-                Neutral
-              </button>
-            </div>
-            <div className="flow-nav flow-nav--wrap" style={{ marginTop: 8 }}>
-              <button type="button" className={`btn-ghost ${nameMode === "reflective" ? "chip-btn--on" : ""}`} onClick={() => setNameMode("reflective")}>
-                Match this build
-              </button>
-              <button type="button" className={`btn-ghost ${nameMode === "high_variance" ? "chip-btn--on" : ""}`} onClick={() => setNameMode("high_variance")}>
-                Higher variance
-              </button>
-              <button type="button" className={`btn-ghost ${nameMode === "humor" ? "chip-btn--on" : ""}`} onClick={() => setNameMode("humor")}>
-                Light humor
-              </button>
-            </div>
-            <label className="ui-caption" style={{ display: "block", marginTop: 8 }}>
-              Name variance: {Math.round(nameVariance * 100)}%
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={Math.round(nameVariance * 100)}
-                onChange={(e) => setNameVariance(Number(e.target.value) / 100)}
-                style={{ width: "100%" }}
-              />
-            </label>
-            <div className="flow-nav" style={{ marginTop: 10 }}>
-              <button
-                type="button"
-                className="btn-ghost"
-                disabled={isLoadingNames || !sessionId}
-                onClick={() => void loadGeneratedNames(false)}
-              >
-                {isLoadingNames ? "Loading..." : "New name set"}
-              </button>
+            <div className="flow-nav flow-nav--wrap" style={{ marginTop: 10 }}>
               <button
                 type="button"
                 className="btn-ghost"
                 disabled={isLoadingNames || !sessionId}
                 onClick={() => void loadGeneratedNames(true)}
               >
-                Shuffle names
+                {isLoadingNames ? "Loading…" : "Refresh suggestions"}
               </button>
               <button type="button" className="btn-primary" disabled={isSubmitting} onClick={() => void commitBuild()}>
                 Save build URL
               </button>
             </div>
+            <details className="name-advanced-panel">
+              <summary>Style &amp; variance</summary>
+              <div className="flow-nav flow-nav--wrap" style={{ marginTop: 8 }}>
+                <button
+                  type="button"
+                  className={`btn-ghost ${nameLane === "hc_practical" ? "chip-btn--on" : ""}`}
+                  onClick={() => setNameLane("hc_practical")}
+                >
+                  Practical
+                </button>
+                <button
+                  type="button"
+                  className={`btn-ghost ${nameLane === "lore_world" ? "chip-btn--on" : ""}`}
+                  onClick={() => setNameLane("lore_world")}
+                >
+                  Lore
+                </button>
+                <button
+                  type="button"
+                  className={`btn-ghost ${nameLane === "neutral" ? "chip-btn--on" : ""}`}
+                  onClick={() => setNameLane("neutral")}
+                >
+                  Neutral
+                </button>
+              </div>
+              <div className="flow-nav flow-nav--wrap" style={{ marginTop: 8 }}>
+                <button
+                  type="button"
+                  className={`btn-ghost ${nameMode === "reflective" ? "chip-btn--on" : ""}`}
+                  onClick={() => setNameMode("reflective")}
+                >
+                  Match this build
+                </button>
+                <button
+                  type="button"
+                  className={`btn-ghost ${nameMode === "high_variance" ? "chip-btn--on" : ""}`}
+                  onClick={() => setNameMode("high_variance")}
+                >
+                  Higher variance
+                </button>
+                <button type="button" className={`btn-ghost ${nameMode === "humor" ? "chip-btn--on" : ""}`} onClick={() => setNameMode("humor")}>
+                  Light humor
+                </button>
+              </div>
+              <label className="ui-caption" style={{ display: "block", marginTop: 8 }}>
+                Variance: {Math.round(nameVariance * 100)}%
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={Math.round(nameVariance * 100)}
+                  onChange={(e) => setNameVariance(Number(e.target.value) / 100)}
+                  style={{ width: "100%" }}
+                />
+              </label>
+            </details>
           </div>
-          <p className="ui-body-sm" style={{ marginTop: 14 }}>
-        Planning mode skips memorial chrome — only the next Destiny card is shown here.
-      </p>
-      <div className="card" style={{ marginTop: 12 }}>
-        <p className="ui-body-sm">
-          Before rerolling, tell us what felt off so the next result mutates in the right direction.
-        </p>
-        <label className="ui-caption" style={{ marginTop: 10, display: "block" }}>
-          Optional note
-          <textarea
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            maxLength={240}
-            placeholder="What should change next time?"
-            style={{
-              marginTop: 6,
-              width: "100%",
-              minHeight: 72,
-              resize: "vertical",
-              borderRadius: 10,
-              border: "1px solid var(--line)",
-              background: "var(--card)",
-              color: "var(--text)",
-              padding: 10,
-              fontSize: "var(--type-body-sm)",
-              fontFamily: "inherit",
-            }}
-          />
-        </label>
-        <div className="flow-nav" style={{ marginTop: 12 }}>
-          <button type="button" className="btn-primary" disabled={isSubmitting || !destinyId} onClick={() => void acceptAndOpenPostRating()}>
-            Accept result
-          </button>
-          <button
-            type="button"
-            className="btn-ghost"
-            disabled={isSubmitting || !destinyId}
-            onClick={() => navigate("/reroll/plan")}
-          >
-            Reroll with feedback
-          </button>
-        </div>
 
-        {actionMessage ? (
-          <p className="ui-caption" style={{ marginTop: 10, marginBottom: 0 }} role="status" aria-live="polite">
-            {actionMessage}
-          </p>
-        ) : null}
-      </div>
+          <div className="card" style={{ marginTop: 12 }}>
+            <p className="ui-body-sm" style={{ marginTop: 0 }}>
+              Happy with this roll? Accept locks it in. Reroll sends a short note so the next pick drifts the right way
+              — no extra memorial steps here.
+            </p>
+            <label className="ui-caption" style={{ marginTop: 10, display: "block" }}>
+              Note for reroll (optional)
+              <textarea
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                maxLength={240}
+                placeholder="What should change next time?"
+                style={{
+                  marginTop: 6,
+                  width: "100%",
+                  minHeight: 72,
+                  resize: "vertical",
+                  borderRadius: 10,
+                  border: "1px solid var(--line)",
+                  background: "var(--card)",
+                  color: "var(--text)",
+                  padding: 10,
+                  fontSize: "var(--type-body-sm)",
+                  fontFamily: "inherit",
+                }}
+              />
+            </label>
+            <div className="flow-nav" style={{ marginTop: 12 }}>
+              <button type="button" className="btn-primary" disabled={isSubmitting || !destinyId} onClick={() => void acceptAndOpenPostRating()}>
+                Accept &amp; continue
+              </button>
+              <button type="button" className="btn-ghost" disabled={isSubmitting || !destinyId} onClick={() => navigate("/reroll/plan")}>
+                Reroll with note
+              </button>
+            </div>
+
+            {actionMessage ? (
+              <p className="ui-caption" style={{ marginTop: 10, marginBottom: 0 }} role="status" aria-live="polite">
+                {actionMessage}
+              </p>
+            ) : null}
+          </div>
         </>
       )}
       <div className="flow-nav" style={{ marginTop: 8 }}>

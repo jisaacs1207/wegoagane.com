@@ -198,10 +198,8 @@ export function LuckyJourneyStep() {
           <p className="hero-sub" style={{ marginBottom: 0 }}>
             Rolling HC-safe filters and generating your run now.
           </p>
-          <div className="entry-icon-row entry-icon-row--overlap" style={{ marginTop: 10 }}>
-            <IdentityPortrait src={wowPackUrl("Miscellaneous", "Dice_02.png")} alt="" className="entry-icon" />
-            <IdentityPortrait src={wowPackUrl("Spells", "StarFire.png")} alt="" className="entry-icon" />
-            <IdentityPortrait src={wowPackUrl("Abilities", "BloodFrenzy.png")} alt="" className="entry-icon" />
+          <div className="lucky-intro-motif" aria-hidden>
+            <IdentityPortrait src={wowPackUrl("Miscellaneous", "Dice_02.png")} alt="" className="lucky-intro-motif__img" />
           </div>
           <div className="flow-nav" style={{ marginTop: 12 }}>
             <button
@@ -240,10 +238,8 @@ export function LuckyJourneyStep() {
         <p className="hero-sub" style={{ marginBottom: 0 }}>
           Fast path: pick priorities and generate a commit-ready run.
         </p>
-        <div className="entry-icon-row entry-icon-row--overlap" style={{ marginTop: 10 }}>
-          <IdentityPortrait src={wowPackUrl("Miscellaneous", "Dice_02.png")} alt="" className="entry-icon" />
-          <IdentityPortrait src={wowPackUrl("Spells", "StarFire.png")} alt="" className="entry-icon" />
-          <IdentityPortrait src={wowPackUrl("Abilities", "BloodFrenzy.png")} alt="" className="entry-icon" />
+        <div className="lucky-intro-motif" aria-hidden>
+          <IdentityPortrait src={wowPackUrl("Miscellaneous", "Dice_02.png")} alt="" className="lucky-intro-motif__img" />
         </div>
       </div>
       <BuildIntentChips

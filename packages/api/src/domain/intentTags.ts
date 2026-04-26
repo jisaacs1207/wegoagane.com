@@ -4,6 +4,12 @@ function normalizeText(...parts: Array<string | undefined>): string {
   return parts.filter(Boolean).join(" ").toLowerCase();
 }
 
+function identityPriorityHint(p: RecommendInput["signals"]["identityPriority"]): string | undefined {
+  if (p === "class_first") return "prioritize class fantasy before race";
+  if (p === "race_first") return "prioritize race and faction before class";
+  return undefined;
+}
+
 /** Keyword inference from mood/intent/freeform (legacy ranker behavior). */
 export function inferTagsFromFreeText(input: RecommendInput): string[] {
   const text = normalizeText(
@@ -11,6 +17,7 @@ export function inferTagsFromFreeText(input: RecommendInput): string[] {
     input.signals.nextSignal,
     input.signals.mood,
     input.signals.freeform,
+    identityPriorityHint(input.signals.identityPriority),
   );
 
   const tags = new Set<string>();

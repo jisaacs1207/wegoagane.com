@@ -83,6 +83,7 @@ export const recommendInputSchema = z.object({
     nextSignal: z.string().max(80).optional(),
     intent: z.string().max(120).optional(),
     freeform: z.string().max(240).optional(),
+    identityPriority: z.enum(["class_first", "race_first"]).optional(),
     factionPreference: z.enum(factionValues).optional(),
     excludedClasses: z.array(z.enum(classValues)).max(6).optional(),
     preferredClass: z.enum(classValues).optional(),

@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { IdentityPortrait } from "../components/IdentityPortrait";
 import { wowPackUrl } from "../content/identityAssets";
 import type { BuildIntentSignals } from "../lib/buildIntentTypes";
 import { fetchGrowthAssignment, submitGrowthOutcome } from "../lib/recommendClient";
@@ -92,16 +91,10 @@ export function HomePage() {
               });
             }}
           >
-            <IdentityPortrait src={wowPackUrl("Miscellaneous", "Dice_01.png")} alt="" className="entry-emblem" />
-            <span className="entry-badges">
-              <IdentityPortrait src={wowPackUrl("Spells", "StarFire.png")} alt="" className="entry-badge" />
-              <IdentityPortrait src={wowPackUrl("Abilities", "BloodFrenzy.png")} alt="" className="entry-badge" />
-            </span>
             <span className="entry-btn-title">Quick build</span>
-            <span className="entry-btn-desc">Randomized HC-safe filters, AI-leaning generation, minimal clicks.</span>
+            <span className="entry-btn-desc">One tap — we roll safe filters and generate a run you can save.</span>
             <span className="entry-pill-row">
-              <span className="entry-pill">Auto-seeded filters</span>
-              <span className="entry-pill">Fastest path</span>
+              <span className="entry-pill">Fastest</span>
               <span className="entry-pill">Commit-ready</span>
             </span>
           </Link>
@@ -114,6 +107,10 @@ export function HomePage() {
             onFocus={() => setActiveEntry("detailed")}
             onBlur={() => setActiveEntry(null)}
             onClick={() => {
+              sessionStorage.removeItem(SessionKeys.plan.intent);
+              sessionStorage.removeItem(SessionKeys.plan.intentGoalId);
+              sessionStorage.removeItem(SessionKeys.plan.identityPriority);
+              sessionStorage.removeItem(SessionKeys.plan.freeform);
               sessionStorage.removeItem(SessionKeys.plan.buildIntent);
               sessionStorage.removeItem(SessionKeys.plan.buildIntentDepth);
               sessionStorage.removeItem(SessionKeys.plan.buildIntentPowerCurve);
@@ -125,27 +122,21 @@ export function HomePage() {
               });
             }}
           >
-            <IdentityPortrait src={wowPackUrl("Abilities", "SwordandBoard.png")} alt="" className="entry-emblem" />
-            <span className="entry-badges">
-              <IdentityPortrait src={wowPackUrl("Trade", "engineering.png")} alt="" className="entry-badge" />
-              <IdentityPortrait src={wowPackUrl("Trade", "herbalism.png")} alt="" className="entry-badge" />
-            </span>
             <span className="entry-btn-title">Detailed build</span>
-            <span className="entry-btn-desc">Choose exact priorities, professions, playstyle, and identity preferences.</span>
+            <span className="entry-btn-desc">Goal, identity order, filters — you steer every step, then save.</span>
             <span className="entry-pill-row">
-              <span className="entry-pill">High control</span>
-              <span className="entry-pill">Granular tuning</span>
-              <span className="entry-pill">Refine + commit</span>
+              <span className="entry-pill">Full control</span>
+              <span className="entry-pill">Filters + review</span>
             </span>
           </Link>
         </div>
         <div className="flow-nav" style={{ marginTop: 12 }}>
           <Link to="/release-spirit/next" className="btn-ghost">
-            I died - recover from death
+            I died — pick up from here
           </Link>
         </div>
         <p className="ui-caption" style={{ margin: "18px 0 0", color: "var(--td)" }}>
-          Every generation creates a bookmarkable build URL for revisits, help, and memorial updates.
+          Saved builds get a stable link for guides, guild help, and memorials.
         </p>
       </div>
     </div>

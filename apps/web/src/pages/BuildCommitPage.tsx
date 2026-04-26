@@ -162,7 +162,21 @@ export function BuildCommitPage() {
   }, [record]);
 
   if (loading) {
-    return <div className="card">Loading committed build…</div>;
+    return (
+      <div className="card commit-page-shell" style={{ padding: 22 }}>
+        <p className="step-label">Build artifact</p>
+        <h1 className="hero-question" style={{ marginBottom: 8 }}>
+          Loading your build…
+        </h1>
+        <p className="hero-sub" style={{ marginBottom: 0 }}>
+          Pulling the saved sheet and talents. Almost there.
+        </p>
+        <div className="forge-status-row" style={{ marginTop: 16 }} aria-hidden>
+          <div className="forge-spinner" />
+          <span className="ui-caption">Syncing</span>
+        </div>
+      </div>
+    );
   }
   if (!record || !destiny) {
     return (
@@ -251,7 +265,7 @@ export function BuildCommitPage() {
 
       <div className="card commit-hero">
         <div className="commit-hero__title">
-          <p className="step-label">Committed hardcore build</p>
+          <p className="step-label">Your saved build</p>
           <h1 className="hero-question" style={{ marginBottom: 4 }}>
             {headline}
           </h1>
@@ -273,23 +287,28 @@ export function BuildCommitPage() {
             className="btn-primary share-rail__btn"
             onClick={() => void copyText(shareUrl, "url")}
           >
-            {copyState === "url" ? "Copied" : "Copy URL"}
+            {copyState === "url" ? "Copied" : "Copy link"}
           </button>
-          <button
-            type="button"
-            className="btn-ghost share-rail__btn"
-            onClick={() => void copyText(`[${headline}](${shareUrl})`, "md")}
-          >
-            {copyState === "md" ? "Copied" : "Copy as markdown"}
-          </button>
-          <button
-            type="button"
-            className="btn-ghost share-rail__btn"
-            disabled={shareBusy}
-            onClick={() => void openShareImage()}
-          >
-            {shareBusy ? "Opening…" : "Open share image"}
-          </button>
+          <details className="share-rail__details">
+            <summary className="btn-ghost share-rail__btn share-rail__summary">More export</summary>
+            <div className="share-rail__details-body">
+              <button
+                type="button"
+                className="btn-ghost share-rail__btn"
+                onClick={() => void copyText(`[${headline}](${shareUrl})`, "md")}
+              >
+                {copyState === "md" ? "Copied" : "Copy as markdown"}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost share-rail__btn"
+                disabled={shareBusy}
+                onClick={() => void openShareImage()}
+              >
+                {shareBusy ? "Opening…" : "Open share image"}
+              </button>
+            </div>
+          </details>
         </div>
       </div>
 
@@ -310,32 +329,38 @@ export function BuildCommitPage() {
                   navigate("/draft-a-run/intent");
                 }}
               >
-                Retool from this
+                Retool from this build
               </button>
-              <button
-                type="button"
-                className="btn-ghost"
-                onClick={() => void copyText(shareUrl, "url")}
-              >
-                {copyState === "url" ? "Copied" : "Copy URL"}
-              </button>
-              <button
-                type="button"
-                className="btn-ghost"
-                disabled={shareBusy}
-                onClick={() => void openShareImage()}
-              >
-                Open share image
-              </button>
+              <div className="commit-action-bar__tools">
+                <button
+                  type="button"
+                  className="commit-icon-btn"
+                  onClick={() => void copyText(shareUrl, "url")}
+                  title="Copy build URL"
+                >
+                  <span className="sr-only">Copy build URL</span>
+                  <span aria-hidden>⎘</span>
+                </button>
+                <button
+                  type="button"
+                  className="commit-icon-btn"
+                  disabled={shareBusy}
+                  onClick={() => void openShareImage()}
+                  title="Open share image"
+                >
+                  <span className="sr-only">Open share image</span>
+                  <span aria-hidden>↗</span>
+                </button>
+              </div>
             </div>
           </div>
 
           <div className="card" style={{ marginTop: 12 }}>
-            <p style={{ marginTop: 0, marginBottom: 6 }}>Mark character dead</p>
+            <p style={{ marginTop: 0, marginBottom: 6 }}>Remember this death (optional)</p>
             <p className="ui-caption" style={{ marginTop: 0, marginBottom: 10, color: "var(--ts)" }}>
-              Optional. Logs a memorial for this run; the build URL stays live either way.
+              Adds a memorial note to this run. Your build link stays the same either way.
             </p>
-            <div className="chip-row">
+            <div className="memorial-quick-grid">
               <input value={zone} onChange={(e) => setZone(e.target.value)} placeholder="Zone" />
               <input value={cause} onChange={(e) => setCause(e.target.value)} placeholder="Cause of death" />
             </div>
