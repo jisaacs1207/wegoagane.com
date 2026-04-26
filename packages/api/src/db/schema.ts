@@ -1,4 +1,4 @@
-import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const sessions = sqliteTable("sessions", {
   id: text("id").primaryKey(),
@@ -235,7 +235,12 @@ export const buildCommits = sqliteTable("build_commits", {
   archetypeKey: text("archetype_key"),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
-});
+},
+(t) => [
+  index("idx_build_commits_status_created_at").on(t.status, t.createdAt),
+  index("idx_build_commits_status_rating").on(t.status, t.ratingScore),
+],
+);
 
 export const buildCommitFeedback = sqliteTable("build_commit_feedback", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -245,7 +250,9 @@ export const buildCommitFeedback = sqliteTable("build_commit_feedback", {
   note: text("note"),
   action: text("action"),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
-});
+},
+(t) => [index("idx_build_commit_feedback_commit_session").on(t.buildCommitId, t.sessionId)],
+);
 
 export const memorialRuns = sqliteTable("memorial_runs", {
   id: text("id").primaryKey(),
@@ -328,7 +335,12 @@ export const aiFragmentCache = sqliteTable("ai_fragment_cache", {
   hitCount: integer("hit_count").notNull().default(0),
   lastUsedAt: integer("last_used_at", { mode: "timestamp_ms" }).notNull(),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
-});
+},
+(t) => [
+  index("idx_ai_fragment_cache_kind_class_arch").on(t.kind, t.classId, t.archetypeKey),
+  index("idx_ai_fragment_cache_last_used").on(t.lastUsedAt),
+],
+);
 
 export const candidateEvents = sqliteTable("candidate_events", {
   id: text("id").primaryKey(),
