@@ -70,6 +70,13 @@ export function tagsFromStructuredSignals(input: RecommendInput): string[] {
     if (v === "demonic" || v === "nature" || v === "holy") out.add("off_beaten");
   }
 
+  if (s.soloSelfFound) {
+    out.add("solo");
+    out.add("self_found");
+    out.add("steady");
+    out.delete("group_ok");
+  }
+
   return [...out];
 }
 

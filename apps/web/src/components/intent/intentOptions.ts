@@ -1,7 +1,48 @@
 import type { BuildIntentSignals, IntentDepth } from "../../lib/buildIntentTypes";
+import { wowPackUrl } from "../../content/identityAssets";
 
 export type { IntentDepth } from "../../lib/buildIntentTypes";
 export type CorePreset = "safe" | "balanced" | "bold";
+
+/** UI-side single-profession id (NOT a server tag). Primary picker emits one; secondary picker emits one. */
+export type ProfessionId =
+  | "engineering"
+  | "alchemy"
+  | "herbalism"
+  | "mining"
+  | "tailoring"
+  | "leatherworking"
+  | "blacksmithing"
+  | "enchanting"
+  | "skinning"
+  | "auction_house";
+
+export type ProfessionOption = {
+  id: ProfessionId;
+  label: string;
+  iconUrl: string;
+  /** When true, this option is hidden if soloSelfFound is on. */
+  hideUnderSsf?: boolean;
+};
+
+/** Profession tags that act as a single "anchor" row in legacy paired-chip flows (filter + question stacks). */
+export const PROFESSION_INTENT_ANCHOR_TAGS = new Set<string>([
+  "engineering_outs",
+  "herbalism_alchemy_pair",
+  "tailoring_bags_arcane",
+  "blacksmith_weaponsmith_fantasy",
+  "leatherworker_hunter_synergy",
+  "auction_house_play",
+]);
+
+/** Remove SSF-incompatible tags from a signal slice (used after quick roll + for balanced fill defaults). */
+export function stripSsfIncompatibleSignals(s: BuildIntentSignals): BuildIntentSignals {
+  return {
+    ...s,
+    professionIntents: (s.professionIntents ?? []).filter((p) => p !== "auction_house_play") as BuildIntentSignals["professionIntents"],
+    buildVectors: (s.buildVectors ?? []).filter((v) => v !== "group_ok") as BuildIntentSignals["buildVectors"],
+  };
+}
 
 export const STAT_OPTIONS = [
   { id: "stamina_forward", label: "Stam first" },
@@ -16,21 +57,109 @@ export const STAT_OPTIONS = [
 export const PROF_OPTIONS = [
   { id: "engineering_outs", label: "Engineering" },
   { id: "first_aid_mandatory_mindset", label: "First Aid heavy" },
-  { id: "herbalism_alchemy_pair", label: "Herb + Alch" },
-  { id: "alchemy_consumables", label: "Potion economy" },
-  { id: "mining_engineering_pair", label: "Mine + Eng" },
-  { id: "dual_gathering_bootstrap", label: "Dual gather" },
-  { id: "skinning_mining_early", label: "Skin + mine early" },
-  { id: "leatherworker_hunter_synergy", label: "LW + leather" },
-  { id: "tailoring_bags_arcane", label: "Tailor + bags" },
-  { id: "enchanter_disenchant_route", label: "Enchant + DE" },
-  { id: "blacksmith_weaponsmith_fantasy", label: "Smith fantasy" },
+  { id: "herbalism_alchemy_pair", label: "Herb + Alchemy" },
+  { id: "alchemy_consumables", label: "Alchemy" },
+  { id: "mining_engineering_pair", label: "Mining + Engineering" },
+  { id: "dual_gathering_bootstrap", label: "Dual gathering" },
+  { id: "skinning_mining_early", label: "Skinning + Mining" },
+  { id: "leatherworker_hunter_synergy", label: "Leatherworking + Skinning" },
+  { id: "tailoring_bags_arcane", label: "Tailoring" },
+  { id: "enchanter_disenchant_route", label: "Enchanting" },
+  { id: "blacksmith_weaponsmith_fantasy", label: "Blacksmithing" },
   { id: "cooking_high_value", label: "Cooking focus" },
-  { id: "fishing_supports_cooking", label: "Fish + cook" },
+  { id: "fishing_supports_cooking", label: "Fish + Cook" },
   { id: "fishing_optional", label: "Fishing optional" },
   { id: "early_gathering_then_pivot_engineering", label: "Gather then Eng pivot" },
-  { id: "auction_house_play", label: "Auction house play" },
+  { id: "auction_house_play", label: "Auction house" },
 ] as const;
+
+/**
+ * Single-profession picker catalog (UI-only).
+ * Fishing, Cooking, and First Aid are intentionally excluded — they're assumed always available.
+ * Order roughly matches the WoW profession trainer panel.
+ */
+export const PROFESSION_PICKER_OPTIONS: ProfessionOption[] = [
+  { id: "engineering", label: "Engineering", iconUrl: wowPackUrl("Trade", "engineering.png") },
+  { id: "alchemy", label: "Alchemy", iconUrl: wowPackUrl("Trade", "alchemy.png") },
+  { id: "herbalism", label: "Herbalism", iconUrl: wowPackUrl("Trade", "herbalism.png") },
+  { id: "mining", label: "Mining", iconUrl: wowPackUrl("Trade", "mining.png") },
+  { id: "tailoring", label: "Tailoring", iconUrl: wowPackUrl("Trade", "tailoring.png") },
+  { id: "leatherworking", label: "Leatherworking", iconUrl: wowPackUrl("Trade", "leatherworking.png") },
+  { id: "blacksmithing", label: "Blacksmithing", iconUrl: wowPackUrl("Trade", "blacksmithing.png") },
+  { id: "enchanting", label: "Enchanting", iconUrl: wowPackUrl("Trade", "Disenchant.png") },
+  { id: "skinning", label: "Skinning", iconUrl: wowPackUrl("Trade", "leatherworking.png") },
+  { id: "auction_house", label: "Auction-house focus", iconUrl: wowPackUrl("Miscellaneous", "Coin_01.png"), hideUnderSsf: true },
+];
+
+/**
+ * Convert a single-profession (or pair of single-profession) UI pick into the stored
+ * `ProfessionIntentTag[]` understood by viability + the ranker. Recognises canonical pairs
+ * (Mine+Eng, Herb+Alch, LW+Skin) and falls back to one or two single-profession tags.
+ */
+export function professionPickToTags(
+  primary: ProfessionId | null,
+  secondary: ProfessionId | null = null,
+): NonNullable<BuildIntentSignals["professionIntents"]> {
+  if (!primary && !secondary) return [];
+  const pair = new Set<ProfessionId>();
+  if (primary) pair.add(primary);
+  if (secondary) pair.add(secondary);
+
+  if (pair.has("mining") && pair.has("engineering")) {
+    return ["mining_engineering_pair", "engineering_outs"];
+  }
+  if (pair.has("herbalism") && pair.has("alchemy")) {
+    return ["herbalism_alchemy_pair"];
+  }
+  if (pair.has("leatherworking") && pair.has("skinning")) {
+    return ["leatherworker_hunter_synergy"];
+  }
+  if (pair.has("herbalism") && pair.has("mining")) {
+    return ["dual_gathering_bootstrap"];
+  }
+  if (pair.has("skinning") && pair.has("mining")) {
+    return ["skinning_mining_early"];
+  }
+
+  const single = (id: ProfessionId | null): NonNullable<BuildIntentSignals["professionIntents"]> => {
+    if (!id) return [];
+    switch (id) {
+      case "engineering":
+        return ["engineering_outs"];
+      case "alchemy":
+        return ["alchemy_consumables"];
+      case "herbalism":
+        return ["herbalism_alchemy_pair"];
+      case "mining":
+        return ["mining_engineering_pair"];
+      case "tailoring":
+        return ["tailoring_bags_arcane"];
+      case "leatherworking":
+        return ["leatherworker_hunter_synergy"];
+      case "blacksmithing":
+        return ["blacksmith_weaponsmith_fantasy"];
+      case "enchanting":
+        return ["enchanter_disenchant_route"];
+      case "skinning":
+        return ["dual_gathering_bootstrap"];
+      case "auction_house":
+        return ["auction_house_play"];
+      default:
+        return [];
+    }
+  };
+
+  const merged = new Set<NonNullable<BuildIntentSignals["professionIntents"]>[number]>([
+    ...single(primary),
+    ...single(secondary),
+  ]);
+  return [...merged];
+}
+
+/** Returns the visible profession picker list for the current SSF mode. */
+export function professionOptionsFor(soloSelfFound: boolean): ProfessionOption[] {
+  return PROFESSION_PICKER_OPTIONS.filter((o) => !(o.hideUnderSsf && soloSelfFound));
+}
 
 export const VECTOR_OPTIONS = [
   { id: "solo", label: "Solo" },
@@ -58,9 +187,9 @@ export const RACE_MODES = [
 ] as const;
 
 export const DEPTH_OPTIONS: Array<{ id: IntentDepth; label: string; helper: string }> = [
-  { id: "quick", label: "Quick pick", helper: "Fast start, fewer knobs, still HC-aware." },
-  { id: "balanced", label: "Balanced", helper: "Best first-pass fit for most players." },
-  { id: "dialed_in", label: "Dialed-in", helper: "More inputs, tighter fit, slightly slower." },
+  { id: "quick", label: "Quick pick", helper: "Random bundle from the full filter catalog. Edit, reroll, generate." },
+  { id: "balanced", label: "Balanced", helper: "One primary pillar + one secondary pillar. We infer the rest." },
+  { id: "dialed_in", label: "Dialed-in", helper: "Open every category at once and tune chip-by-chip." },
 ];
 
 export function toggleList(list: string[] | undefined, id: string, max: number): string[] {
@@ -161,10 +290,25 @@ export function fillBalancedAssumptions(s: BuildIntentSignals): BuildIntentSigna
     out.professionIntents = ["engineering_outs", "first_aid_mandatory_mindset"];
   }
   if (!out.buildVectors?.length) {
-    out.buildVectors = ["solo", "hybrid", "group_ok"];
+    out.buildVectors = out.soloSelfFound ? ["solo", "hybrid", "tank"] : ["solo", "hybrid", "group_ok"];
   }
   if (!out.raceMode) out.raceMode = "signal_inferred";
-  return out;
+  return out.soloSelfFound ? stripSsfIncompatibleSignals(out) : out;
+}
+
+/** Quick roll replaces intent chips but keeps identity fields the player may have set later. */
+export function mergeQuickRollPreserveIdentity(
+  base: BuildIntentSignals,
+  rolled: BuildIntentSignals,
+): BuildIntentSignals {
+  const merged = {
+    ...rolled,
+    factionPreference: base.factionPreference,
+    pickedRace: base.pickedRace,
+    genderLean: base.genderLean,
+    soloSelfFound: base.soloSelfFound,
+  };
+  return base.soloSelfFound ? stripSsfIncompatibleSignals(merged) : merged;
 }
 
 /** Human labels for chips the player picked in the build journey. */
@@ -174,5 +318,6 @@ export function signalSummaryLabels(s: BuildIntentSignals): string[] {
   ids.push(...(s.professionIntents ?? []));
   ids.push(...(s.buildVectors ?? []));
   if (s.raceMode) ids.push(s.raceMode);
-  return ids.map((id) => optionLabel(id));
+  const labels = ids.map((id) => optionLabel(id));
+  return s.soloSelfFound ? ["Solo Self Found", ...labels] : labels;
 }

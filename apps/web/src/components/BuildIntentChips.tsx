@@ -5,16 +5,27 @@ import {
   applyCorePreset,
   DEPTH_OPTIONS,
   fillBalancedAssumptions,
+  mergeQuickRollPreserveIdentity,
   optionLabel,
   PROF_OPTIONS,
+  PROFESSION_INTENT_ANCHOR_TAGS,
+  professionPickToTags,
   rollRandomQuickPickSignals,
   STAT_OPTIONS,
   toggleList,
   type CorePreset,
   type IntentDepth,
+  type ProfessionId,
   VECTOR_OPTIONS,
 } from "./intent/intentOptions";
-import { type JourneyVectorKey, VECTOR_JOURNEY_URLS, wowPackUrl } from "../content/identityAssets";
+import { ProfessionPicker } from "./intent/ProfessionPicker";
+import { balancedQuestionFor } from "./intent/vectorQuestions";
+import {
+  DEPTH_JOURNEY_URL,
+  type JourneyVectorKey,
+  VECTOR_JOURNEY_URLS,
+  wowPackUrl,
+} from "../content/identityAssets";
 import { IdentityPortrait } from "./IdentityPortrait";
 import { readPowerCurve, type PowerCurveId } from "../lib/journeySignalsExtras";
 
@@ -30,11 +41,18 @@ type Props = {
   recommendLane?: "curated" | "experimental" | null;
   onRecommendLaneChange?: (lane: "curated" | "experimental") => void;
 };
-type JourneyStep = "depth" | "quick_roll" | "vector" | "question" | "review";
+type JourneyStep =
+  | "depth"
+  | "quick_roll"
+  | "bal_primary"
+  | "bal_secondary"
+  | "dialed_sheet"
+  | "review";
 type VectorKey = JourneyVectorKey;
+type BalancedSlot = "primary" | "secondary";
 
 const VECTOR_ICON_GLIMPSE: Record<VectorKey, string[]> = {
-  profession: [VECTOR_JOURNEY_URLS.profession, wowPackUrl("Trade", "herbalism.png"), wowPackUrl("Trade", "fishing.png")],
+  profession: [VECTOR_JOURNEY_URLS.profession, wowPackUrl("Trade", "herbalism.png"), wowPackUrl("Trade", "mining.png")],
   playstyle: [VECTOR_JOURNEY_URLS.playstyle, wowPackUrl("Abilities", "ShieldReflection.png"), wowPackUrl("Spells", "BurningSpeed.png")],
   class_fantasy: [VECTOR_JOURNEY_URLS.class_fantasy, wowPackUrl("Spells", "StarFall.png"), wowPackUrl("Spells", "ShadowFlame.png")],
   combat_style: [VECTOR_JOURNEY_URLS.combat_style, wowPackUrl("Abilities", "AimedShot.png"), wowPackUrl("Abilities", "ShieldBash.png")],
@@ -70,14 +88,29 @@ const POWER_CURVE_OPTIONS: Array<{ id: PowerCurveId; label: string }> = [
 const QUICK_ADD_STATS = ["stamina_forward", "balanced", "intellect_forward"] as const;
 const QUICK_ADD_PROF = ["engineering_outs", "herbalism_alchemy_pair", "tailoring_bags_arcane"] as const;
 const QUICK_ADD_VECTORS = ["solo", "hybrid", "ranged", "melee"] as const;
-const PRIMARY_PROF_ANCHORS = new Set([
-  "engineering_outs",
-  "herbalism_alchemy_pair",
-  "tailoring_bags_arcane",
-  "blacksmith_weaponsmith_fantasy",
-  "leatherworker_hunter_synergy",
-  "auction_house_play",
-]);
+function profPickStorageKey(storageKey: string) {
+  return `${storageKey}.profPick`;
+}
+
+function readProfPick(storageKey: string): { primary: ProfessionId | null; secondary: ProfessionId | null } {
+  try {
+    const raw = sessionStorage.getItem(profPickStorageKey(storageKey));
+    if (!raw) return { primary: null, secondary: null };
+    const o = JSON.parse(raw) as { primary?: ProfessionId | null; secondary?: ProfessionId | null };
+    return { primary: o.primary ?? null, secondary: o.secondary ?? null };
+  } catch {
+    return { primary: null, secondary: null };
+  }
+}
+
+function writeProfPick(storageKey: string, primary: ProfessionId | null, secondary: ProfessionId | null) {
+  try {
+    if (!primary && !secondary) sessionStorage.removeItem(profPickStorageKey(storageKey));
+    else sessionStorage.setItem(profPickStorageKey(storageKey), JSON.stringify({ primary, secondary }));
+  } catch {
+    /* ignore */
+  }
+}
 
 function readStorage(key: string): BuildIntentSignals {
   try {
@@ -112,6 +145,27 @@ function writeDepth(key: string, depth: IntentDepth) {
   }
 }
 
+function ssfStorageKey(storageKey: string) {
+  return `${storageKey}.ssf`;
+}
+
+function readSsf(key: string): boolean {
+  try {
+    return sessionStorage.getItem(ssfStorageKey(key)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeSsf(key: string, on: boolean) {
+  try {
+    if (on) sessionStorage.setItem(ssfStorageKey(key), "1");
+    else sessionStorage.removeItem(ssfStorageKey(key));
+  } catch {
+    /* ignore */
+  }
+}
+
 
 export function BuildIntentChips({
   storageKey,
@@ -126,29 +180,24 @@ export function BuildIntentChips({
   const [value, setValue] = useState<BuildIntentSignals>(() => readStorage(storageKey));
   const [depth, setDepth] = useState<IntentDepth>(() => readDepth(storageKey));
   const [step, setStep] = useState<JourneyStep>("depth");
-  const [vector, setVector] = useState<VectorKey>("survivability");
-  const [selectedVectors, setSelectedVectors] = useState<VectorKey[]>([]);
-  const [vectorCursor, setVectorCursor] = useState(0);
-  const [questionIndex, setQuestionIndex] = useState(0);
+  const [pulseVector, setPulseVector] = useState<VectorKey | null>(null);
   const [corePreset, setCorePreset] = useState<CorePreset>("balanced");
   const [powerCurve, setPowerCurve] = useState<PowerCurveId | null>(() => readPowerCurve(storageKey));
-  const [pulseVector, setPulseVector] = useState<VectorKey | null>(null);
+  const [soloSelfFound, setSoloSelfFound] = useState<boolean>(() => {
+    if (readSsf(storageKey)) return true;
+    return Boolean(readStorage(storageKey).soloSelfFound);
+  });
+  /** Balanced flow: player's chosen primary + secondary pillars and an in-flight answered flag per slot. */
+  const [balPrimaryPillar, setBalPrimaryPillar] = useState<VectorKey | null>(null);
+  const [balSecondaryPillar, setBalSecondaryPillar] = useState<VectorKey | null>(null);
+  const [profPrimary, setProfPrimary] = useState<ProfessionId | null>(() => readProfPick(storageKey).primary);
+  const [profSecondary, setProfSecondary] = useState<ProfessionId | null>(() => readProfPick(storageKey).secondary);
 
   useEffect(() => {
     if (!pulseVector) return;
     const id = window.setTimeout(() => setPulseVector(null), 260);
     return () => window.clearTimeout(id);
   }, [pulseVector]);
-
-  /** Quick roll replaces intent chips but keeps identity fields the player may have set later. */
-  function mergeQuickRollPreserveIdentity(base: BuildIntentSignals, rolled: BuildIntentSignals): BuildIntentSignals {
-    return {
-      ...rolled,
-      factionPreference: base.factionPreference,
-      pickedRace: base.pickedRace,
-      genderLean: base.genderLean,
-    };
-  }
 
   function persist(next: BuildIntentSignals) {
     const { intentDepth: _strip, ...rest } = next;
@@ -166,7 +215,14 @@ export function BuildIntentChips({
     writeDepth(storageKey, nextDepth);
   }
 
-  const maxVectors = depth === "balanced" ? 2 : 3;
+  function persistSsf(on: boolean) {
+    setSoloSelfFound(on);
+    writeSsf(storageKey, on);
+    persist({ ...value, soloSelfFound: on });
+  }
+
+  /** In Quick mode the player edits chips directly; in Balanced/Dialed-in vectors come from pillar picks. */
+  const maxVectors = depth === "dialed_in" ? 6 : depth === "balanced" ? 4 : 6;
 
   const activeIds = useMemo(() => {
     const ids: string[] = [];
@@ -181,8 +237,9 @@ export function BuildIntentChips({
       storageKey,
       depth,
       step,
-      vector: selectedVectors[vectorCursor] ?? vector,
-      questionIndex,
+      balPrimaryPillar,
+      balSecondaryPillar,
+      soloSelfFound,
       statCount: value.statPhilosophy?.length ?? 0,
       professionCount: value.professionIntents?.length ?? 0,
       vectorCount: value.buildVectors?.length ?? 0,
@@ -192,12 +249,11 @@ export function BuildIntentChips({
     [
       activeIds.length,
       depth,
-      questionIndex,
       step,
       storageKey,
-      vector,
-      selectedVectors,
-      vectorCursor,
+      balPrimaryPillar,
+      balSecondaryPillar,
+      soloSelfFound,
       value.buildVectors?.length,
       value.professionIntents?.length,
       value.raceMode,
@@ -205,13 +261,12 @@ export function BuildIntentChips({
     ],
   );
 
-  const depthHelper = DEPTH_OPTIONS.find((o) => o.id === depth)?.helper;
   const depthFlowCaption =
     depth === "quick"
-      ? "Roll a random bundle from every stat, profession, and playstyle filter. Remove anything you dislike, reroll for a fresh bundle, then review."
+      ? "Random bundle from the full filter catalog. Edit, reroll, generate."
       : depth === "balanced"
-        ? "Pick up to two focus pillars, answer one question each, and we infer the rest for a coherent profile."
-        : "Pick up to three pillars and answer the full question set for the tightest match before review.";
+        ? "One primary pillar + one secondary pillar. We infer the rest."
+        : "Open every category at once and tune chip-by-chip.";
 
   const { stepNumerator, stepDenominator } = useMemo(() => {
     if (depth === "quick") {
@@ -219,206 +274,28 @@ export function BuildIntentChips({
       const idx = Math.max(0, order.indexOf(step));
       return { stepNumerator: idx + 1, stepDenominator: 3 };
     }
-    const order: JourneyStep[] = ["depth", "vector", "question", "review"];
+    if (depth === "dialed_in") {
+      // Single-sheet flow has no numeric counter.
+      return { stepNumerator: 0, stepDenominator: 0 };
+    }
+    const order: JourneyStep[] = ["depth", "bal_primary", "bal_secondary", "review"];
     const idx = Math.max(0, order.indexOf(step));
     return { stepNumerator: idx + 1, stepDenominator: 4 };
   }, [depth, step]);
 
-  const questionsByVector: Record<VectorKey, Array<{ id: string; prompt: string; answers: string[]; apply: (a: string) => BuildIntentSignals }>> = {
-    profession: [
-      {
-        id: "prof_priority",
-        prompt: "Which primary profession anchor do you want?",
-        answers: ["Mining + Engineering", "Herbalism + Alchemy", "Tailoring + Enchanting", "Auction-house focused"],
-        apply: (a) =>
-          ({
-            ...value,
-            professionIntents: [
-              a === "Mining + Engineering"
-                ? "mining_engineering_pair"
-                : a === "Herbalism + Alchemy"
-                  ? "herbalism_alchemy_pair"
-                  : a === "Tailoring + Enchanting"
-                    ? "tailoring_bags_arcane"
-                    : "auction_house_play",
-              ...((value.professionIntents ?? []).filter((p) => !PRIMARY_PROF_ANCHORS.has(p))),
-            ].slice(0, 4) as BuildIntentSignals["professionIntents"],
-          }),
-      },
-      {
-        id: "prof_tempo",
-        prompt: "Pick one secondary focus",
-        answers: ["First Aid mandatory", "Consumable heavy", "Cooking + Fishing", "Gather then pivot"],
-        apply: (a) =>
-          ({
-            ...value,
-            professionIntents: toggleList(
-              value.professionIntents,
-              a === "First Aid mandatory"
-                ? "first_aid_mandatory_mindset"
-                : a === "Consumable heavy"
-                  ? "alchemy_consumables"
-                  : a === "Cooking + Fishing"
-                    ? "fishing_supports_cooking"
-                    : "early_gathering_then_pivot_engineering",
-              4,
-            ) as BuildIntentSignals["professionIntents"],
-          }),
-      },
-    ],
-    playstyle: [
-      {
-        id: "style_risk",
-        prompt: "How much risk are you comfortable with?",
-        answers: ["Very low", "Low", "Balanced", "High"],
-        apply: (a) =>
-          ({
-            ...value,
-            statPhilosophy: toggleList(
-              value.statPhilosophy,
-              a === "Very low" ? "stamina_forward" : a === "Low" ? "balanced" : a === "Balanced" ? "balanced" : "meme_glass",
-              3,
-            ) as BuildIntentSignals["statPhilosophy"],
-          }),
-      },
-      {
-        id: "style_pulls",
-        prompt: "Preferred pull cadence?",
-        answers: ["Singles only", "Controlled chains", "Mixed", "Fast pulls"],
-        apply: (a) =>
-          ({
-            ...value,
-            buildVectors: toggleList(
-              value.buildVectors,
-              a === "Singles only" ? "solo" : a === "Controlled chains" ? "tank" : a === "Mixed" ? "hybrid" : "rage",
-              6,
-            ) as BuildIntentSignals["buildVectors"],
-          }),
-      },
-    ],
-    class_fantasy: [
-      {
-        id: "fantasy_tone",
-        prompt: "Which fantasy tone do you want?",
-        answers: ["Holy", "Nature", "Arcane", "Shadow"],
-        apply: (a) =>
-          ({
-            ...value,
-            buildVectors: toggleList(
-              value.buildVectors,
-              a === "Holy" ? "holy" : a === "Nature" ? "nature" : a === "Arcane" ? "caster" : "demonic",
-              6,
-            ) as BuildIntentSignals["buildVectors"],
-          }),
-      },
-      {
-        id: "fantasy_weapon",
-        prompt: "Weapon style preference?",
-        answers: ["Two-hander", "Dual wield", "Caster focus", "Flexible"],
-        apply: (a) =>
-          ({
-            ...value,
-            buildVectors: toggleList(
-              value.buildVectors,
-              a === "Two-hander" ? "melee" : a === "Dual wield" ? "melee" : a === "Caster focus" ? "caster" : "hybrid",
-              6,
-            ) as BuildIntentSignals["buildVectors"],
-          }),
-      },
-    ],
-    combat_style: [
-      {
-        id: "combat_distance",
-        prompt: "Preferred combat distance?",
-        answers: ["Melee", "Ranged", "Hybrid", "No preference"],
-        apply: (a) =>
-          ({
-            ...value,
-            buildVectors: toggleList(
-              value.buildVectors,
-              a === "Melee" ? "melee" : a === "Ranged" ? "ranged" : a === "Hybrid" ? "hybrid" : "hybrid",
-              6,
-            ) as BuildIntentSignals["buildVectors"],
-          }),
-      },
-      {
-        id: "combat_ctrl",
-        prompt: "More control or more damage pace?",
-        answers: ["High control", "Balanced", "Higher damage pace", "Unpredictable is fine"],
-        apply: (a) =>
-          ({
-            ...value,
-            buildVectors: toggleList(
-              value.buildVectors,
-              a === "High control" ? "tank" : a === "Balanced" ? "hybrid" : a === "Higher damage pace" ? "rage" : "melee",
-              6,
-            ) as BuildIntentSignals["buildVectors"],
-          }),
-      },
-    ],
-    survivability: [
-      {
-        id: "survival_core",
-        prompt: "What survival profile fits you?",
-        answers: ["Never die", "Safe with speed", "Balanced", "High risk/high pace"],
-        apply: (a) =>
-          ({
-            ...value,
-            statPhilosophy: toggleList(
-              value.statPhilosophy,
-              a === "Never die" ? "stamina_forward" : a === "Safe with speed" ? "agility_forward" : a === "Balanced" ? "balanced" : "meme_glass",
-              3,
-            ) as BuildIntentSignals["statPhilosophy"],
-          }),
-      },
-      {
-        id: "survival_recovery",
-        prompt: "Recovery style?",
-        answers: ["Slow and steady", "Burst recovery", "Minimize downtime", "Map aware"],
-        apply: (a) =>
-          ({
-            ...value,
-            buildVectors: toggleList(
-              value.buildVectors,
-              a === "Slow and steady" ? "tank" : a === "Burst recovery" ? "hybrid" : a === "Minimize downtime" ? "solo" : "group_ok",
-              6,
-            ) as BuildIntentSignals["buildVectors"],
-          }),
-      },
-    ],
-    surprise: [
-      {
-        id: "surprise_mode",
-        prompt: "How wild should the surprise be?",
-        answers: ["Low variance", "Balanced", "High variance", "Full wildcard"],
-        apply: (a) => ({ ...value, raceMode: a === "Full wildcard" ? "surprise" : "signal_inferred" }),
-      },
-      {
-        id: "surprise_class",
-        prompt: "Class flexibility for surprise?",
-        answers: ["Any spec ok", "Avoid pet classes", "Prefer hybrid classes", "Full wildcard"],
-        apply: (a) =>
-          ({
-            ...value,
-            buildVectors: toggleList(
-              value.buildVectors,
-              a === "Avoid pet classes"
-                ? "solo"
-                : a === "Prefer hybrid classes"
-                  ? "hybrid"
-                  : a === "Full wildcard"
-                    ? "caster"
-                    : "group_ok",
-              6,
-            ) as BuildIntentSignals["buildVectors"],
-          }),
-      },
-    ],
-  };
-  const activeVector = selectedVectors[vectorCursor] ?? vector;
-  const fullQuestionsForVector = questionsByVector[activeVector];
-  const questionList = depth === "balanced" ? fullQuestionsForVector.slice(0, 1) : fullQuestionsForVector;
-  const currentQuestion = questionList[Math.min(questionIndex, Math.max(0, questionList.length - 1))]!;
+  /**
+   * Persist profession picker state into stored signals via professionPickToTags so the
+   * picker stays the single source of truth for profession intent in Balanced + Dialed-in.
+   */
+  function commitProfessionPicker(primary: ProfessionId | null, secondary: ProfessionId | null) {
+    setProfPrimary(primary);
+    setProfSecondary(secondary);
+    writeProfPick(storageKey, primary, secondary);
+    persist({
+      ...value,
+      professionIntents: professionPickToTags(primary, secondary),
+    });
+  }
 
   function removeActive(id: string) {
     if (value.statPhilosophy?.includes(id as never)) {
@@ -426,10 +303,11 @@ export function BuildIntentChips({
       return;
     }
     if (value.professionIntents?.includes(id as never)) {
-      persist({
-        ...value,
-        professionIntents: value.professionIntents.filter((x) => x !== id) as BuildIntentSignals["professionIntents"],
-      });
+      const nextProf = value.professionIntents.filter((x) => x !== id) as BuildIntentSignals["professionIntents"];
+      persist({ ...value, professionIntents: nextProf });
+      setProfPrimary(null);
+      setProfSecondary(null);
+      writeProfPick(storageKey, null, null);
       return;
     }
     if (value.buildVectors?.includes(id as never)) {
@@ -460,14 +338,17 @@ export function BuildIntentChips({
       return;
     }
     if (PROF_OPTIONS.some((p) => p.id === id)) {
-      const existing = (value.professionIntents ?? []).filter((p) => !PRIMARY_PROF_ANCHORS.has(p));
-      const next = PRIMARY_PROF_ANCHORS.has(id)
+      const existing = (value.professionIntents ?? []).filter((p) => !PROFESSION_INTENT_ANCHOR_TAGS.has(p));
+      const next = PROFESSION_INTENT_ANCHOR_TAGS.has(id)
         ? [id, ...existing].slice(0, 4)
         : toggleList(value.professionIntents, id, 4);
       persist({
         ...value,
         professionIntents: next as BuildIntentSignals["professionIntents"],
       });
+      setProfPrimary(null);
+      setProfSecondary(null);
+      writeProfPick(storageKey, null, null);
       return;
     }
     if (VECTOR_OPTIONS.some((v) => v.id === id)) {
@@ -482,7 +363,9 @@ export function BuildIntentChips({
     try {
       sessionStorage.removeItem(storageKey);
       sessionStorage.removeItem(depthStorageKey(storageKey));
+      sessionStorage.removeItem(ssfStorageKey(storageKey));
       sessionStorage.removeItem(`${storageKey}.powerCurve`);
+      sessionStorage.removeItem(profPickStorageKey(storageKey));
     } catch {
       /* ignore */
     }
@@ -490,12 +373,34 @@ export function BuildIntentChips({
     setDepth("balanced");
     writeDepth(storageKey, "balanced");
     setStep("depth");
-    setVector("survivability");
-    setSelectedVectors([]);
-    setVectorCursor(0);
-    setQuestionIndex(0);
+    setBalPrimaryPillar(null);
+    setBalSecondaryPillar(null);
+    setProfPrimary(null);
+    setProfSecondary(null);
     setCorePreset("balanced");
     setPowerCurve(null);
+    setSoloSelfFound(false);
+    writeSsf(storageKey, false);
+  }
+
+  function startDepthFlow() {
+    if (depth === "quick") {
+      const rolled = rollRandomQuickPickSignals(`${storageKey}|${crypto.randomUUID()}`);
+      persist(mergeQuickRollPreserveIdentity(value, rolled));
+      setStep("quick_roll");
+      return;
+    }
+    if (depth === "balanced") {
+      setStep("bal_primary");
+      return;
+    }
+    setStep("dialed_sheet");
+  }
+
+  function backToTuning() {
+    if (depth === "quick") return setStep("quick_roll");
+    if (depth === "balanced") return setStep(balSecondaryPillar ? "bal_secondary" : "bal_primary");
+    return setStep("dialed_sheet");
   }
 
   return (
@@ -503,17 +408,24 @@ export function BuildIntentChips({
       <p className="step-label" style={{ marginBottom: 8 }}>
         Build setup
       </p>
-      <div className="flow-nav" style={{ marginTop: -4, marginBottom: 8 }}>
-        <button type="button" className="btn-ghost" onClick={resetJourneyFilters}>
-          Reset setup
-        </button>
-      </div>
       <p className="ui-caption" style={{ marginTop: 0, marginBottom: 10 }}>
-        Choose how much control you want, then follow the steps—every path ends on review before generate.
+        Choose how much control you want — each path leads to its own setup before generate.
       </p>
-      <p className="ui-caption" style={{ marginTop: 0, marginBottom: 12 }}>
-        Step {stepNumerator} of {stepDenominator}
-      </p>
+      {stepDenominator > 0 ? (
+        <p className="ui-caption" style={{ marginTop: 0, marginBottom: 12 }}>
+          {depth === "balanced" ? "Balanced · " : depth === "quick" ? "Quick pick · " : ""}Step {stepNumerator} of {stepDenominator}
+          {depth === "balanced" && (step === "bal_primary" || step === "bal_secondary") ? (
+            <>
+              {" "}
+              — {step === "bal_primary" ? "Primary pillar" : "Secondary pillar"}
+            </>
+          ) : null}
+        </p>
+      ) : depth === "dialed_in" && step === "dialed_sheet" ? (
+        <p className="ui-caption" style={{ marginTop: 0, marginBottom: 12 }}>
+          Dialed-in · single sheet
+        </p>
+      ) : null}
       {step === "depth" ? (
         <>
           <div className="chip-row" role="group" aria-label="Intent depth">
@@ -537,9 +449,6 @@ export function BuildIntentChips({
             ))}
           </div>
           <p className="ui-caption" style={{ marginTop: 8, marginBottom: 12 }}>
-            {depthHelper}
-          </p>
-          <p className="ui-caption ui-caption--xs" style={{ marginTop: -4, marginBottom: 12 }}>
             {depthFlowCaption}
           </p>
           <fieldset style={{ border: "none", padding: 0, margin: "0 0 12px 0" }}>
@@ -566,6 +475,31 @@ export function BuildIntentChips({
                 </button>
               ))}
             </div>
+          </fieldset>
+          <fieldset style={{ border: "none", padding: 0, margin: "0 0 12px 0" }}>
+            <legend className="ui-caption" style={{ marginBottom: 6 }}>
+              Run mode
+            </legend>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={soloSelfFound}
+              className={`ssf-toggle ${soloSelfFound ? "ssf-toggle--on" : ""}`}
+              onClick={() => persistSsf(!soloSelfFound)}
+            >
+              <IdentityPortrait
+                src={DEPTH_JOURNEY_URL}
+                alt=""
+                className="ssf-toggle__icon"
+                title="Solo Self Found"
+              />
+              Solo Self Found
+            </button>
+            <p className="ui-caption ui-caption--xs" style={{ marginTop: 6 }}>
+              {soloSelfFound
+                ? "On: no Auction House, no trade buying — gather and craft your own gear."
+                : "Off: AH, trades, and group help are fair game."}
+            </p>
           </fieldset>
           <fieldset className="journey-power-fieldset" style={{ border: "none", padding: 0, margin: "0 0 12px 0" }}>
             <legend className="ui-caption" style={{ marginBottom: 6 }}>
@@ -600,23 +534,9 @@ export function BuildIntentChips({
             </div>
           </fieldset>
           <div className="flow-nav">
-            {depth === "quick" ? (
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => {
-                  const rolled = rollRandomQuickPickSignals(`${storageKey}|${crypto.randomUUID()}`);
-                  persist(mergeQuickRollPreserveIdentity(value, rolled));
-                  setStep("quick_roll");
-                }}
-              >
-                Roll random filters
-              </button>
-            ) : (
-              <button type="button" className="btn-primary" onClick={() => setStep("vector")}>
-                Pick priority
-              </button>
-            )}
+            <button type="button" className="btn-primary" onClick={startDepthFlow}>
+              {depth === "quick" ? "Roll random filters" : depth === "balanced" ? "Pick primary pillar" : "Open dialed-in sheet"}
+            </button>
           </div>
         </>
       ) : null}
@@ -673,127 +593,80 @@ export function BuildIntentChips({
           </div>
         </>
       ) : null}
-      {step === "vector" ? (
-        <>
-          <p className="ui-caption" style={{ marginTop: 0, marginBottom: 10 }}>
-            {depth === "balanced"
-              ? "Pick up to two focus areas (we ask one question each, then infer the rest)."
-              : "Pick up to three focus areas—each gets its own question stack."}
-          </p>
-          <p className="ui-caption" style={{ marginTop: 0, marginBottom: 10 }}>
-            What should lead this build?
-          </p>
-          {selectedVectors.length > 0 ? (
-            <p className="ui-caption" style={{ marginTop: 0, marginBottom: 10 }}>
-              Selected priorities: {selectedVectors.map((v) => VECTOR_ROWS.find((r) => r.id === v)?.title ?? v).join(" -> ")}
-            </p>
-          ) : null}
-          <div className="journey-vector-grid" role="group" aria-label={`Build priority vectors, up to ${maxVectors}`}>
-            {VECTOR_ROWS.map((row) => (
-              <button
-                key={row.id}
-                type="button"
-                className={`journey-vector-tile ${(selectedVectors.includes(row.id) || vector === row.id) ? "journey-vector-tile--on" : ""} ${pulseVector === row.id ? "journey-vector-tile--pulse" : ""}`}
-                aria-pressed={selectedVectors.includes(row.id) || vector === row.id}
-                onClick={() => {
-                  setVector(row.id);
-                  setPulseVector(row.id);
-                  setSelectedVectors((prev) => {
-                    if (prev.includes(row.id)) return prev.filter((v) => v !== row.id);
-                    if (prev.length >= maxVectors) return [...prev.slice(1), row.id];
-                    return [...prev, row.id];
-                  });
-                  trackEvent(AnalyticsEvent.VectorSelected, { ...eventContext, vector: row.id });
-                }}
-              >
-                <div className={`journey-vector-tile__icons journey-vector-tile__icons--${VECTOR_ICON_LAYOUT[row.id]}`} aria-hidden>
-                  {VECTOR_ICON_GLIMPSE[row.id].map((src, i) => (
-                    <IdentityPortrait
-                      key={`${row.id}-${i}`}
-                      src={src}
-                      alt=""
-                      className="journey-vector-tile__classimg"
-                      title={row.title}
-                    />
-                  ))}
-                </div>
-                <span className="journey-vector-tile__title">{row.title}</span>
-                <span className="journey-vector-tile__blurb">{row.blurb}</span>
-              </button>
-            ))}
-          </div>
-          <div className="flow-nav" style={{ marginTop: 12 }}>
-            <button type="button" className="btn-ghost" onClick={() => setStep("depth")}>
-              Back
-            </button>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => {
-                const queue = selectedVectors.length > 0 ? selectedVectors : [vector];
-                setSelectedVectors(queue);
-                setVectorCursor(0);
-                setQuestionIndex(0);
-                setStep("question");
-              }}
-            >
-              Continue
-            </button>
-          </div>
-        </>
+      {step === "bal_primary" || step === "bal_secondary" ? (
+        <BalancedPillarStep
+          slot={step === "bal_primary" ? "primary" : "secondary"}
+          activePrimary={balPrimaryPillar}
+          activeSecondary={balSecondaryPillar}
+          pulseVector={pulseVector}
+          onPulse={setPulseVector}
+          profPrimary={profPrimary}
+          profSecondary={profSecondary}
+          soloSelfFound={soloSelfFound}
+          onPickPillar={(pillar) => {
+            if (step === "bal_primary") {
+              if (balPrimaryPillar === pillar) setBalPrimaryPillar(null);
+              else {
+                setBalPrimaryPillar(pillar);
+                if (balSecondaryPillar === pillar) setBalSecondaryPillar(null);
+              }
+            } else if (balSecondaryPillar === pillar) {
+              setBalSecondaryPillar(null);
+            } else {
+              setBalSecondaryPillar(pillar);
+            }
+            trackEvent(AnalyticsEvent.VectorSelected, { ...eventContext, vector: pillar, slot: step });
+          }}
+          onAnswer={(question, answer) => {
+            persist(question.apply(value, answer));
+            trackEvent(AnalyticsEvent.QuestionAnswered, {
+              ...eventContext,
+              questionId: question.id,
+              answer,
+              slot: step,
+            });
+            if (step === "bal_primary") setStep("bal_secondary");
+            else setStep("review");
+          }}
+          onProfessionChange={({ primary, secondary }) => {
+            commitProfessionPicker(primary, secondary);
+          }}
+          onSkipProfessionPair={() => {
+            if (step === "bal_primary") setStep("bal_secondary");
+            else setStep("review");
+          }}
+          onBack={() => {
+            if (step === "bal_primary") return setStep("depth");
+            return setStep("bal_primary");
+          }}
+        />
       ) : null}
-      {step === "question" ? (
-        <>
-          <p className="step-label" style={{ marginBottom: 6 }}>
-            Refining: {VECTOR_ROWS.find((r) => r.id === activeVector)?.title ?? activeVector}
-          </p>
-          <p className="ui-caption" style={{ marginTop: 0, marginBottom: 10 }}>
-            {currentQuestion.prompt}
-          </p>
-          <div className="chip-row" style={{ marginBottom: 10 }} role="group" aria-label={currentQuestion.prompt}>
-            {currentQuestion.answers.map((answer) => (
-              <button
-                key={answer}
-                type="button"
-                className="chip-btn"
-                onClick={() => {
-                  persist(currentQuestion.apply(answer));
-                  trackEvent(AnalyticsEvent.QuestionAnswered, { ...eventContext, questionId: currentQuestion.id, answer });
-                  if (questionIndex >= questionList.length - 1) {
-                    if (vectorCursor < selectedVectors.length - 1) {
-                      setVectorCursor((prev) => prev + 1);
-                      setQuestionIndex(0);
-                    } else {
-                      setStep("review");
-                    }
-                  } else {
-                    setQuestionIndex((prev) => prev + 1);
-                  }
-                }}
-              >
-                {answer}
-              </button>
-            ))}
-          </div>
-          <div className="flow-nav flow-nav--wrap">
-            <button type="button" className="btn-ghost" onClick={() => setStep("vector")}>
-              Back
-            </button>
-            <button
-              type="button"
-              className="btn-ghost"
-              onClick={() => {
-                setVectorCursor(0);
-                setStep("vector");
-              }}
-            >
-              Pick different priority
-            </button>
-            <button type="button" className="btn-primary" onClick={() => setStep("review")}>
-              Review and generate
-            </button>
-          </div>
-        </>
+      {step === "dialed_sheet" ? (
+        <DialedSheet
+          value={value}
+          soloSelfFound={soloSelfFound}
+          profPrimary={profPrimary}
+          profSecondary={profSecondary}
+          onProfessionChange={({ primary, secondary }) => {
+            commitProfessionPicker(primary, secondary);
+          }}
+          onToggleStat={(id) => {
+            persist({
+              ...value,
+              statPhilosophy: toggleList(value.statPhilosophy, id, 3) as BuildIntentSignals["statPhilosophy"],
+            });
+          }}
+          onToggleVector={(id) => {
+            persist({
+              ...value,
+              buildVectors: toggleList(value.buildVectors, id, maxVectors) as BuildIntentSignals["buildVectors"],
+            });
+          }}
+          onIdentityChange={(patch) => persist({ ...value, ...patch })}
+          onBack={() => setStep("depth")}
+          onContinue={() => setStep("review")}
+          onReset={resetJourneyFilters}
+        />
       ) : null}
       {step === "review" ? (
         <>
@@ -949,9 +822,12 @@ export function BuildIntentChips({
               </button>
             </div>
           ) : null}
-          <div className="flow-nav">
-            <button type="button" className="btn-ghost" onClick={() => setStep(depth === "quick" ? "quick_roll" : "question")}>
+          <div className="flow-nav flow-nav--wrap">
+            <button type="button" className="btn-ghost" onClick={backToTuning}>
               Back to tuning
+            </button>
+            <button type="button" className="journey-power-curve__clear" onClick={resetJourneyFilters}>
+              Reset setup
             </button>
             <button
               type="button"
@@ -959,7 +835,8 @@ export function BuildIntentChips({
               disabled={isGenerating || (experimentalOffer === "cohort" && recommendLane === null)}
               onClick={() => {
                 trackEvent(hasGenerated ? AnalyticsEvent.IntentRegenerateClicked : AnalyticsEvent.GenerateClicked, eventContext);
-                const payload = depth === "balanced" ? fillBalancedAssumptions(value) : value;
+                const base = depth === "balanced" ? fillBalancedAssumptions(value) : value;
+                const payload: BuildIntentSignals = { ...base, soloSelfFound };
                 onGenerate(payload, depth);
               }}
             >
@@ -974,5 +851,293 @@ export function BuildIntentChips({
         </>
       ) : null}
     </div>
+  );
+}
+
+type BalancedSlotPropsBase = {
+  slot: BalancedSlot;
+  activePrimary: VectorKey | null;
+  activeSecondary: VectorKey | null;
+  pulseVector: VectorKey | null;
+  onPulse: (v: VectorKey | null) => void;
+  profPrimary: ProfessionId | null;
+  profSecondary: ProfessionId | null;
+  soloSelfFound: boolean;
+  onPickPillar: (pillar: VectorKey) => void;
+  onAnswer: (question: ReturnType<typeof balancedQuestionFor>, answer: string) => void;
+  onProfessionChange: (next: { primary: ProfessionId | null; secondary: ProfessionId | null }) => void;
+  onSkipProfessionPair: () => void;
+  onBack: () => void;
+};
+
+function BalancedPillarStep({
+  slot,
+  activePrimary,
+  activeSecondary,
+  pulseVector,
+  onPulse,
+  profPrimary,
+  profSecondary,
+  soloSelfFound,
+  onPickPillar,
+  onAnswer,
+  onProfessionChange,
+  onSkipProfessionPair,
+  onBack,
+}: BalancedSlotPropsBase) {
+  const activePillar = slot === "primary" ? activePrimary : activeSecondary;
+  const blockedPillar = slot === "secondary" ? activePrimary : null;
+  const visibleRows = VECTOR_ROWS.filter((r) => r.id !== blockedPillar);
+  const slotLabel = slot === "primary" ? "Pick your primary focus" : "Pick your secondary focus";
+  const recapPrimary = activePrimary ? VECTOR_ROWS.find((r) => r.id === activePrimary)?.title ?? activePrimary : null;
+  const recapSecondary = activeSecondary ? VECTOR_ROWS.find((r) => r.id === activeSecondary)?.title ?? activeSecondary : null;
+  const question = activePillar ? balancedQuestionFor(activePillar, { soloSelfFound }) : null;
+  return (
+    <>
+      <p className="step-label" style={{ marginBottom: 6 }}>
+        {slotLabel}
+      </p>
+      <p className="ui-caption" style={{ marginTop: 0, marginBottom: 10 }}>
+        Balanced uses one primary pillar plus one secondary pillar — we infer the rest.
+      </p>
+      {(recapPrimary || recapSecondary) ? (
+        <p className="ui-caption" style={{ marginTop: 0, marginBottom: 10 }}>
+          {recapPrimary ? <>Primary: <strong>{recapPrimary}</strong></> : null}
+          {recapPrimary && recapSecondary ? " · " : null}
+          {recapSecondary ? <>Secondary: <strong>{recapSecondary}</strong></> : null}
+        </p>
+      ) : null}
+      <div className="journey-vector-grid" role="radiogroup" aria-label={slotLabel}>
+        {visibleRows.map((row) => {
+          const active = activePillar === row.id;
+          return (
+            <button
+              key={row.id}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              className={`journey-vector-tile ${active ? "journey-vector-tile--on" : ""} ${pulseVector === row.id ? "journey-vector-tile--pulse" : ""}`}
+              onClick={() => {
+                onPulse(row.id);
+                onPickPillar(row.id);
+              }}
+            >
+              <div className={`journey-vector-tile__icons journey-vector-tile__icons--${VECTOR_ICON_LAYOUT[row.id]}`} aria-hidden>
+                {VECTOR_ICON_GLIMPSE[row.id].map((src, i) => (
+                  <IdentityPortrait
+                    key={`${row.id}-${i}`}
+                    src={src}
+                    alt=""
+                    className="journey-vector-tile__classimg"
+                    title={row.title}
+                  />
+                ))}
+              </div>
+              <span className="journey-vector-tile__title">{row.title}</span>
+              <span className="journey-vector-tile__blurb">{row.blurb}</span>
+            </button>
+          );
+        })}
+      </div>
+      {activePillar === "profession" ? (
+        <div style={{ marginTop: 14 }}>
+          <ProfessionPicker
+            primary={profPrimary}
+            secondary={profSecondary}
+            soloSelfFound={soloSelfFound}
+            onChange={onProfessionChange}
+          />
+          <div className="flow-nav" style={{ marginTop: 12 }}>
+            <button type="button" className="btn-ghost" onClick={onBack}>
+              Back
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={!profPrimary}
+              onClick={onSkipProfessionPair}
+            >
+              {slot === "primary" ? "Continue to secondary pillar" : "Review and generate"}
+            </button>
+          </div>
+        </div>
+      ) : activePillar && question ? (
+        <div style={{ marginTop: 14 }}>
+          <p className="step-label" style={{ marginBottom: 6 }}>
+            {question.prompt}
+          </p>
+          <div className="chip-row" role="group" aria-label={question.prompt}>
+            {question.answers.map((answer) => (
+              <button
+                key={answer}
+                type="button"
+                className="chip-btn"
+                onClick={() => onAnswer(question, answer)}
+              >
+                {answer}
+              </button>
+            ))}
+          </div>
+          <div className="flow-nav" style={{ marginTop: 10 }}>
+            <button type="button" className="btn-ghost" onClick={onBack}>
+              Back
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flow-nav" style={{ marginTop: 12 }}>
+          <button type="button" className="btn-ghost" onClick={onBack}>
+            Back
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+
+type DialedSheetProps = {
+  value: BuildIntentSignals;
+  soloSelfFound: boolean;
+  profPrimary: ProfessionId | null;
+  profSecondary: ProfessionId | null;
+  onProfessionChange: (next: { primary: ProfessionId | null; secondary: ProfessionId | null }) => void;
+  onToggleStat: (id: string) => void;
+  onToggleVector: (id: string) => void;
+  onIdentityChange: (patch: Partial<BuildIntentSignals>) => void;
+  onBack: () => void;
+  onContinue: () => void;
+  onReset: () => void;
+};
+
+function DialedSheet({
+  value,
+  soloSelfFound,
+  profPrimary,
+  profSecondary,
+  onProfessionChange,
+  onToggleStat,
+  onToggleVector,
+  onIdentityChange,
+  onBack,
+  onContinue,
+  onReset,
+}: DialedSheetProps) {
+  const activeStats = new Set<string>(value.statPhilosophy ?? []);
+  const activeVectors = new Set<string>(value.buildVectors ?? []);
+  return (
+    <>
+      <p className="step-label" style={{ marginBottom: 6 }}>
+        Dialed-in sheet
+      </p>
+      <p className="ui-caption" style={{ marginTop: 0, marginBottom: 12 }}>
+        Open every category and tune chip-by-chip. Each section is multi-select up to its cap.
+      </p>
+      <details className="dialed-sheet__section" open>
+        <summary className="dialed-sheet__summary">
+          Stats <span className="ui-caption ui-caption--xs">{activeStats.size}/3</span>
+        </summary>
+        <div className="dialed-sheet__body">
+          <div className="chip-row" role="group" aria-label="Stat philosophy">
+            {STAT_OPTIONS.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                className={`chip-btn ${activeStats.has(o.id) ? "chip-btn--on" : ""}`}
+                aria-pressed={activeStats.has(o.id)}
+                onClick={() => onToggleStat(o.id)}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </details>
+      <details className="dialed-sheet__section" open>
+        <summary className="dialed-sheet__summary">
+          Professions <span className="ui-caption ui-caption--xs">primary + secondary</span>
+        </summary>
+        <div className="dialed-sheet__body">
+          <p className="ui-caption ui-caption--xs" style={{ marginBottom: 8 }}>
+            Pick a primary craft, then a secondary — counts {profPrimary ? 1 : 0}+{profSecondary ? 1 : 0}.
+          </p>
+          <ProfessionPicker
+            primary={profPrimary}
+            secondary={profSecondary}
+            soloSelfFound={soloSelfFound}
+            onChange={onProfessionChange}
+          />
+        </div>
+      </details>
+      <details className="dialed-sheet__section" open>
+        <summary className="dialed-sheet__summary">
+          Vectors <span className="ui-caption ui-caption--xs">{activeVectors.size}/6</span>
+        </summary>
+        <div className="dialed-sheet__body">
+          <div className="chip-row" role="group" aria-label="Build vectors">
+            {VECTOR_OPTIONS.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                className={`chip-btn ${activeVectors.has(o.id) ? "chip-btn--on" : ""}`}
+                aria-pressed={activeVectors.has(o.id)}
+                onClick={() => onToggleVector(o.id)}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </details>
+      <details className="dialed-sheet__section">
+        <summary className="dialed-sheet__summary">Identity (optional)</summary>
+        <div className="dialed-sheet__body">
+          <div className="flow-nav flow-nav--wrap">
+            <select
+              value={value.factionPreference ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                onIdentityChange({ factionPreference: v === "horde" || v === "alliance" ? v : undefined });
+              }}
+            >
+              <option value="">Faction: any</option>
+              <option value="alliance">Alliance</option>
+              <option value="horde">Horde</option>
+            </select>
+            <input
+              value={value.pickedRace ?? ""}
+              onChange={(e) =>
+                onIdentityChange({ pickedRace: e.target.value.slice(0, 24), raceMode: "user_pick" })
+              }
+              placeholder="Race (e.g. human, undead)"
+            />
+            <select
+              value={value.genderLean ?? ""}
+              onChange={(e) => {
+                const g = e.target.value;
+                onIdentityChange({
+                  genderLean: g === "masculine" || g === "feminine" || g === "neutral" ? g : undefined,
+                });
+              }}
+            >
+              <option value="">Gender lean: any</option>
+              <option value="masculine">Masculine</option>
+              <option value="feminine">Feminine</option>
+              <option value="neutral">Neutral</option>
+            </select>
+          </div>
+        </div>
+      </details>
+      <div className="flow-nav flow-nav--wrap" style={{ marginTop: 12 }}>
+        <button type="button" className="btn-ghost" onClick={onBack}>
+          Back
+        </button>
+        <button type="button" className="btn-ghost" onClick={onReset}>
+          Reset
+        </button>
+        <button type="button" className="btn-primary" onClick={onContinue}>
+          Continue to review
+        </button>
+      </div>
+    </>
   );
 }

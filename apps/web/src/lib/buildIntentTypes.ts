@@ -5,6 +5,8 @@ export type IntentDepth = "quick" | "balanced" | "dialed_in";
 export type BuildIntentSignals = {
   /** Sent to `/v1/recommend` with the request. */
   intentDepth?: IntentDepth;
+  /** Solo Self Found mode: drop AH/trade reliance, bias gather-and-craft. */
+  soloSelfFound?: boolean;
   statPhilosophy?: Array<
     | "stamina_forward"
     | "strength_forward"
