@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { BuildIntentChips } from "../../components/BuildIntentChips";
-import type { BuildIntentSignals } from "../../lib/buildIntentTypes";
+import type { BuildIntentSignals, IntentDepth } from "../../lib/buildIntentTypes";
 import { softenBuildIntentOneSlot } from "../../lib/buildIntentRecover";
 import { augmentMoodWithPower } from "../../lib/journeySignalsExtras";
 import {
@@ -78,7 +78,9 @@ export function DeathJourneyStep() {
     };
   }, []);
 
-  async function onGenerate(signals: BuildIntentSignals) {
+  async function onGenerate(signals: BuildIntentSignals, depth: IntentDepth) {
+    const { intentDepth: _stripDepth, ...intentSignals } = signals;
+    void _stripDepth;
     const sessionId = sessionStorage.getItem(SessionKeys.death.sessionId) ?? crypto.randomUUID();
     sessionStorage.setItem(SessionKeys.death.sessionId, sessionId);
     const mood = sessionStorage.getItem(SessionKeys.death.mood) ?? undefined;
@@ -112,7 +114,8 @@ export function DeathJourneyStep() {
         memoryHints: buildMemoryHints(),
         recommendVariantId: assignment?.variantId ?? undefined,
         ...promptBias,
-        ...signals,
+        ...intentSignals,
+        intentDepth: depth,
         ...laneArg,
       };
       const result = await fetchDestiny({
@@ -124,7 +127,7 @@ export function DeathJourneyStep() {
         sessionId: result.sessionId,
         destinyId: result.destinyId,
         output: result.output,
-        intentSnapshot: { ...promptBias, ...signals },
+        intentSnapshot: { ...promptBias, ...intentSignals, intentDepth: depth },
         experimentalLane: result.experimentalLane,
         experimentalCandidate: result.experimentalCandidate,
       });
@@ -196,13 +199,14 @@ export function DeathJourneyStep() {
       <BuildIntentChips
         key={chipNonce}
         storageKey={SessionKeys.death.buildIntent}
+        intentSurface="release_spirit"
         isGenerating={isGenerating}
         hasGenerated={false}
         filterRecoveryAction={filterRecoveryAction}
         experimentalOffer={experimentalOffer}
         recommendLane={recommendLane}
         onRecommendLaneChange={setRecommendLane}
-        onGenerate={(signals) => void onGenerate(signals)}
+        onGenerate={(signals, depth) => void onGenerate(signals, depth)}
       />
       {error ? (
         <p className="hero-sub" style={{ marginTop: 10 }} role="status" aria-live="polite">

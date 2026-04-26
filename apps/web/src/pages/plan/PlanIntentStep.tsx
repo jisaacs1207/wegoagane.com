@@ -34,7 +34,7 @@ export function PlanIntentStep() {
         <span className="flow-crumb">/</span>
         <span className="flow-crumb">Detailed setup</span>
       </div>
-      <p className="step-label">Draft a run · step 1 of 2</p>
+      <p className="step-label">Draft a run · step 1 of 3</p>
       <h1 className="hero-question">What is this run trying to achieve?</h1>
       <p className="hero-sub">Pick the main goal for this run. We tune around this first.</p>
       <div className="ritual-option-grid">
@@ -52,9 +52,6 @@ export function PlanIntentStep() {
               sessionStorage.removeItem(SessionKeys.plan.buildIntentPowerCurve);
               sessionStorage.removeItem(SessionKeys.plan.generatedDestiny);
               sessionStorage.removeItem(SessionKeys.plan.destinyId);
-              if ((sessionStorage.getItem(SessionKeys.plan.freeform) ?? "").trim().length === 0) {
-                navigate("/draft-a-run/journey");
-              }
             }}
           >
             <IdentityPortrait src={i.icon} alt="" className="ritual-option__icon" />
@@ -104,11 +101,11 @@ export function PlanIntentStep() {
           Back
         </button>
         <button type="button" className="btn-primary" onClick={() => navigate("/draft-a-run/journey")} disabled={!selected}>
-          Generate build
+          Continue to filters
         </button>
       </div>
       <p className="ui-caption" style={{ marginTop: 10 }}>
-        Selecting a goal with no constraints advances automatically.
+        Next: tune chips, review, then generate — you stay in control of each step.
       </p>
     </div>
   );

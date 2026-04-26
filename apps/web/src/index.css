@@ -153,19 +153,20 @@ a:hover {
   position: absolute;
   left: var(--spark-x);
   top: var(--spark-y);
-  width: 4px;
-  height: 4px;
+  width: 3px;
+  height: 3px;
   border-radius: 999px;
-  background: rgba(232, 201, 122, 0.55);
+  background: transparent;
+  box-shadow: 0 0 10px 2px rgba(232, 201, 122, 0.12);
   transform: scale(var(--spark-scale));
   animation: atmo-drift 4.8s ease-in-out infinite;
   animation-delay: var(--spark-delay);
 }
 
 @keyframes atmo-drift {
-  0% { transform: translateY(0) scale(var(--spark-scale)); opacity: 0.2; }
-  50% { transform: translateY(-8px) scale(calc(var(--spark-scale) + 0.15)); opacity: 0.8; }
-  100% { transform: translateY(0) scale(var(--spark-scale)); opacity: 0.2; }
+  0% { transform: translateY(0) scale(var(--spark-scale)); opacity: 0.08; }
+  50% { transform: translateY(-8px) scale(calc(var(--spark-scale) + 0.15)); opacity: 0.35; }
+  100% { transform: translateY(0) scale(var(--spark-scale)); opacity: 0.08; }
 }
 
 .app-header {

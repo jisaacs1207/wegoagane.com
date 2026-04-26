@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { BuildIntentChips } from "../../components/BuildIntentChips";
 import { inferFactionFromRace, inferRaceFromHeadline } from "../../content/identityAssets";
 import type { ClassId } from "../../icons/types";
-import type { BuildIntentSignals } from "../../lib/buildIntentTypes";
+import type { BuildIntentSignals, IntentDepth } from "../../lib/buildIntentTypes";
 import { softenBuildIntentOneSlot } from "../../lib/buildIntentRecover";
 import { augmentFreeformWithPower } from "../../lib/journeySignalsExtras";
 import {
@@ -24,6 +24,7 @@ import { AnalyticsEvent, trackEvent } from "../../lib/analytics";
 
 export function PlanJourneyStep() {
   const navigate = useNavigate();
+  const [seedBanner, setSeedBanner] = useState(() => Boolean(sessionStorage.getItem(SessionKeys.plan.seedDestinyId)));
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState("");
   const [lastRecommendErr, setLastRecommendErr] = useState<unknown>(null);
@@ -61,7 +62,9 @@ export function PlanJourneyStep() {
     };
   }, []);
 
-  async function onGenerate(signals: BuildIntentSignals) {
+  async function onGenerate(signals: BuildIntentSignals, depth: IntentDepth) {
+    const { intentDepth: _stripDepth, ...intentSignals } = signals;
+    void _stripDepth;
     const sessionId = sessionStorage.getItem(SessionKeys.plan.sessionId) ?? crypto.randomUUID();
     sessionStorage.setItem(SessionKeys.plan.sessionId, sessionId);
     const intent = sessionStorage.getItem(SessionKeys.plan.intent) ?? undefined;
@@ -114,15 +117,17 @@ export function PlanJourneyStep() {
           recommendVariantId: assignment?.variantId ?? undefined,
           preferredClass: seedClass,
           factionPreference: seedFaction,
-          ...signals,
+          ...intentSignals,
+          intentDepth: depth,
           ...laneArg,
         },
       });
+      setSeedBanner(false);
       writeStoredDestiny("plan", {
         sessionId: result.sessionId,
         destinyId: result.destinyId,
         output: result.output,
-        intentSnapshot: signals,
+        intentSnapshot: { ...intentSignals, intentDepth: depth },
         experimentalLane: result.experimentalLane,
         experimentalCandidate: result.experimentalCandidate,
       });
@@ -186,18 +191,29 @@ export function PlanJourneyStep() {
           <Link to="/draft-a-run/intent">Detailed setup</Link>
         </span>
         <span className="flow-crumb">/</span>
-        <span className="flow-crumb">Filters and generate</span>
+        <span className="flow-crumb">Tune filters</span>
       </div>
+      <p className="step-label" style={{ marginBottom: 6 }}>
+        Draft a run · step 2 of 3
+      </p>
+      {seedBanner ? (
+        <p className="ui-caption" style={{ marginTop: 0, marginBottom: 10 }} role="status">
+          A prior committed build is set as a soft hint for class and faction on this generation. It clears after you
+          generate once.
+        </p>
+      ) : null}
       <BuildIntentChips
         key={chipNonce}
         storageKey={SessionKeys.plan.buildIntent}
+        intentSurface="draft_a_run"
+        onLeaveDetailedBuild={() => navigate("/draft-a-run/intent")}
         isGenerating={isGenerating}
         hasGenerated={false}
         filterRecoveryAction={filterRecoveryAction}
         experimentalOffer={experimentalOffer}
         recommendLane={recommendLane}
         onRecommendLaneChange={setRecommendLane}
-        onGenerate={(signals) => void onGenerate(signals)}
+        onGenerate={(signals, depth) => void onGenerate(signals, depth)}
       />
       {error ? (
         <p className="hero-sub" style={{ marginTop: 10 }} role="status" aria-live="polite">

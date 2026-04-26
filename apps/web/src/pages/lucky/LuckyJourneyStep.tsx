@@ -249,6 +249,7 @@ export function LuckyJourneyStep() {
       <BuildIntentChips
         key={chipNonce}
         storageKey={SessionKeys.lucky.buildIntent}
+        intentSurface="lucky_roll"
         isGenerating={isGenerating}
         hasGenerated={false}
         filterRecoveryAction={filterRecoveryAction}

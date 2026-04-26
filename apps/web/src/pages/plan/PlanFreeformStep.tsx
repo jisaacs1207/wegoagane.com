@@ -19,9 +19,9 @@ export function PlanFreeformStep() {
           <Link to="/draft-a-run/intent">Detailed setup</Link>
         </span>
         <span className="flow-crumb">/</span>
-        <span className="flow-crumb">Optional constraints</span>
+        <span className="flow-crumb">Optional notes</span>
       </div>
-      <p className="step-label">Draft a run · optional constraints view</p>
+      <p className="step-label">Draft a run · step 1 of 3 · optional notes</p>
       <h1 className="hero-question">Add constraints (optional)</h1>
       <p className="hero-sub">Add dealbreakers or must-haves so the result is usable right away.</p>
       <div className="ritual-constraint-row">
@@ -77,7 +77,7 @@ export function PlanFreeformStep() {
           Back
         </button>
         <button type="button" className="btn-primary" onClick={() => navigate("/draft-a-run/journey")}>
-          Generate build
+          Continue to filters
         </button>
       </div>
     </div>
