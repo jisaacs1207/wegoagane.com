@@ -32,6 +32,8 @@ const generateNamesSchema = z.object({
 export const buildRouter = new Hono<ApiEnv>();
 
 type BuildPlanRow = typeof buildPlans.$inferSelect;
+const FAILED_RETRY_COOLDOWN_MS = 8_000;
+const STALE_IN_PROGRESS_REQUEUE_MS = 45_000;
 
 function asBuildResponse(row: BuildPlanRow) {
   let plan: unknown = null;
@@ -51,6 +53,14 @@ function asBuildResponse(row: BuildPlanRow) {
     plan,
     error: row.error,
   };
+}
+
+/** Whether a queued/generating row is old enough to treat as abandoned work. */
+export function isStaleInProgressBuildPlan(row: Pick<BuildPlanRow, "status" | "updatedAt">, nowMs = Date.now()): boolean {
+  if (row.status !== "queued" && row.status !== "generating") return false;
+  const lastUpdateMs = row.updatedAt?.getTime?.() ?? 0;
+  if (!Number.isFinite(lastUpdateMs) || lastUpdateMs <= 0) return true;
+  return nowMs - lastUpdateMs > STALE_IN_PROGRESS_REQUEUE_MS;
 }
 
 export async function handlePostBuild(c: Context<ApiEnv>) {
@@ -201,11 +211,31 @@ export async function handleGetBuild(c: Context<ApiEnv>) {
   const rows = await db.select().from(buildPlans).where(eq(buildPlans.destinyId, destinyId)).limit(1);
   const row = rows[0];
   if (!row) return c.json({ error: "build_not_found" }, 404);
+  if (isStaleInProgressBuildPlan(row)) {
+    const destiny = await loadDestinyRow(db, destinyId);
+    if (destiny && destiny.sessionId === row.sessionId) {
+      await db
+        .update(buildPlans)
+        .set({ status: "queued", error: null, updatedAt: new Date() })
+        .where(eq(buildPlans.id, row.id));
+      c.executionCtx.waitUntil(
+        enqueueBuildPlanGeneration(
+          c.env,
+          row.id,
+          destinyId,
+          row.sessionId,
+          destiny.archetypeKey,
+          destiny.contentJson,
+        ),
+      );
+      return c.json({ ...asBuildResponse(row), status: "queued", error: null }, 202);
+    }
+  }
   if (row.status === "failed") {
     const now = Date.now();
     const lastUpdate = row.updatedAt?.getTime?.() ?? 0;
     // Auto-heal failed plans when polled by client, but avoid rapid retry storms.
-    if (now - lastUpdate > 8000) {
+    if (now - lastUpdate > FAILED_RETRY_COOLDOWN_MS) {
       const destiny = await loadDestinyRow(db, destinyId);
       if (destiny && destiny.sessionId === row.sessionId) {
         await db

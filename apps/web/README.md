@@ -4,7 +4,7 @@ Vite + React + React Router. Home: **Quick build** (lucky roll, auto-seeded) and
 
 **M2:** Original **class icons** (`src/icons/`), **Memorial / Destiny / share combo** card shells (`src/components/cards/`), static **`src/content/cardFixtures.ts`**. QA route: **`/design/cards`** (also linked from home).
 
-**Saved build artifact:** **`/build/commit/:slug`** (optional **`?fresh=1`** after publish) loads the committed destiny, **polls `GET /api/v1/build/:destinyId`** until the plan is `ready`/`failed`, and shows a **horizontal talent level rail** (`TalentLevelPathView`, fed by `talents.levelByLevel` from the API second pass, else **`talents.path`**).
+**Saved build artifact:** **`/build/commit/:slug`** (optional **`?fresh=1`** after publish) loads the committed destiny, **polls `GET /api/v1/build/:destinyId`** until the plan is `ready`/`failed` (server auto-requeues stale `queued`/`generating` jobs), and shows a **horizontal talent level rail** (`TalentLevelPathView`, fed by `talents.levelByLevel` from the API second pass, else **`talents.path`**).
 
 **Live generation path:** journey steps call `POST /api/v1/recommend` (proxy to Worker in local dev), then navigate directly to `/build/commit/:slug` (fallback `/build/:destinyId`). If API is unavailable, UI falls back to local fixtures.
 
