@@ -44,9 +44,11 @@ const PROMPT_JSON_BUDGET = 12_000;
 const REVIEWER_DRAFT_BUDGET = 120_000;
 // Build generation is launched from request `waitUntil`; keep total AI time bounded so jobs can
 // actually settle instead of sitting in `generating` after runtime interruption.
-const BUILD_PLAN_TOTAL_AI_BUDGET_MS = 28_000;
-const BUILD_PLAN_GEN_TIMEOUT_MS = 16_000;
-const BUILD_PLAN_REVIEW_TIMEOUT_MS = 8_000;
+// Monolithic build JSON + 51-step rail is slow to stream; sub-20s caps caused frequent ai_timeout
+// in production while destiny AI (shorter JSON) still succeeded.
+const BUILD_PLAN_TOTAL_AI_BUDGET_MS = 120_000;
+const BUILD_PLAN_GEN_TIMEOUT_MS = 90_000;
+const BUILD_PLAN_REVIEW_TIMEOUT_MS = 28_000;
 
 function jsonForPrompt(label: string, value: unknown): string {
   try {
@@ -651,13 +653,17 @@ export async function runBuildPlanGeneration(
     let rawGeneratorContent = gen.content;
     let rawReviewerContent = "";
 
-    const revPrompt = buildReviewerPrompt(raw, params.input, rulesetPin);
-    const revTimeout = Math.max(0, Math.min(BUILD_PLAN_REVIEW_TIMEOUT_MS, remainingAiBudgetMs()));
-    if (revTimeout >= 2_500) {
-      const rev = await callAiGateway(env, model, revPrompt, revTimeout, 24_576);
-      if (rev.ok) {
-        rawReviewerContent = rev.content;
-        raw = extractJsonPayload(rev.content);
+    // Second gateway call (reviewer) doubles tail latency; off by default. Set AI_BUILD_PLAN_REVIEW=true to enable.
+    const useReviewer = isTruthyEnv(env.AI_BUILD_PLAN_REVIEW);
+    if (useReviewer) {
+      const revPrompt = buildReviewerPrompt(raw, params.input, rulesetPin);
+      const revTimeout = Math.max(0, Math.min(BUILD_PLAN_REVIEW_TIMEOUT_MS, remainingAiBudgetMs()));
+      if (revTimeout >= 2_500) {
+        const rev = await callAiGateway(env, model, revPrompt, revTimeout, 24_576);
+        if (rev.ok) {
+          rawReviewerContent = rev.content;
+          raw = extractJsonPayload(rev.content);
+        }
       }
     }
 

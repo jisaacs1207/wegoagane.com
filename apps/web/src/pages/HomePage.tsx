@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { wowPackUrl } from "../content/identityAssets";
+import type { ClassId } from "../icons/types";
 import type { BuildIntentSignals } from "../lib/buildIntentTypes";
 import { fetchGrowthAssignment, submitGrowthOutcome } from "../lib/recommendClient";
 import { debugClientIgnored } from "../lib/clientDebug";
@@ -26,6 +27,17 @@ export function HomePage() {
   }
 
   function seedQuickBuild() {
+    /** Classes that appear in the curated archetype fixture deck (ranker can apply +3 bias). */
+    const quickClassBiasPool = [
+      "mage",
+      "hunter",
+      "warrior",
+      "warlock",
+      "rogue",
+      "priest",
+      "druid",
+      "shaman",
+    ] as const satisfies readonly ClassId[];
     const quickSignals: BuildIntentSignals = {
       statPhilosophy: [sample(["stamina_forward", "balanced", "intellect_forward"] as const)],
       professionIntents: [sample(["engineering_outs", "herbalism_alchemy_pair", "mining_engineering_pair"] as const)],
@@ -34,6 +46,7 @@ export function HomePage() {
         sample(["tank", "heal", "mana", "rage", "group_ok"] as const),
       ],
       raceMode: sample(["signal_inferred", "surprise"] as const),
+      preferredClass: sample([...quickClassBiasPool]),
     };
     sessionStorage.setItem(SessionKeys.lucky.buildIntent, JSON.stringify(quickSignals));
     sessionStorage.setItem(SessionKeys.lucky.buildIntentDepth, "quick");
