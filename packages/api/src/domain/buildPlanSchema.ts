@@ -30,6 +30,23 @@ const talentPathStepSchema = z.object({
   rationale: z.string().max(300).optional(),
 });
 
+/** Optional pick the model skipped at this level, with a one-line tradeoff (Classic HC). */
+const talentLevelAlternativeSchema = z.object({
+  talent: z.string().max(80),
+  branch: z.string().max(40).optional(),
+  tradeoff: z.string().max(220),
+});
+
+/** One talent point: Classic grants the first point at level 10, then one per level through 60 (51 total). */
+const talentLevelByLevelStepSchema = z.object({
+  level: z.number().int().min(10).max(60),
+  branch: z.string().max(40),
+  talent: z.string().max(80),
+  rankAfter: z.number().int().min(1).max(5).optional(),
+  rationale: z.string().max(280).optional(),
+  alternatives: z.array(talentLevelAlternativeSchema).max(3).optional(),
+});
+
 const forkSchema = z.object({
   title: z.string().max(120),
   optionA: z.string().max(200),
@@ -60,11 +77,15 @@ export const buildPlanPayloadSchema = z.object({
   warnings: z.array(z.string().max(400)).optional(),
   talents: z.object({
     summary: z.string().max(600).optional(),
+    /** Second-pass prose: what this build is optimizing for in Classic HC. */
+    buildIntentSummary: z.string().max(900).optional(),
     keyPicks: z.array(talentRowSchema).max(12),
     /** Per-tree point allocation, e.g. Feral 31 / Resto 20. */
     treeAllocations: z.array(talentTreeAllocationSchema).max(3).optional(),
     /** Full leveling path (or near-full) so UI can show complete talent journey. */
     path: z.array(talentPathStepSchema).max(60).optional(),
+    /** Level 10..60 in order — one row per talent point (51 rows when complete). Filled by a dedicated second AI pass. */
+    levelByLevel: z.array(talentLevelByLevelStepSchema).max(51).optional(),
   }),
   professions: z.object({
     primary: z.string().max(40),

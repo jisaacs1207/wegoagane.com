@@ -26,6 +26,19 @@ function rulesetPinFromEnv(env: ApiEnv["Bindings"]): string {
   return (env.RULESET_PIN ?? "classic-era-hc-2026-04").trim().slice(0, 120);
 }
 
+/** Canonical Classic Era tree names per class (must match UI / player expectations). */
+const CLASS_TALENT_TREE_NAMES: Record<ClassId, readonly [string, string, string]> = {
+  warrior: ["Arms", "Fury", "Protection"],
+  mage: ["Arcane", "Fire", "Frost"],
+  rogue: ["Assassination", "Combat", "Subtlety"],
+  priest: ["Discipline", "Holy", "Shadow"],
+  hunter: ["Beast Mastery", "Marksmanship", "Survival"],
+  warlock: ["Affliction", "Demonology", "Destruction"],
+  druid: ["Balance", "Feral", "Restoration"],
+  paladin: ["Holy", "Protection", "Retribution"],
+  shaman: ["Elemental", "Enhancement", "Restoration"],
+};
+
 /** Keep prompt payloads bounded so gateway requests stay parseable even with huge client signals. */
 const PROMPT_JSON_BUDGET = 12_000;
 const REVIEWER_DRAFT_BUDGET = 120_000;
@@ -218,6 +231,44 @@ function normalizeBuildPlanCandidate(input: unknown): unknown {
         })
         .filter((row): row is Record<string, unknown> => Boolean(row));
     }
+    if (typeof t.buildIntentSummary === "string") {
+      t.buildIntentSummary = clampText(t.buildIntentSummary, 900);
+    }
+    if (Array.isArray(t.levelByLevel)) {
+      const rows = t.levelByLevel
+        .slice(0, 55)
+        .map((row) => {
+          if (!row || typeof row !== "object") return null;
+          const r = { ...(row as Record<string, unknown>) };
+          const lv = typeof r.level === "number" ? r.level : Number(r.level);
+          r.level = Number.isFinite(lv) ? Math.max(10, Math.min(60, Math.round(lv))) : 10;
+          r.branch = clampText(r.branch, 40);
+          r.talent = clampText(r.talent, 80);
+          if (r.rankAfter !== undefined) {
+            const ra = typeof r.rankAfter === "number" ? r.rankAfter : Number(r.rankAfter);
+            r.rankAfter = Number.isFinite(ra) ? Math.max(1, Math.min(5, Math.round(ra))) : undefined;
+          }
+          if (r.rationale !== undefined) r.rationale = clampText(r.rationale, 280);
+          if (Array.isArray(r.alternatives)) {
+            r.alternatives = r.alternatives
+              .slice(0, 3)
+              .map((a) => {
+                if (!a || typeof a !== "object") return null;
+                const alt = { ...(a as Record<string, unknown>) };
+                alt.talent = clampText(alt.talent, 80);
+                alt.branch = alt.branch ? clampText(alt.branch, 40) : undefined;
+                alt.tradeoff = clampText(alt.tradeoff, 220);
+                return alt.talent && alt.tradeoff ? alt : null;
+              })
+              .filter((x): x is Record<string, unknown> => Boolean(x));
+          }
+          return r.branch && r.talent ? r : null;
+        })
+        .filter((row): row is Record<string, unknown> => Boolean(row));
+      const byLevel = new Map<number, Record<string, unknown>>();
+      for (const r of rows) byLevel.set(r.level as number, r);
+      t.levelByLevel = [...byLevel.entries()].sort((a, b) => a[0] - b[0]).map(([, v]) => v);
+    }
     out.talents = t;
   }
 
@@ -325,6 +376,96 @@ function normalizeBuildPlanCandidate(input: unknown): unknown {
   }
 
   return out;
+}
+
+function buildLevelByLevelTalentPrompt(
+  rulesetPin: string,
+  classId: ClassId,
+  destiny: { headline: string; subline: string; bullets: string[]; tierProse: string; rationale: string },
+  input: RecommendInput,
+  planSummary: Record<string, unknown>,
+): string {
+  const treeNames = CLASS_TALENT_TREE_NAMES[classId] ?? (["Tree A", "Tree B", "Tree C"] as const);
+  return [
+    ...WOW_HC_JSON_GUARDS,
+    "You are an expert on World of Warcraft Classic ERA HARDCORE (permanent death; one life; no retail talent trees or Dragonflight+ rules).",
+    `Ruleset pin: ${rulesetPin}. Every talent name must be plausible for the Classic Era 1.12 client for this class.`,
+    "SECOND AI PASS - respond with ONE JSON object containing EXACTLY two top-level keys: \"buildIntentSummary\" (string) and \"levelByLevel\" (array). No markdown fences, no commentary outside JSON.",
+    "buildIntentSummary: 2-5 sentences stating clearly what this build is going for in Hardcore: survival posture, leveling fantasy, pull discipline, and how it differs from a reckless or generic same-class leveling path.",
+    "levelByLevel: the full ordered list of talent point spends. WoW Classic rule: the first talent point unlocks at character level 10; the player then earns one additional point every level through level 60. That is 51 total points.",
+    "You MUST output 51 objects in ascending level order: first object level 10, last object level 60. Each object fields:",
+    '  - "level": integer 10-60',
+    '  - "branch": MUST be exactly one of these tree names for this class: ' + JSON.stringify([...treeNames]),
+    '  - "talent": exact Classic Era talent name as shown in that tree in the game client',
+    '  - "rankAfter": optional integer 1-5 = rank of that talent AFTER this spend',
+    '  - "rationale": one short line grounded in Hardcore risk (pulls, downtime, death spikes)',
+    '  - "alternatives": optional 0-2 entries shaped {"talent","branch" optional,"tradeoff"} describing other reasonable picks at that level and why you did NOT take them',
+    "Respect prerequisite order for Classic Era; do not spend impossible rows.",
+    "Stay aligned with the primary plan JSON below; if you adjust, say so in that row's rationale.",
+    `Player signals JSON: ${jsonForPrompt("signals", input.signals)}`,
+    "Primary plan JSON (honor this build's intent):",
+    jsonForPrompt("planSummary", planSummary),
+    "Destiny card JSON:",
+    jsonForPrompt("destiny", destiny),
+  ].join("\n");
+}
+
+async function mergeLevelByLevelTalentPass(
+  env: ApiEnv["Bindings"],
+  model: string,
+  parsed: BuildPlanPayload,
+  destiny: { headline: string; subline: string; classId: ClassId; bullets: string[]; tierProse: string; rationale: string },
+  input: RecommendInput,
+  rulesetPin: string,
+): Promise<BuildPlanPayload> {
+  const planSummary: Record<string, unknown> = {
+    meta: parsed.meta,
+    talents: {
+      summary: parsed.talents.summary,
+      treeAllocations: parsed.talents.treeAllocations,
+      path: parsed.talents.path,
+      keyPicks: parsed.talents.keyPicks?.slice(0, 8),
+    },
+    signature: parsed.signature,
+    identity: parsed.identity,
+    professions: { primary: parsed.professions.primary, secondary: parsed.professions.secondary },
+    warnings: parsed.warnings?.slice(0, 8),
+  };
+  const prompt = buildLevelByLevelTalentPrompt(rulesetPin, destiny.classId, destiny, input, planSummary);
+  const res = await callAiGateway(env, model, prompt, 75_000, 12_288);
+  if (!res.ok) return parsed;
+  let raw: string;
+  try {
+    raw = extractJsonPayload(res.content);
+  } catch {
+    return parsed;
+  }
+  let obj: unknown;
+  try {
+    obj = JSON.parse(raw);
+  } catch {
+    return parsed;
+  }
+  if (!obj || typeof obj !== "object") return parsed;
+  const rec = obj as Record<string, unknown>;
+  const mergedCandidate = normalizeBuildPlanCandidate({
+    ...parsed,
+    talents: {
+      ...parsed.talents,
+      ...(typeof rec.buildIntentSummary === "string" ? { buildIntentSummary: rec.buildIntentSummary } : {}),
+      ...(Array.isArray(rec.levelByLevel) ? { levelByLevel: rec.levelByLevel } : {}),
+    },
+  });
+  const safe = buildPlanPayloadSchema.safeParse(mergedCandidate);
+  if (!safe.success) return parsed;
+  const rows = safe.data.talents.levelByLevel;
+  if (!rows || rows.length < 8) return parsed;
+  return deepStripFancyPunctuation(
+    sanitizeBuildPlanNames({
+      ...safe.data,
+      aiRaw: parsed.aiRaw,
+    }),
+  );
 }
 
 export async function runBuildPlanGeneration(
@@ -468,6 +609,25 @@ export async function runBuildPlanGeneration(
         },
       });
       parsed = deepStripFancyPunctuation(parsed);
+      try {
+        parsed = await mergeLevelByLevelTalentPass(
+          env,
+          model,
+          parsed,
+          {
+            headline: destiny.headline,
+            subline: destiny.subline,
+            classId: destiny.classId,
+            bullets: destiny.bullets,
+            tierProse: destiny.tierProse ?? "",
+            rationale: destiny.rationale ?? "",
+          },
+          params.input,
+          rulesetPin,
+        );
+      } catch {
+        /* Second pass is best-effort; primary plan still ships. */
+      }
     } catch (e) {
       throw new Error(e instanceof Error ? e.message : "parse_failed");
     }

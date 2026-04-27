@@ -2,7 +2,8 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DestinyCard } from "../components/cards/DestinyCard";
 import { IdentityPortrait } from "../components/IdentityPortrait";
-import { TalentTreeView } from "../components/talents/TalentTreeView";
+import { TalentLevelPathView } from "../components/talents/TalentLevelPathView";
+import { deriveLevelTalentSteps } from "../lib/deriveLevelTalentSteps";
 import { RatingBar } from "../components/builds/RatingBar";
 import {
   CLASS_ASSET_URLS,
@@ -37,6 +38,15 @@ type EffectivePlan = {
     keyPicks?: Array<{ tier?: string; name?: string; rationale?: string }>;
     treeAllocations?: Array<{ branch?: string; points?: number }>;
     path?: Array<{ level?: number; branch?: string; talent?: string; rank?: number; rationale?: string }>;
+    buildIntentSummary?: string;
+    levelByLevel?: Array<{
+      level: number;
+      branch: string;
+      talent: string;
+      rankAfter?: number;
+      rationale?: string;
+      alternatives?: Array<{ talent: string; branch?: string; tradeoff: string }>;
+    }>;
   };
   professions?: {
     primary?: string;
@@ -70,6 +80,7 @@ function hasMeaningfulPlanPayload(p: EffectivePlan | null | undefined): boolean 
   if (!p) return false;
   const t = p.talents;
   if (t) {
+    if (Array.isArray(t.levelByLevel) && t.levelByLevel.length > 0) return true;
     if (Array.isArray(t.path) && t.path.length > 0) return true;
     if (Array.isArray(t.keyPicks) && t.keyPicks.length > 0) return true;
     if (Array.isArray(t.treeAllocations) && t.treeAllocations.length > 0) return true;
@@ -197,6 +208,10 @@ export function BuildCommitPage() {
   const buildPlanSettled =
     persistedPlanReady || buildPlanStatus === "ready" || buildPlanStatus === "failed";
   const talentViewLoading = !persistedPlanReady && !buildPlanSettled;
+  const levelSteps = useMemo(
+    () => deriveLevelTalentSteps(effectivePlan?.talents?.levelByLevel, effectivePlan?.talents?.path),
+    [effectivePlan?.talents?.levelByLevel, effectivePlan?.talents?.path],
+  );
   const raceFromPlan = effectivePlan?.identity?.raceSuggestion ?? effectivePlan?.race?.suggestion;
   const raceId = useMemo(() => {
     if (raceFromPlan) return inferRaceFromHeadline(raceFromPlan);
@@ -443,10 +458,6 @@ export function BuildCommitPage() {
   const keyItems = effectivePlan?.signature?.keyItems ?? [];
   const statPriority = effectivePlan?.stats?.priority ?? [];
 
-  const treeAllocations = effectivePlan?.talents?.treeAllocations ?? null;
-  const keyPicks = effectivePlan?.talents?.keyPicks ?? null;
-  const fullPath = effectivePlan?.talents?.path ?? null;
-
   return (
     <div className="commit-page-shell">
       <div className="flow-crumbs" aria-label="Flow navigation">
@@ -514,7 +525,7 @@ export function BuildCommitPage() {
               }}
             >
               <p className="step-label" style={{ margin: 0 }}>
-                Talent grid
+                Talent path
               </p>
               {effectivePlan?.talents?.summary ? (
                 <span className="ui-caption" style={{ color: "var(--ts)", maxWidth: 460 }}>
@@ -532,13 +543,12 @@ export function BuildCommitPage() {
                 Reconnecting — {planPollError}
               </p>
             ) : null}
-            <TalentTreeView
+            <TalentLevelPathView
               classId={destiny.classId as ClassId}
-              treeAllocations={treeAllocations ?? undefined}
-              keyPicks={keyPicks ?? undefined}
-              path={fullPath ?? undefined}
-              loading={talentViewLoading}
+              steps={levelSteps}
+              buildIntentSummary={effectivePlan?.talents?.buildIntentSummary}
               summary={effectivePlan?.talents?.summary}
+              loading={talentViewLoading}
             />
           </div>
 
