@@ -331,6 +331,11 @@ Data requirement: every template stores normalized structured fields first, then
 
 Goal: make `/build/commit/:slug` valuable enough to keep open while playing.
 
+### Shipped baseline (partial, 2026-04)
+
+- **Live plan polling** on the commit page (`GET /api/v1/build/:destinyId`) until `ready` / `failed`.
+- **Second AI pass** on the worker (after the main build JSON validates) that can populate **`talents.levelByLevel`** (Classic rule: 51 points from level 10 through 60) plus **`talents.buildIntentSummary`**; the web **TalentLevelPathView** reads that rail and falls back to **`talents.path`** when the second pass is absent or rejected.
+
 ### Must-have panels
 
 - Next 3 level goals and near-term checklist

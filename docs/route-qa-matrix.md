@@ -34,6 +34,9 @@
 
 ## Commit/build loop
 
+- `/build/commit/:slug` — SPA build artifact (destiny card, plan sheet, **talent level rail**). Optional **`?fresh=1`** after landing from publish: UI keeps polling until the async plan is ready.
+- **Plan polling:** `GET /api/v1/build/:destinyId` until JSON `status` is `ready` or `failed`; payload includes `plan.talents` (see API). Second worker pass may add **`plan.talents.levelByLevel`** (51 steps, levels 10-60) and **`plan.talents.buildIntentSummary`**; if missing, the web derives steps from **`plan.talents.path`** when present.
+- Worker **SEO shell** for crawlers: `GET /build/commit/:slug` (same host as API/Worker route table) returns OG metadata + redirect into the SPA (see `packages/api` `handleCommitOg`).
 - `/build/commit/:slug` retool -> `/draft-a-run/intent`
 - `/build/:destinyId` retool -> `/draft-a-run/intent`
 

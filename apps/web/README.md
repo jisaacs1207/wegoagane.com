@@ -1,10 +1,12 @@
 # wegoagane web (Phase 1)
 
-Vite + React + React Router. Home: **Quick build** (lucky roll, auto-seeded) and **Detailed build** (plan intent); **I died – recover from death** links to the release-spirit flow.
+Vite + React + React Router. Home: **Quick build** (lucky roll, auto-seeded) and **Detailed build** (plan intent); **I died – recover from death** links to the release-spirit flow; optional **Latest / Top builds** rails (`BuildShowcase`) from public build APIs.
 
 **M2:** Original **class icons** (`src/icons/`), **Memorial / Destiny / share combo** card shells (`src/components/cards/`), static **`src/content/cardFixtures.ts`**. QA route: **`/design/cards`** (also linked from home).
 
-**M3-M7 foundation (live):** result pages call `POST /api/v1/recommend` (proxy to Worker in local dev). If API is unavailable, UI falls back to local fixtures.
+**Saved build artifact:** **`/build/commit/:slug`** (optional **`?fresh=1`** after publish) loads the committed destiny, **polls `GET /api/v1/build/:destinyId`** until the plan is `ready`/`failed`, and shows a **horizontal talent level rail** (`TalentLevelPathView`, fed by `talents.levelByLevel` from the API second pass, else **`talents.path`**).
+
+**M3-M7+ (live):** result pages call `POST /api/v1/recommend` (proxy to Worker in local dev). If API is unavailable, UI falls back to local fixtures.
 
 ```bash
 npm install
