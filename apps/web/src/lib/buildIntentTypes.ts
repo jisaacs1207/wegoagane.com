@@ -61,6 +61,8 @@ export type BuildIntentSignals = {
    * - preferred* = whitelist bias
    * - excluded* = blacklist hard filter
    */
+  /** Bias the curated ranker toward one class (+3 score); use on quick roll for variety. */
+  preferredClass?: ClassId;
   preferredClasses?: ClassId[];
   excludedClasses?: ClassId[];
   preferredRaces?: string[];

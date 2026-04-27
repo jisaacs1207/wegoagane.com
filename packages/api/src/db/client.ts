@@ -34,6 +34,8 @@ export type ApiEnv = {
     AI_MODEL_MEMORIAL?: string;
     /** Optional heavier model for build-plan generation + review */
     AI_MODEL_BUILD?: string;
+    /** When true, run a second AI pass to revise the build JSON. Default off to avoid double timeouts. */
+    AI_BUILD_PLAN_REVIEW?: string | boolean;
     AI_APP_TITLE?: string;
     AI_PROVIDER_SORT?: string;
     /** Internal pin for Classic Era HC ruleset (build plans, prompts) */
