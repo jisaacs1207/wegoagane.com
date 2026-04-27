@@ -34,6 +34,17 @@ export const buildRouter = new Hono<ApiEnv>();
 type BuildPlanRow = typeof buildPlans.$inferSelect;
 const FAILED_RETRY_COOLDOWN_MS = 8_000;
 const STALE_IN_PROGRESS_REQUEUE_MS = 45_000;
+const EMERGENCY_READY_FALLBACK_MS = 180_000;
+
+function inProgressStatus(status: string): boolean {
+  return status === "queued" || status === "generating";
+}
+
+function rowAgeMs(row: Pick<BuildPlanRow, "updatedAt">, nowMs = Date.now()): number {
+  const lastUpdateMs = row.updatedAt?.getTime?.() ?? 0;
+  if (!Number.isFinite(lastUpdateMs) || lastUpdateMs <= 0) return Number.POSITIVE_INFINITY;
+  return nowMs - lastUpdateMs;
+}
 
 function asBuildResponse(row: BuildPlanRow) {
   let plan: unknown = null;
@@ -44,6 +55,17 @@ function asBuildResponse(row: BuildPlanRow) {
       plan = null;
     }
   }
+  let generationSource: "ai" | "stub" | "emergency_fallback" | "unknown" = "unknown";
+  if (row.error === "emergency_ready_fallback") {
+    generationSource = "emergency_fallback";
+  } else if (plan && typeof plan === "object") {
+    const p = plan as { aiRaw?: { generatorJson?: string }; warnings?: string[] };
+    if (typeof p.aiRaw?.generatorJson === "string" && p.aiRaw.generatorJson.trim().length > 0) {
+      generationSource = "ai";
+    } else if (Array.isArray(p.warnings) && p.warnings.some((w) => /ai disabled: stub build plan only\./i.test(String(w)))) {
+      generationSource = "stub";
+    }
+  }
   return {
     buildPlanId: row.id,
     destinyId: row.destinyId,
@@ -52,15 +74,113 @@ function asBuildResponse(row: BuildPlanRow) {
     publishTier: row.publishTier,
     plan,
     error: row.error,
+    generationSource,
   };
 }
 
 /** Whether a queued/generating row is old enough to treat as abandoned work. */
 export function isStaleInProgressBuildPlan(row: Pick<BuildPlanRow, "status" | "updatedAt">, nowMs = Date.now()): boolean {
-  if (row.status !== "queued" && row.status !== "generating") return false;
-  const lastUpdateMs = row.updatedAt?.getTime?.() ?? 0;
-  if (!Number.isFinite(lastUpdateMs) || lastUpdateMs <= 0) return true;
-  return nowMs - lastUpdateMs > STALE_IN_PROGRESS_REQUEUE_MS;
+  if (!inProgressStatus(row.status)) return false;
+  return rowAgeMs(row, nowMs) > STALE_IN_PROGRESS_REQUEUE_MS;
+}
+
+export function shouldEmitEmergencyReadyFallback(row: Pick<BuildPlanRow, "status" | "updatedAt">, nowMs = Date.now()): boolean {
+  if (!inProgressStatus(row.status)) return false;
+  return rowAgeMs(row, nowMs) > EMERGENCY_READY_FALLBACK_MS;
+}
+
+function buildEmergencyReadyPlan(input: {
+  rulesetPin: string;
+  classId: string;
+  archetypeKey: string;
+  destinyHeadline?: string;
+  destinySubline?: string;
+  viabilityNotes?: string[];
+}) {
+  const headline = (input.destinyHeadline ?? "").trim() || "Saved Hardcore build";
+  const subline = (input.destinySubline ?? "").trim();
+  return {
+    v: 1 as const,
+    meta: {
+      publishTier: "draft" as const,
+      rulesetPin: input.rulesetPin.slice(0, 120),
+      classId: input.classId.slice(0, 20),
+      archetypeKey: input.archetypeKey.slice(0, 80),
+    },
+    viabilityNotes: (input.viabilityNotes ?? []).slice(0, 6),
+    warnings: ["Emergency fallback plan emitted after repeated async generation timeout."],
+    talents: {
+      summary: `Fallback talent sheet for ${headline}. ${subline ? `${subline}. ` : ""}Retool for a full AI-authored path when services recover.`,
+      keyPicks: [
+        {
+          tier: "Fallback",
+          name: "Core survival baseline",
+          rationale: "Generation timed out repeatedly, so we emitted a safe baseline to keep the build page usable.",
+          alternatives: ["Retool from this build for a fresh AI attempt."],
+        },
+      ],
+      treeAllocations: [{ branch: "Primary", points: 51 }],
+      path: [
+        {
+          level: 10,
+          branch: "Primary",
+          talent: "Core survival baseline",
+          rank: 1,
+          rationale: "Emergency fallback seed point; regenerate to get a full level-by-level route.",
+        },
+      ],
+      buildIntentSummary: "Emergency fallback: reliable baseline emitted because asynchronous plan generation did not settle in time.",
+    },
+    professions: {
+      primary: "Engineering",
+      secondary: "Mining",
+      rationale: "Default Hardcore-safe fallback pair until full generation succeeds.",
+      secondarySkills: {
+        firstAid: "Train aggressively for panic recovery between pulls.",
+        cooking: "Sustain leveling uptime with low-cost food buffs.",
+        fishing: "Optional support for food supply and pacing.",
+      },
+    },
+    stats: {
+      priority: ["stamina", "primary stat", "spirit"],
+      rationale: "Fallback stat order prioritizes survival over burst while leveling.",
+    },
+    race: {
+      suggestion: "Player preference",
+      rationale: "Fallback output avoids overfitting race advice without a complete generated plan.",
+      alternatives: ["Choose the race you are most consistent piloting in Hardcore."],
+    },
+    identity: {
+      raceSuggestion: "player choice",
+      factionSuggestion: "neutral" as const,
+      genderLean: "neutral" as const,
+      buildFantasy: headline,
+      archetypeSummary: subline || "Emergency fallback build summary.",
+    },
+    signature: {
+      tree: { branch: "Primary", weight: 1 },
+      strengths: ["Survival-first baseline", "Low complexity while services recover"],
+      weaknesses: ["Not class-optimized", "Minimal level-by-level detail"],
+      whyDistinct: "This is an emergency deterministic fallback emitted to prevent build-page deadlocks.",
+      keyItems: [{ name: "Any defensive upgrade", slot: "trinket", rationale: "Prioritize survivability spikes." }],
+    },
+    namesByLane: {
+      lore_world: [],
+      hc_practical: [],
+      light_humor: [],
+      grimdark: [],
+      neutral: [],
+      pop_culture: [],
+    },
+    forks: [
+      {
+        title: "Regenerate now vs keep moving",
+        optionA: "Retool immediately for a full generated sheet",
+        optionB: "Use baseline and continue leveling",
+        why: "The fallback keeps the run unblocked while generation recovers.",
+      },
+    ],
+  };
 }
 
 export async function handlePostBuild(c: Context<ApiEnv>) {
@@ -211,6 +331,34 @@ export async function handleGetBuild(c: Context<ApiEnv>) {
   const rows = await db.select().from(buildPlans).where(eq(buildPlans.destinyId, destinyId)).limit(1);
   const row = rows[0];
   if (!row) return c.json({ error: "build_not_found" }, 404);
+  if (shouldEmitEmergencyReadyFallback(row)) {
+    const destiny = await loadDestinyRow(db, destinyId);
+    if (destiny && destiny.sessionId === row.sessionId) {
+      let destinyContent: { classId?: string; headline?: string; subline?: string } = {};
+      try {
+        destinyContent = JSON.parse(destiny.contentJson) as { classId?: string; headline?: string; subline?: string };
+      } catch {
+        destinyContent = {};
+      }
+      const payload = buildEmergencyReadyPlan({
+        rulesetPin: row.rulesetPin ?? "classic-era-hc-2026-04",
+        classId: destinyContent.classId ?? "warrior",
+        archetypeKey: destiny.archetypeKey ?? "fallback-emergency",
+        destinyHeadline: destinyContent.headline,
+        destinySubline: destinyContent.subline,
+      });
+      await db
+        .update(buildPlans)
+        .set({
+          status: "ready",
+          payloadJson: JSON.stringify(payload),
+          error: "emergency_ready_fallback",
+          updatedAt: new Date(),
+        })
+        .where(eq(buildPlans.id, row.id));
+      return c.json({ ...asBuildResponse(row), status: "ready", plan: payload, error: "emergency_ready_fallback" });
+    }
+  }
   if (isStaleInProgressBuildPlan(row)) {
     const destiny = await loadDestinyRow(db, destinyId);
     if (destiny && destiny.sessionId === row.sessionId) {

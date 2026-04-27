@@ -42,6 +42,12 @@ const CLASS_TALENT_TREE_NAMES: Record<ClassId, readonly [string, string, string]
 /** Keep prompt payloads bounded so gateway requests stay parseable even with huge client signals. */
 const PROMPT_JSON_BUDGET = 12_000;
 const REVIEWER_DRAFT_BUDGET = 120_000;
+// Build generation is launched from request `waitUntil`; keep total AI time bounded so jobs can
+// actually settle instead of sitting in `generating` after runtime interruption.
+const BUILD_PLAN_TOTAL_AI_BUDGET_MS = 24_000;
+const BUILD_PLAN_GEN_TIMEOUT_MS = 12_000;
+const BUILD_PLAN_REVIEW_TIMEOUT_MS = 8_000;
+const BUILD_PLAN_SECOND_PASS_TIMEOUT_MS = 6_000;
 
 function jsonForPrompt(label: string, value: unknown): string {
   try {
@@ -515,6 +521,8 @@ export async function runBuildPlanGeneration(
   }
 
   const model = env.AI_MODEL_BUILD ?? env.AI_MODEL_DESTINY ?? "openrouter/auto";
+  const aiBudgetStartedAt = Date.now();
+  const remainingAiBudgetMs = () => BUILD_PLAN_TOTAL_AI_BUDGET_MS - (Date.now() - aiBudgetStartedAt);
 
   // Fragment cache short-circuit. Identical signals + class + archetype + ruleset reuse the prior
   // sanitised payload; we still write a fresh `build_plans` row so analytics/logs stay per-session.
@@ -569,17 +577,22 @@ export async function runBuildPlanGeneration(
       .where(eq(buildPlans.id, params.buildPlanId));
 
     const genPrompt = buildGeneratorPrompt(params.input, { ...destiny, tierProse: destiny.tierProse ?? "", rationale: destiny.rationale ?? "" }, params.archetypeKey, params.viabilityNotes, rulesetPin);
-    const gen = await callAiGateway(env, model, genPrompt, 95_000, 24_576);
+    const genTimeout = Math.max(2_500, Math.min(BUILD_PLAN_GEN_TIMEOUT_MS, remainingAiBudgetMs()));
+    if (genTimeout <= 2_500) throw new Error("ai_budget_exhausted:generator");
+    const gen = await callAiGateway(env, model, genPrompt, genTimeout, 24_576);
     if (!gen.ok) throw new Error(gen.error);
     let raw = extractJsonPayload(gen.content);
     let rawGeneratorContent = gen.content;
     let rawReviewerContent = "";
 
     const revPrompt = buildReviewerPrompt(raw, params.input, rulesetPin);
-    const rev = await callAiGateway(env, model, revPrompt, 95_000, 24_576);
-    if (rev.ok) {
-      rawReviewerContent = rev.content;
-      raw = extractJsonPayload(rev.content);
+    const revTimeout = Math.max(0, Math.min(BUILD_PLAN_REVIEW_TIMEOUT_MS, remainingAiBudgetMs()));
+    if (revTimeout >= 2_500) {
+      const rev = await callAiGateway(env, model, revPrompt, revTimeout, 24_576);
+      if (rev.ok) {
+        rawReviewerContent = rev.content;
+        raw = extractJsonPayload(rev.content);
+      }
     }
 
     let parsed: BuildPlanPayload;
@@ -609,24 +622,27 @@ export async function runBuildPlanGeneration(
         },
       });
       parsed = deepStripFancyPunctuation(parsed);
-      try {
-        parsed = await mergeLevelByLevelTalentPass(
-          env,
-          model,
-          parsed,
-          {
-            headline: destiny.headline,
-            subline: destiny.subline,
-            classId: destiny.classId,
-            bullets: destiny.bullets,
-            tierProse: destiny.tierProse ?? "",
-            rationale: destiny.rationale ?? "",
-          },
-          params.input,
-          rulesetPin,
-        );
-      } catch {
-        /* Second pass is best-effort; primary plan still ships. */
+      const secondPassTimeout = Math.max(0, Math.min(BUILD_PLAN_SECOND_PASS_TIMEOUT_MS, remainingAiBudgetMs()));
+      if (secondPassTimeout >= 2_500) {
+        try {
+          parsed = await mergeLevelByLevelTalentPass(
+            env,
+            model,
+            parsed,
+            {
+              headline: destiny.headline,
+              subline: destiny.subline,
+              classId: destiny.classId,
+              bullets: destiny.bullets,
+              tierProse: destiny.tierProse ?? "",
+              rationale: destiny.rationale ?? "",
+            },
+            params.input,
+            rulesetPin,
+          );
+        } catch {
+          /* Second pass is best-effort; primary plan still ships. */
+        }
       }
     } catch (e) {
       throw new Error(e instanceof Error ? e.message : "parse_failed");

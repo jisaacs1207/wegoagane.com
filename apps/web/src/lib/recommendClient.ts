@@ -113,6 +113,7 @@ export type BuildPlanResponse = {
   publishTier: string;
   plan: unknown;
   error: string | null;
+  generationSource?: "ai" | "stub" | "emergency_fallback" | "unknown";
 };
 
 export type NameCandidateRow = {
