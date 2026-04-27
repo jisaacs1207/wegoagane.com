@@ -6,7 +6,7 @@ Vite + React + React Router. Home: **Quick build** (lucky roll, auto-seeded) and
 
 **Saved build artifact:** **`/build/commit/:slug`** (optional **`?fresh=1`** after publish) loads the committed destiny, **polls `GET /api/v1/build/:destinyId`** until the plan is `ready`/`failed`, and shows a **horizontal talent level rail** (`TalentLevelPathView`, fed by `talents.levelByLevel` from the API second pass, else **`talents.path`**).
 
-**M3-M7+ (live):** result pages call `POST /api/v1/recommend` (proxy to Worker in local dev). If API is unavailable, UI falls back to local fixtures.
+**Live generation path:** journey steps call `POST /api/v1/recommend` (proxy to Worker in local dev), then navigate directly to `/build/commit/:slug` (fallback `/build/:destinyId`). If API is unavailable, UI falls back to local fixtures.
 
 ```bash
 npm install
@@ -19,7 +19,7 @@ npm run test:e2e       # Playwright (uses `vite preview`; see playwright.config.
 
 E2E specs live under **`e2e/`**. Install browsers once: `npx playwright install chromium`.
 
-**High-signal modules:** [`src/lib/sessionKeys.ts`](src/lib/sessionKeys.ts) (storage keys), [`src/lib/recommendClient.ts`](src/lib/recommendClient.ts) (API errors → hints), [`src/lib/flowDestinyState.ts`](src/lib/flowDestinyState.ts) (stored destiny for result pages).
+**High-signal modules:** [`src/lib/sessionKeys.ts`](src/lib/sessionKeys.ts) (storage keys), [`src/lib/recommendClient.ts`](src/lib/recommendClient.ts) (API errors → hints), [`src/lib/flowDestinyState.ts`](src/lib/flowDestinyState.ts) (stored destiny for post-generate continuity).
 
 Run API locally in another terminal:
 

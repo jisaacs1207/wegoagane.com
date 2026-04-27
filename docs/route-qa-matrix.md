@@ -10,27 +10,26 @@
 
 ## Release spirit
 
-- `/release-spirit/next` -> `/release-spirit/journey` (fast path)
-- `/release-spirit/next` -> `/release-spirit/detail` (optional)
+- `/release-spirit/next` -> `/release-spirit/journey` (selecting a priority auto-advances)
+- `/release-spirit/next` -> `/release-spirit/detail` (optional details)
 - `/release-spirit/detail` -> `/release-spirit/journey`
-- `/release-spirit/journey` -> `/release-spirit/result`
-- `/release-spirit/result` reroll -> `/reroll/death` -> (`totally_off` => `/release-spirit/next`, `close_but_off` => reroll then `/release-spirit/result`)
-- `/release-spirit/result` retool -> `/release-spirit/next`
+- `/release-spirit/journey` -> `/build/commit/:slug?fresh=1&flow=death` (normal path)
+- Fallback if commit row missing: `/release-spirit/journey` -> `/build/:destinyId?fresh=1&flow=death`
 
 ## Draft a run
 
-- `/draft-a-run/intent` -> `/draft-a-run/journey` (fast path)
-- `/draft-a-run/intent` -> `/draft-a-run/freeform` (optional view)
+- `/draft-a-run/intent` -> `/draft-a-run/journey` (selecting a goal auto-advances)
+- `/draft-a-run/intent` -> `/draft-a-run/freeform` (optional route; direct/open link)
 - `/draft-a-run/freeform` -> `/draft-a-run/journey`
-- `/draft-a-run/journey` -> `/draft-a-run/result`
-- `/draft-a-run/result` reroll -> `/reroll/plan` -> (`totally_off` => `/draft-a-run/intent`, `close_but_off` => reroll then `/draft-a-run/result`)
-- `/draft-a-run/result` retool -> `/draft-a-run/intent`
+- `/draft-a-run/journey` -> `/build/commit/:slug?fresh=1&flow=plan` (normal path)
+- Fallback if commit row missing: `/draft-a-run/journey` -> `/build/:destinyId?fresh=1&flow=plan`
 
 ## Lucky roll
 
-- `/lucky-roll/journey` -> `/lucky-roll/result`
-- `/lucky-roll/result` reroll -> `/reroll/lucky` -> (`totally_off` => `/lucky-roll/journey`, `close_but_off` => reroll then `/lucky-roll/result`)
-- `/lucky-roll/result` retool -> `/lucky-roll/journey`
+- `/lucky-roll/journey?quick=1` auto-generates from seeded quick intent
+- `/lucky-roll/journey?quick=1` -> `/lucky-roll/journey` (open setup instead)
+- `/lucky-roll/journey` -> `/build/commit/:slug?fresh=1&flow=lucky` (normal path)
+- Fallback if commit row missing: `/lucky-roll/journey` -> `/build/:destinyId?fresh=1&flow=lucky`
 
 ## Commit/build loop
 
@@ -47,9 +46,10 @@
 
 ## Retool / restart (browser)
 
-- **Result pages** “retool” links send the player back to the flow’s intent or journey entry (see route lines above); they do not clear `sessionStorage` by themselves unless the target step’s `useEffect` removes stale destiny rows.
+- **Build commit page** “Retool from this build” routes to `/draft-a-run/intent` and sets `plan.seedDestinyId` as a soft class/faction hint for the next generation.
+- The legacy `/build/:destinyId` wrapper route forwards to `/build/commit/:slug` when possible.
 - **Home** entry tiles clear the chosen flow’s `buildIntent`, depth/power-curve aux keys, `generatedDestiny`, and `destinyId` so a new ritual does not reuse the previous card.
-- **Stored destiny JSON** for the result page lives under `plan.generatedDestiny` / `death.generatedDestiny` / `lucky.generatedDestiny` (written via [`flowDestinyState`](../apps/web/src/lib/flowDestinyState.ts), aligned with [`SessionKeys`](../apps/web/src/lib/sessionKeys.ts)).
+- **Stored destiny JSON** for post-generate continuity lives under `plan.generatedDestiny` / `death.generatedDestiny` / `lucky.generatedDestiny` (written via [`flowDestinyState`](../apps/web/src/lib/flowDestinyState.ts), aligned with [`SessionKeys`](../apps/web/src/lib/sessionKeys.ts)).
 
 ## SessionStorage keys (browser)
 
@@ -58,8 +58,11 @@ Canonical string literals live in [`apps/web/src/lib/sessionKeys.ts`](../apps/we
 | Key | Purpose |
 |-----|---------|
 | `session.id` | `SessionKeys.home.sessionId` — growth assignment on home + share viewer bootstrap |
+| `wega.lastBuildFlow` | Last flow (`plan`/`death`/`lucky`) used to mint a commit URL; helps `/build/commit/:slug` recover attribution when `?flow=` is absent |
 | `plan.sessionId` | Recommend / growth session for draft-a-run |
 | `plan.intent` | Selected intent label (step 1) |
+| `plan.intentGoalId` | Stable id for selected intent tile (separate from API-facing label text) |
+| `plan.identityPriority` | `class_first` \| `race_first` signal |
 | `plan.freeform` | Optional note (step 2) |
 | `plan.destinyId` | Latest destiny row id for this draft |
 | `plan.seedDestinyId` | Seed class/faction from a prior commit when re-drafting |
@@ -67,12 +70,15 @@ Canonical string literals live in [`apps/web/src/lib/sessionKeys.ts`](../apps/we
 | `plan.buildIntent` | JSON `BuildIntentSignals` |
 | `plan.buildIntent.depth` | `quick` \| `balanced` \| `dialed_in` |
 | `plan.buildIntent.powerCurve` | Optional power curve id |
+| `plan.recommendRelaxBanner` | One-shot UI marker when API relaxed filters for AI |
 | `death.sessionId` | Release spirit recommend session |
 | `death.mood` / `death.nextSignal` | Mood + next-run signal ids |
 | `death.detail.zone` / `.cause` / `.level` / `.note` | Optional death context |
 | `death.destinyId` / `death.generatedDestiny` | Same shape as `plan.generatedDestiny` |
 | `death.buildIntent` (+ `.depth`, `.powerCurve`) | Build journey for spirit release |
+| `death.recommendRelaxBanner` | One-shot UI marker when API relaxed filters for AI |
 | `lucky.sessionId` / `lucky.destinyId` / `lucky.generatedDestiny` / `lucky.buildIntent` (+ aux) | Lucky roll (same generatedDestiny shape) |
+| `lucky.recommendRelaxBanner` | One-shot UI marker when API relaxed filters for AI |
 | `last.acceptedClassId` | Last accepted class for post-accept memory updates |
 | `wegoagane.memory.v1` | `localStorage` — recommend bias (see `memoryProfile.ts`) |
 
