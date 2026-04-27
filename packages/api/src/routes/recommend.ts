@@ -1,4 +1,5 @@
 import { type Context, Hono } from "hono";
+import { eq } from "drizzle-orm";
 import { captureServerEvent } from "../analytics/posthog";
 import { AnalyticsEvent } from "../analytics/events";
 import { buildExperimentalRankedArchetype } from "../ai/experimentalArchetype";
@@ -531,7 +532,27 @@ export async function handleRecommend(c: Context<ApiEnv>) {
         ),
       );
     } catch {
-      buildPlanId = undefined;
+      // Best-effort recovery: if a row already exists for this destiny (unique destiny_id),
+      // reuse it so commit-page polling can still resolve to a real plan.
+      const existingPlan = (await db.select().from(buildPlans).where(eq(buildPlans.destinyId, destinyId)).limit(1))[0];
+      if (existingPlan) {
+        buildPlanId = existingPlan.id;
+        if (existingPlan.status === "failed" || existingPlan.status === "queued" || existingPlan.status === "generating") {
+          c.executionCtx.waitUntil(
+            enqueueBuildPlanGeneration(
+              c.env,
+              existingPlan.id,
+              destinyId,
+              sessionId,
+              top.archetype.key,
+              JSON.stringify(output),
+              input,
+            ),
+          );
+        }
+      } else {
+        buildPlanId = undefined;
+      }
     }
 
     /**

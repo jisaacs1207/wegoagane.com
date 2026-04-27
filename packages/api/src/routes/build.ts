@@ -230,6 +230,17 @@ export async function handleGetBuild(c: Context<ApiEnv>) {
       );
       return c.json({ ...asBuildResponse(row), status: "queued", error: null }, 202);
     }
+    // Stale in-progress row cannot be resumed (orphaned destiny/session mismatch). Mark terminal
+    // failed so commit-page polling exits instead of spinning forever.
+    await db
+      .update(buildPlans)
+      .set({
+        status: "failed",
+        error: row.error ?? "stale_in_progress_unrecoverable",
+        updatedAt: new Date(),
+      })
+      .where(eq(buildPlans.id, row.id));
+    return c.json({ ...asBuildResponse(row), status: "failed", error: row.error ?? "stale_in_progress_unrecoverable" });
   }
   if (row.status === "failed") {
     const now = Date.now();
