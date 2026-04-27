@@ -21,6 +21,7 @@ import {
   fetchBuildCommit,
   fetchBuildPlan,
   flowApiErrorHint,
+  requestBuildPlan,
   type BuildCommitRecord,
 } from "../lib/recommendClient";
 import { AnalyticsEvent, trackEvent } from "../lib/analytics";
@@ -151,6 +152,7 @@ export function BuildCommitPage() {
   const [nameInput, setNameInput] = useState("");
   const lastSavedName = useRef<string>("");
   const renameTimer = useRef<number | null>(null);
+  const buildCreateAttempted = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -191,6 +193,7 @@ export function BuildCommitPage() {
     setLivePlan(null);
     setBuildPlanStatus(null);
     setPlanPollError(null);
+    buildCreateAttempted.current = false;
   }, [slug]);
 
   const destiny = useMemo(() => record?.payload?.destiny ?? null, [record?.payload]);
@@ -263,7 +266,30 @@ export function BuildCommitPage() {
         schedule(1500, run);
       } catch (err) {
         if (cancelled) return;
-        setPlanPollError(flowApiErrorHint(err as Error));
+        const hint = flowApiErrorHint(err as Error);
+        setPlanPollError(hint);
+        const msg = err instanceof Error ? err.message : "";
+        if (
+          msg.includes("build_fetch:404:build_not_found") &&
+          record?.sessionId &&
+          !buildCreateAttempted.current
+        ) {
+          buildCreateAttempted.current = true;
+          try {
+            const created = await requestBuildPlan({
+              destinyId: record.destinyId,
+              sessionId: record.sessionId,
+            });
+            if (cancelled) return;
+            setBuildPlanStatus(created.status);
+            if (created.plan) setLivePlan(created.plan);
+            schedule(1200, run);
+            return;
+          } catch (createErr) {
+            if (cancelled) return;
+            setPlanPollError(flowApiErrorHint(createErr as Error));
+          }
+        }
         schedule(2000, run);
       }
     };
