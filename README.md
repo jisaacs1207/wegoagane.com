@@ -11,7 +11,7 @@ Hardcore reroll and remembrance — **web** (Vite + React) and **API** (Cloudfla
 | [`docs/deploy-wegoagane-com.md`](docs/deploy-wegoagane-com.md) | Production deploy, secrets, smoke checks |
 | [`docs/github-setup.md`](docs/github-setup.md) | CI and branch protection |
 | [`docs/route-qa-matrix.md`](docs/route-qa-matrix.md) | Routes, `SessionKeys`, API error → UI copy, validation commands |
-| [`docs/handoff/STATUS.md`](docs/handoff/STATUS.md) | Milestone tracker (M14–M18) and what shipped / in flight |
+| [`docs/handoff/STATUS.md`](docs/handoff/STATUS.md) | Milestone tracker (M0–M19+ contract) and what shipped / in flight |
 
 ## Quick start (local)
 
@@ -31,5 +31,5 @@ GitHub Actions runs **Handbook layout**, **Web** (lint, Vitest, production build
 |------|-----------|
 | Session storage keys | [`apps/web/src/lib/sessionKeys.ts`](apps/web/src/lib/sessionKeys.ts) |
 | API errors → copy | [`apps/web/src/lib/recommendClient.ts`](apps/web/src/lib/recommendClient.ts) (`flowApiErrorHint`, `destinyRecommendErrorHint`, `recommendErrorSuggestsSoftenFilters`) |
-| Stored destiny for result pages | [`apps/web/src/lib/flowDestinyState.ts`](apps/web/src/lib/flowDestinyState.ts) |
+| Stored destiny for post-generate pages | [`apps/web/src/lib/flowDestinyState.ts`](apps/web/src/lib/flowDestinyState.ts) |
 | Dev-only ignored failures | [`apps/web/src/lib/clientDebug.ts`](apps/web/src/lib/clientDebug.ts) (`debugClientIgnored`) |

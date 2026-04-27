@@ -1,12 +1,13 @@
 # wegoagane API (Workers + Hono + Drizzle)
 
-This package is the M3-M9 backend foundation:
+Backend for **`wegoagane.com/api/*`** (and same routes without `/api` prefix on the Worker): **recommend**, **memorial**, **share**, **feedback**, **analytics**, **growth engine**, **journey** (vector questionnaire + commit), **async build plans** (including a **second AI pass** that fills `talents.levelByLevel` + `talents.buildIntentSummary` when the primary plan validates), and **public build rails** (recent/top/rate/OG). Foundation pieces:
 
 - Drizzle typed schema + SQL migrations (D1)
-- Deterministic ranker + validator + template-only destiny output
+- Deterministic ranker + validator + template-first destiny/memorial output
 - Optional **OpenRouter** enrichment (env-gated, validator-first fallback)
-- Hono routes for recommendation + memorial generation
-- Persistence for sessions, destinies, memorials, and recommendation logs
+- Persistence for sessions, destinies, memorials, build plans, commits, recommendation logs, growth tables (see schema)
+
+Live route index (also returned by **`GET /`** on the Worker): see [`src/index.ts`](src/index.ts) `endpoints` array. Web session keys and error copy: [`docs/route-qa-matrix.md`](../../docs/route-qa-matrix.md).
 
 ## Local setup
 
@@ -160,7 +161,7 @@ Worker routes are configured in `wrangler.toml` for:
 
 `npm test` runs Node’s test runner on `src/**/*.test.ts` — route and handler coverage for recommend, journey commit, feedback, memorial, share, build bodies, growth auth, and related `invalid_json` / validation paths.
 
-Web flows, `SessionKeys`, and API `error` → UI copy: [../docs/route-qa-matrix.md](../docs/route-qa-matrix.md).
+Web flows, `SessionKeys`, and API `error` → UI copy: [../../docs/route-qa-matrix.md](../../docs/route-qa-matrix.md).
 
 ## Smoke + persistence checks
 

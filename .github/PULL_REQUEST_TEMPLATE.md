@@ -17,8 +17,8 @@
 <!-- For anything that affects product behavior or milestones, tie it to the handbook. -->
 
 - [ ] N/A — mechanical / typo / dependency bump only
-- [ ] Relevant handbook section(s) updated (under [`docs/handoff/`](docs/handoff/README.md)) or **explain below** why the handoff does not need a doc change yet
-- [ ] If this PR completes a milestone, [`docs/handoff/STATUS.md`](docs/handoff/STATUS.md) will be updated in this PR or a fast-follow (say which)
+- [ ] Relevant handbook section(s) updated (under [`docs/handoff/`](../docs/handoff/README.md)) or **explain below** why the handoff does not need a doc change yet
+- [ ] If this PR completes a milestone, [`docs/handoff/STATUS.md`](../docs/handoff/STATUS.md) will be updated in this PR or a fast-follow (say which)
 
 **Handbook / STATUS notes (optional):**
 
@@ -29,7 +29,7 @@
 <!-- `main` is merge-only; checks must pass before merge. -->
 
 - [ ] I expect **CI** to be green on this PR (or I’ve noted why it’s intentionally draft / failing below)
-- [ ] If I added or renamed a **required** workflow job (`name:` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml)), I will add that job to the branch ruleset **`wegoagane-main-ci`** after this PR (or used [`scripts/ruleset_add_required_check.py`](scripts/ruleset_add_required_check.py)) — see [`docs/github-setup.md`](docs/github-setup.md) (“Profile B + new CI jobs”)
+- [ ] If I added or renamed a **required** workflow job (`name:` in [`.github/workflows/ci.yml`](workflows/ci.yml)), I will add that job to the branch ruleset **`wegoagane-main-ci`** after this PR (or used [`scripts/ruleset_add_required_check.py`](../scripts/ruleset_add_required_check.py)) — see [`docs/github-setup.md`](../docs/github-setup.md) (“Profile B + new CI jobs”)
 
 <!-- If a new check is required, paste the reminder line for reviewers: -->
 <!--

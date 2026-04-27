@@ -59,7 +59,7 @@ This stack is genuinely operable by one person. Cloudflare's billing consolidate
 
 ### 17.4 Continuous integration (from day one)
 
-**Yes — add CI immediately**, even before the app shell: it gives a **live green/red signal on every push** (and on PRs). To gate **`main`**, use GitHub **repository rulesets** (**Settings → Rules → Rulesets**), not only the legacy branch protection screen — see [GitHub setup — Step 4](../github-setup.md#step-4-protect-main-with-a-branch-ruleset).
+**Yes — add CI immediately**, even before the app shell: it gives a **live green/red signal on every push** (and on PRs). To gate **`main`**, use GitHub **repository rulesets** (**Settings → Rules → Rulesets**), not only the legacy branch protection screen — see [GitHub setup — Step 4](../github-setup.md#step-4-create-the-branch-ruleset-click-by-click).
 
 **Principles for a solo repo**
 
