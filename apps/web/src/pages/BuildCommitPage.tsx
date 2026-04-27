@@ -65,6 +65,27 @@ type EffectivePlan = {
   aiRaw?: { generatorJson?: string; reviewerJson?: string };
 };
 
+/** True when the stored plan has real fields (avoids `signature: {}` counting as "ready" and stalling the talent poll). */
+function hasMeaningfulPlanPayload(p: EffectivePlan | null | undefined): boolean {
+  if (!p) return false;
+  const t = p.talents;
+  if (t) {
+    if (Array.isArray(t.path) && t.path.length > 0) return true;
+    if (Array.isArray(t.keyPicks) && t.keyPicks.length > 0) return true;
+    if (Array.isArray(t.treeAllocations) && t.treeAllocations.length > 0) return true;
+    if (t.summary && t.summary.trim().length > 0) return true;
+  }
+  if (p.professions?.primary || p.professions?.secondary) return true;
+  const s = p.signature;
+  if (s) {
+    if (s.whyDistinct && s.whyDistinct.trim().length > 0) return true;
+    if (s.strengths && s.strengths.some((x) => (x ?? "").trim().length > 0)) return true;
+    if (s.keyItems && s.keyItems.length > 0) return true;
+  }
+  if (p.stats?.priority && p.stats.priority.length > 0) return true;
+  return false;
+}
+
 const BOOKMARK_STORAGE_KEY = "wega.bookmarks.v1";
 
 function readBookmarkSet(): Set<string> {
@@ -108,6 +129,8 @@ export function BuildCommitPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [livePlan, setLivePlan] = useState<unknown | null>(null);
+  const [buildPlanStatus, setBuildPlanStatus] = useState<string | null>(null);
+  const [planPollError, setPlanPollError] = useState<string | null>(null);
   const [copyState, setCopyState] = useState<"" | "url">("");
   const [shareBusy, setShareBusy] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
@@ -149,15 +172,31 @@ export function BuildCommitPage() {
     setBookmarked(readBookmarkSet().has(slug));
   }, [slug]);
 
+  // New commit page (slug from URL): clear stale plan poll state so a prior "ready" does not
+  // leak into a different build before its fetch returns.
+  useEffect(() => {
+    if (!slug) return;
+    setLivePlan(null);
+    setBuildPlanStatus(null);
+    setPlanPollError(null);
+  }, [slug]);
+
   const destiny = useMemo(() => record?.payload?.destiny ?? null, [record?.payload]);
   const buildPlan = useMemo(
     () => (record?.payload?.plan ?? null) as EffectivePlan | null,
     [record?.payload],
   );
-  const effectivePlan: EffectivePlan | null = buildPlan ?? (livePlan as EffectivePlan | null) ?? null;
-  const planReady = Boolean(
-    effectivePlan && (effectivePlan.talents || effectivePlan.professions || effectivePlan.signature),
-  );
+  const persistedPlanReady = useMemo(() => hasMeaningfulPlanPayload(buildPlan), [buildPlan]);
+  const effectivePlan: EffectivePlan | null = useMemo(() => {
+    if (hasMeaningfulPlanPayload(buildPlan)) return buildPlan;
+    const live = livePlan as EffectivePlan | null;
+    if (hasMeaningfulPlanPayload(live)) return live;
+    return live ?? buildPlan;
+  }, [buildPlan, livePlan]);
+  /** AI build plan job finished (or we already have a saved sheet from the DB). */
+  const buildPlanSettled =
+    persistedPlanReady || buildPlanStatus === "ready" || buildPlanStatus === "failed";
+  const talentViewLoading = !persistedPlanReady && !buildPlanSettled;
   const raceFromPlan = effectivePlan?.identity?.raceSuggestion ?? effectivePlan?.race?.suggestion;
   const raceId = useMemo(() => {
     if (raceFromPlan) return inferRaceFromHeadline(raceFromPlan);
@@ -168,25 +207,52 @@ export function BuildCommitPage() {
     [effectivePlan?.identity?.factionSuggestion, raceId],
   );
 
-  // Poll the build plan endpoint until the AI run completes. Keeps the page live without a
-  // manual refresh, especially important when the user lands on /build/commit/:slug?fresh=1.
+  // Poll the build plan endpoint until the AI run completes. Retries on network errors and
+  // stops when the API reports `ready` or `failed` (no more infinite "finalising" spinners).
   useEffect(() => {
-    if (!record?.destinyId || planReady) return;
+    if (!record?.destinyId || !slug) return;
+    if (persistedPlanReady) {
+      setBuildPlanStatus("ready");
+      return;
+    }
     let cancelled = false;
-    const poll = async () => {
+    let timeoutId: number | null = null;
+    const schedule = (ms: number, fn: () => void) => {
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(fn, ms);
+    };
+    const run = async () => {
       try {
-        const res = await fetchBuildPlan(record.destinyId);
-        if (!cancelled && res.plan) setLivePlan(res.plan);
-        if (!cancelled && res.status !== "ready") window.setTimeout(() => void poll(), 1800);
+        const res = await fetchBuildPlan(record.destinyId!);
+        if (cancelled) return;
+        setPlanPollError(null);
+        setBuildPlanStatus(res.status);
+        if (res.plan) setLivePlan(res.plan);
+        if (res.status === "ready") {
+          void fetchBuildCommit(slug)
+            .then((r) => {
+              if (!cancelled) setRecord(r);
+            })
+            .catch((e) => debugClientIgnored("build_commit.plan_refetch", e));
+          return;
+        }
+        if (res.status === "failed") {
+          if (res.error) setPlanPollError(res.error);
+          return;
+        }
+        schedule(1500, run);
       } catch (err) {
-        debugClientIgnored("build_commit.plan_poll", err);
+        if (cancelled) return;
+        setPlanPollError(flowApiErrorHint(err as Error));
+        schedule(2000, run);
       }
     };
-    void poll();
+    void run();
     return () => {
       cancelled = true;
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
     };
-  }, [record?.destinyId, planReady]);
+  }, [record?.destinyId, slug, persistedPlanReady]);
 
   const intentFromSession = useMemo((): BuildIntentSignals | null => {
     try {
@@ -205,6 +271,8 @@ export function BuildCommitPage() {
     return buildSpecSummary({
       classId: destiny.classId,
       destinyHeadline: destiny.headline,
+      destinySubline: destiny.subline,
+      destinyTierProse: destiny.tierProse,
       talents: effectivePlan?.talents,
       signature: effectivePlan?.signature,
     });
@@ -389,113 +457,40 @@ export function BuildCommitPage() {
         <span className="flow-crumb">Build artifact</span>
       </div>
 
-      {isFresh && !planReady ? (
+      {isFresh && talentViewLoading ? (
         <p className="ui-caption" role="status" aria-live="polite" style={{ marginTop: 6 }}>
-          AI is finalising your talents. The page updates the moment it lands; the URL is already
-          shareable.
+          AI is finalising your talents. This page updates as soon as the plan returns; the URL is
+          already shareable.
         </p>
       ) : null}
 
       <div className="card commit-hero">
-        <div className="commit-hero__title">
-          <p className="step-label">Your saved build</p>
-          <input
-            className="commit-hero__name-input"
-            value={nameInput}
-            placeholder={headline}
-            onChange={(e) => onNameChange(e.target.value)}
-            onBlur={() => void persistName(nameInput)}
-            aria-label="Build name"
-            maxLength={80}
-          />
-          <p className="hero-sub" style={{ marginTop: 4 }}>
-            {subline}
-          </p>
-          <div className="commit-hero__rating-row">
-            {sessionId ? (
-              <RatingBar
-                slug={record.slug}
-                sessionId={sessionId}
-                initialThumbsUp={record.thumbsUp ?? 0}
-                initialThumbsDown={record.thumbsDown ?? 0}
-              />
-            ) : (
-              <p className="ui-caption" style={{ color: "var(--ts)", margin: 0 }}>
-                Ratings need the browser session from generation; this link has no session id.
-              </p>
-            )}
-            <details className="commit-rating-help">
-              <summary className="ui-caption commit-rating-help__summary" title="Help">
-                What is this?
-              </summary>
-              <p className="ui-caption" style={{ margin: "6px 0 0", maxWidth: 320, color: "var(--ts)" }}>
-                Thumbs help other players find solid builds. One vote per browser session; you can
-                change your mind. Your first vote can publish a draft to the public lists.
-              </p>
-            </details>
-            <span className="ui-caption" style={{ color: "var(--ts)" }}>
-              ruleset: {rulesetPin}
-              {" "}
-              {"\u00b7"}
-              {" "}
-              {tierLabel} tier
-            </span>
-          </div>
-        </div>
-        <div className="share-rail" role="group" aria-label="Share this build">
-          <input
-            className="share-rail__url"
-            value={shareUrl}
-            readOnly
-            onFocus={(e) => e.currentTarget.select()}
-            onClick={(e) => e.currentTarget.select()}
-            aria-label="Build URL"
-          />
-          <button
-            type="button"
-            className="commit-icon-btn"
-            title={copyState === "url" ? "Copied!" : "Copy build URL"}
-            aria-label="Copy build URL"
-            onClick={() => void copyText(shareUrl, "url")}
-          >
-            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-              <path
-                fill="currentColor"
-                d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"
-              />
-            </svg>
-          </button>
-          <button
-            type="button"
-            className={`commit-icon-btn ${bookmarked ? "commit-icon-btn--on" : ""}`}
-            title={bookmarked ? "Bookmarked" : "Bookmark this build"}
-            aria-label="Bookmark this build"
-            aria-pressed={bookmarked}
-            onClick={toggleBookmark}
-          >
-            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-              <path
-                fill={bookmarked ? "currentColor" : "none"}
-                stroke="currentColor"
-                strokeWidth="2"
-                d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"
-              />
-            </svg>
-          </button>
-          <button
-            type="button"
-            className="commit-icon-btn"
-            title="Share"
-            aria-label="Share this build"
-            onClick={() => void nativeShare()}
-          >
-            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-              <path
-                fill="currentColor"
-                d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92S21 20.61 21 19s-1.34-2.92-3-2.92z"
-              />
-            </svg>
-          </button>
+        <p className="step-label">Your saved build</p>
+        <input
+          className="commit-hero__name-input"
+          value={nameInput}
+          placeholder={headline}
+          onChange={(e) => onNameChange(e.target.value)}
+          onBlur={() => void persistName(nameInput)}
+          aria-label="Build name"
+          maxLength={80}
+        />
+        <p className="hero-sub" style={{ marginTop: 4 }}>
+          {subline}
+        </p>
+        <div className="commit-hero__rating-row">
+          {sessionId ? (
+            <RatingBar
+              slug={record.slug}
+              sessionId={sessionId}
+              initialThumbsUp={record.thumbsUp ?? 0}
+              initialThumbsDown={record.thumbsDown ?? 0}
+            />
+          ) : (
+            <p className="ui-caption" style={{ color: "var(--ts)", margin: 0 }}>
+              Ratings need the browser session from generation; this link has no session id.
+            </p>
+          )}
         </div>
       </div>
 
@@ -527,12 +522,22 @@ export function BuildCommitPage() {
                 </span>
               ) : null}
             </div>
+            {buildPlanStatus === "failed" && planPollError ? (
+              <p className="ui-caption" role="alert" style={{ color: "var(--gold-bright)", margin: "0 0 8px" }}>
+                Build plan: {planPollError}
+              </p>
+            ) : null}
+            {buildPlanStatus !== "failed" && !buildPlanSettled && planPollError ? (
+              <p className="ui-caption" style={{ color: "var(--ts)", margin: "0 0 8px" }}>
+                Reconnecting — {planPollError}
+              </p>
+            ) : null}
             <TalentTreeView
               classId={destiny.classId as ClassId}
               treeAllocations={treeAllocations ?? undefined}
               keyPicks={keyPicks ?? undefined}
               path={fullPath ?? undefined}
-              loading={!planReady}
+              loading={talentViewLoading}
               summary={effectivePlan?.talents?.summary}
             />
           </div>
@@ -581,6 +586,86 @@ export function BuildCommitPage() {
         </div>
 
         <aside className="commit-page-grid__guidance">
+          <div className="card commit-side-utility">
+            <p className="step-label" style={{ margin: "0 0 6px" }}>
+              Link &amp; share
+            </p>
+            <div className="share-rail share-rail--compact" role="group" aria-label="Share this build">
+              <input
+                className="share-rail__url"
+                value={shareUrl}
+                readOnly
+                onFocus={(e) => e.currentTarget.select()}
+                onClick={(e) => e.currentTarget.select()}
+                aria-label="Build URL"
+              />
+              <button
+                type="button"
+                className="commit-icon-btn"
+                title={copyState === "url" ? "Copied!" : "Copy build URL"}
+                aria-label="Copy build URL"
+                onClick={() => void copyText(shareUrl, "url")}
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className={`commit-icon-btn ${bookmarked ? "commit-icon-btn--on" : ""}`}
+                title={bookmarked ? "Bookmarked" : "Bookmark this build"}
+                aria-label="Bookmark this build"
+                aria-pressed={bookmarked}
+                onClick={toggleBookmark}
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                  <path
+                    fill={bookmarked ? "currentColor" : "none"}
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="commit-icon-btn"
+                title="Share"
+                aria-label="Share this build"
+                onClick={() => void nativeShare()}
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92S21 20.61 21 19s-1.34-2.92-3-2.92z"
+                  />
+                </svg>
+              </button>
+            </div>
+            <p className="ui-caption" style={{ margin: "10px 0 0", color: "var(--ts)" }}>
+              <span>
+                {rulesetPin}
+                <span className="commit-side-meta__sep" aria-hidden>
+                  {" "}
+                  ·{" "}
+                </span>
+                {tierLabel} tier
+              </span>
+            </p>
+            <details className="commit-rating-help commit-rating-help--side" style={{ marginTop: 8 }}>
+              <summary className="ui-caption commit-rating-help__summary" title="Help">
+                What is this?
+              </summary>
+              <p className="ui-caption" style={{ margin: "6px 0 0", color: "var(--ts)", lineHeight: 1.45 }}>
+                Thumbs help other players find solid builds. One vote per browser session; you can
+                change your mind. The first vote can publish a draft to the public home rails.
+              </p>
+            </details>
+          </div>
+
           <div className="card identity-strip-card">
             <div className="identity-strip">
               <span
@@ -619,9 +704,43 @@ export function BuildCommitPage() {
             </div>
           </div>
 
-          {spec ? (
+          {buildPlanSettled && spec ? (
             <div className="card build-sheet">
-              <p className="step-label">Why this build is distinct</p>
+              <p className="step-label">Talent focus</p>
+              <p className="ui-caption" style={{ margin: "2px 0 8px", color: "var(--ts)" }}>
+                Primary: <strong style={{ color: "var(--tp)" }}>{spec.treeBranch}</strong>
+                {spec.treeWeight > 0
+                  ? ` — ${(spec.treeWeight * 100) | 0}% of stated weight on this tree${
+                      spec.treeCounts.some((c) => c.count > 0) ? " (from allocations below)" : ""
+                    }`
+                  : null}
+              </p>
+              {spec.treeCounts.some((c) => c.count > 0) ? (
+                <div className="build-spec-bars" aria-label="Point distribution by tree">
+                  {spec.treeCounts.map((row) => {
+                    const maxC = Math.max(1, ...spec.treeCounts.map((t) => t.count));
+                    const w = (row.count / maxC) * 100;
+                    return (
+                      <div key={row.branch} className="build-spec-bars__row">
+                        <span className="build-spec-bars__name">{row.branch}</span>
+                        <div className="build-spec-bars__track">
+                          <div
+                            className={`build-spec-bars__fill${
+                              row.branch === spec.treeBranch ? " build-spec-bars__fill--primary" : ""
+                            }`}
+                            style={{ width: `${w}%` }}
+                          />
+                        </div>
+                        <span className="build-spec-bars__n">{row.count > 0 ? row.count : "—"}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              <p className="step-label" style={{ marginTop: 12 }}>
+                Why this build is distinct
+              </p>
               <p className="hero-sub" style={{ marginTop: 4 }}>
                 {spec.whyDistinct}
               </p>
@@ -750,10 +869,10 @@ export function BuildCommitPage() {
               ) : null}
             </div>
           ) : (
-            <div className="card build-sheet build-sheet--loading">
-              <p className="step-label">Building your build sheet...</p>
-              <p className="hero-sub" style={{ marginTop: 4 }}>
-                AI is forging key talents, items, and tradeoffs. This page updates automatically.
+            <div className="card build-sheet build-sheet--loading" aria-live="polite">
+              <p className="step-label">Build sheet</p>
+              <p className="hero-sub" style={{ marginTop: 4, marginBottom: 0 }}>
+                Loading talents, profs, and tradeoffs; this block updates as the plan returns.
               </p>
             </div>
           )}

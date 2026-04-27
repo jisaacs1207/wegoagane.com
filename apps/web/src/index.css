@@ -1040,9 +1040,73 @@ textarea::placeholder {
 }
 
 .commit-hero {
-  display: grid;
-  gap: 14px;
+  display: block;
   margin-top: 10px;
+}
+
+.commit-side-utility {
+  padding: 14px 16px;
+  margin-bottom: 2px;
+}
+
+.share-rail--compact {
+  padding: 8px 10px;
+  gap: 6px;
+}
+
+.share-rail--compact .commit-icon-btn {
+  width: 40px;
+  height: 40px;
+}
+
+.build-spec-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.build-spec-bars__row {
+  display: grid;
+  grid-template-columns: minmax(0, 130px) minmax(0, 1fr) 2rem;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+}
+
+.build-spec-bars__name {
+  color: var(--ts);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.build-spec-bars__track {
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid color-mix(in srgb, var(--gold), transparent 80%);
+  overflow: hidden;
+}
+
+.build-spec-bars__fill {
+  height: 100%;
+  min-width: 0;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--gold), transparent 50%);
+  transition: width 0.2s ease;
+}
+
+.build-spec-bars__fill--primary {
+  background: color-mix(in srgb, var(--gold-bright), rgba(0, 0, 0, 0.35) 20%);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--gold), transparent 30%);
+}
+
+.build-spec-bars__n {
+  text-align: right;
+  color: var(--ts);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.75rem;
 }
 
 .commit-hero__title {

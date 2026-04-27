@@ -213,8 +213,9 @@ export function TalentTreeView(props: TalentTreeViewProps) {
   }
 
   const totalPoints = Object.values(branchPoints).reduce((acc, n) => acc + n, 0);
-
+  const unresolved = resolution.unresolved;
   const showLoadingHint = props.loading && totalPoints === 0;
+  const showEmptyPlacedHint = !props.loading && totalPoints === 0;
   return (
     <div className={`talent-view ${props.loading ? "talent-view--loading" : ""}`}>
       <div className="talent-view__header">
@@ -224,7 +225,11 @@ export function TalentTreeView(props: TalentTreeViewProps) {
             ? `${totalPoints} points placed`
             : showLoadingHint
               ? "AI is still finalising your talent path"
-              : ""}
+              : showEmptyPlacedHint
+                ? unresolved.length
+                  ? `0 on-grid points — see cross-tree ${unresolved.length === 1 ? "pick" : "picks"}`
+                  : "0 points matched the Classic 1.12 grid (names in the plan may not match the sheet)"
+                : ""}
         </span>
       </div>
       <div className="talent-view__grid-row">
