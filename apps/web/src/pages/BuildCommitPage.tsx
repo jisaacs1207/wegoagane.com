@@ -27,6 +27,7 @@ import { AnalyticsEvent, trackEvent } from "../lib/analytics";
 import { SessionKeys } from "../lib/sessionKeys";
 import { getProfessionIconUrl } from "../lib/talentIconMap";
 import { buildSpecSummary } from "../lib/buildSpecSummary";
+import { isBuildPlanInProgressStatus, isBuildPlanTerminalStatus } from "../lib/buildPlanStatus";
 import type { DestinyFixture } from "../content/cardFixtures";
 import type { ClassId } from "../icons/types";
 import type { BuildIntentSignals } from "../lib/buildIntentTypes";
@@ -205,8 +206,7 @@ export function BuildCommitPage() {
     return live ?? buildPlan;
   }, [buildPlan, livePlan]);
   /** AI build plan job finished (or we already have a saved sheet from the DB). */
-  const buildPlanSettled =
-    persistedPlanReady || buildPlanStatus === "ready" || buildPlanStatus === "failed";
+  const buildPlanSettled = persistedPlanReady || isBuildPlanTerminalStatus(buildPlanStatus);
   const talentViewLoading = !persistedPlanReady && !buildPlanSettled;
   const levelSteps = useMemo(
     () => deriveLevelTalentSteps(effectivePlan?.talents?.levelByLevel, effectivePlan?.talents?.path),
@@ -253,6 +253,11 @@ export function BuildCommitPage() {
         }
         if (res.status === "failed") {
           if (res.error) setPlanPollError(res.error);
+          return;
+        }
+        if (!isBuildPlanInProgressStatus(res.status)) {
+          setBuildPlanStatus("failed");
+          setPlanPollError(`unexpected_build_status:${res.status}`);
           return;
         }
         schedule(1500, run);
