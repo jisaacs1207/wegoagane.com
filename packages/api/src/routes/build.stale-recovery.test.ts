@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isStaleInProgressBuildPlan, shouldEmitEmergencyReadyFallback } from "./build";
+import {
+  isStaleInProgressBuildPlan,
+  shouldEmitEmergencyReadyFallback,
+  shouldRunInlineRescueBuildPlan,
+} from "./build";
 
 test("isStaleInProgressBuildPlan is false for fresh generating rows", () => {
   const now = 1_000_000;
@@ -44,5 +48,23 @@ test("shouldEmitEmergencyReadyFallback is true after hard timeout", () => {
     updatedAt: new Date(now - 181_000),
   } as const;
   assert.equal(shouldEmitEmergencyReadyFallback(row, now), true);
+});
+
+test("shouldRunInlineRescueBuildPlan is true after short rescue cooldown", () => {
+  const now = 1_000_000;
+  const row = {
+    status: "queued",
+    updatedAt: new Date(now - 13_000),
+  } as const;
+  assert.equal(shouldRunInlineRescueBuildPlan(row, now), true);
+});
+
+test("shouldRunInlineRescueBuildPlan is false for terminal statuses", () => {
+  const now = 1_000_000;
+  const row = {
+    status: "ready",
+    updatedAt: new Date(now - 999_999),
+  } as const;
+  assert.equal(shouldRunInlineRescueBuildPlan(row, now), false);
 });
 

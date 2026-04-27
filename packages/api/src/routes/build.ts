@@ -35,6 +35,7 @@ type BuildPlanRow = typeof buildPlans.$inferSelect;
 const FAILED_RETRY_COOLDOWN_MS = 8_000;
 const STALE_IN_PROGRESS_REQUEUE_MS = 45_000;
 const EMERGENCY_READY_FALLBACK_MS = 180_000;
+const INLINE_RESCUE_RETRY_MS = 12_000;
 
 function inProgressStatus(status: string): boolean {
   return status === "queued" || status === "generating";
@@ -87,6 +88,11 @@ export function isStaleInProgressBuildPlan(row: Pick<BuildPlanRow, "status" | "u
 export function shouldEmitEmergencyReadyFallback(row: Pick<BuildPlanRow, "status" | "updatedAt">, nowMs = Date.now()): boolean {
   if (!inProgressStatus(row.status)) return false;
   return rowAgeMs(row, nowMs) > EMERGENCY_READY_FALLBACK_MS;
+}
+
+export function shouldRunInlineRescueBuildPlan(row: Pick<BuildPlanRow, "status" | "updatedAt">, nowMs = Date.now()): boolean {
+  if (!inProgressStatus(row.status)) return false;
+  return rowAgeMs(row, nowMs) > INLINE_RESCUE_RETRY_MS;
 }
 
 function buildEmergencyReadyPlan(input: {
@@ -329,8 +335,29 @@ export async function handleGetBuild(c: Context<ApiEnv>) {
   if (!destinyId) return c.json({ error: "invalid_destiny_id" }, 400);
   const db = getDb(c.env.DB);
   const rows = await db.select().from(buildPlans).where(eq(buildPlans.destinyId, destinyId)).limit(1);
-  const row = rows[0];
+  let row = rows[0];
   if (!row) return c.json({ error: "build_not_found" }, 404);
+  if (shouldRunInlineRescueBuildPlan(row)) {
+    const destiny = await loadDestinyRow(db, destinyId);
+    if (destiny && destiny.sessionId === row.sessionId) {
+      await db
+        .update(buildPlans)
+        .set({ status: "generating", error: null, updatedAt: new Date() })
+        .where(eq(buildPlans.id, row.id));
+      await enqueueBuildPlanGeneration(
+        c.env,
+        row.id,
+        destinyId,
+        row.sessionId,
+        destiny.archetypeKey,
+        destiny.contentJson,
+      );
+      const refreshed = (await db.select().from(buildPlans).where(eq(buildPlans.id, row.id)).limit(1))[0];
+      if (refreshed) {
+        row = refreshed;
+      }
+    }
+  }
   if (shouldEmitEmergencyReadyFallback(row)) {
     const destiny = await loadDestinyRow(db, destinyId);
     if (destiny && destiny.sessionId === row.sessionId) {
@@ -366,16 +393,16 @@ export async function handleGetBuild(c: Context<ApiEnv>) {
         .update(buildPlans)
         .set({ status: "queued", error: null, updatedAt: new Date() })
         .where(eq(buildPlans.id, row.id));
-      c.executionCtx.waitUntil(
-        enqueueBuildPlanGeneration(
-          c.env,
-          row.id,
-          destinyId,
-          row.sessionId,
-          destiny.archetypeKey,
-          destiny.contentJson,
-        ),
+      await enqueueBuildPlanGeneration(
+        c.env,
+        row.id,
+        destinyId,
+        row.sessionId,
+        destiny.archetypeKey,
+        destiny.contentJson,
       );
+      const refreshed = (await db.select().from(buildPlans).where(eq(buildPlans.id, row.id)).limit(1))[0];
+      if (refreshed) return c.json(asBuildResponse(refreshed));
       return c.json({ ...asBuildResponse(row), status: "queued", error: null }, 202);
     }
     // Stale in-progress row cannot be resumed (orphaned destiny/session mismatch). Mark terminal
@@ -401,16 +428,16 @@ export async function handleGetBuild(c: Context<ApiEnv>) {
           .update(buildPlans)
           .set({ status: "queued", error: null, updatedAt: new Date() })
           .where(eq(buildPlans.id, row.id));
-        c.executionCtx.waitUntil(
-          enqueueBuildPlanGeneration(
-            c.env,
-            row.id,
-            destinyId,
-            row.sessionId,
-            destiny.archetypeKey,
-            destiny.contentJson,
-          ),
+        await enqueueBuildPlanGeneration(
+          c.env,
+          row.id,
+          destinyId,
+          row.sessionId,
+          destiny.archetypeKey,
+          destiny.contentJson,
         );
+        const refreshed = (await db.select().from(buildPlans).where(eq(buildPlans.id, row.id)).limit(1))[0];
+        if (refreshed) return c.json(asBuildResponse(refreshed));
         return c.json({ ...asBuildResponse(row), status: "queued", error: null }, 202);
       }
     }
