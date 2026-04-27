@@ -30,4 +30,4 @@ npm run db:migrate:local
 npm run dev
 ```
 
-Deploy: [../docs/deploy-wegoagane-com.md](../docs/deploy-wegoagane-com.md) · Route / session / error matrix: [../docs/route-qa-matrix.md](../docs/route-qa-matrix.md)
+Deploy: [../../docs/deploy-wegoagane-com.md](../../docs/deploy-wegoagane-com.md) · Route / session / error matrix: [../../docs/route-qa-matrix.md](../../docs/route-qa-matrix.md)

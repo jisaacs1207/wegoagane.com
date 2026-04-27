@@ -393,7 +393,7 @@ API foundation now lives in **`packages/api`** (Worker + D1). To tie it to the r
 
 When enabled, these ensure deploys fail early if required runtime values are missing (see [`.github/workflows/api-deploy.yml`](../.github/workflows/api-deploy.yml)). Same-origin loops (recommend, memorial, feedback, share, journey/build/builds, memory/growth) should show expected AI metadata (`sourceType`, `aiMeta.resolvedModelId`) and memory metadata in smoke checks while PostHog captures generation/feedback/share/memory lifecycle events.
 
-See full runbook (including 405/route troubleshooting and **`aiMeta`** debugging): **[`docs/deploy-wegoagane-com.md`](../deploy-wegoagane-com.md)**.
+See full runbook (including 405/route troubleshooting and **`aiMeta`** debugging): **[`docs/deploy-wegoagane-com.md`](deploy-wegoagane-com.md)**.
 
 Local iteration: **`cd apps/web && npm run dev`**.
 

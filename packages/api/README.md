@@ -7,7 +7,7 @@ Backend for **`wegoagane.com/api/*`** (and same routes without `/api` prefix on 
 - Optional **OpenRouter** enrichment (env-gated, validator-first fallback)
 - Persistence for sessions, destinies, memorials, build plans, commits, recommendation logs, growth tables (see schema)
 
-Live route index (also returned by **`GET /`** on the Worker): see [`src/index.ts`](src/index.ts) `endpoints` array. Web session keys and error copy: [`docs/route-qa-matrix.md`](../docs/route-qa-matrix.md).
+Live route index (also returned by **`GET /`** on the Worker): see [`src/index.ts`](src/index.ts) `endpoints` array. Web session keys and error copy: [`docs/route-qa-matrix.md`](../../docs/route-qa-matrix.md).
 
 ## Local setup
 
@@ -161,7 +161,7 @@ Worker routes are configured in `wrangler.toml` for:
 
 `npm test` runs Node’s test runner on `src/**/*.test.ts` — route and handler coverage for recommend, journey commit, feedback, memorial, share, build bodies, growth auth, and related `invalid_json` / validation paths.
 
-Web flows, `SessionKeys`, and API `error` → UI copy: [../docs/route-qa-matrix.md](../docs/route-qa-matrix.md).
+Web flows, `SessionKeys`, and API `error` → UI copy: [../../docs/route-qa-matrix.md](../../docs/route-qa-matrix.md).
 
 ## Smoke + persistence checks
 
