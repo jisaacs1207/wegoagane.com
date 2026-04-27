@@ -9,6 +9,9 @@ export type SpecSummaryInput = {
   classId: ClassId;
   archetypeKey?: string;
   destinyHeadline?: string;
+  /** Subline and tier from the destiny card: used first to detect primary tree (e.g. "Arms" in title). */
+  destinySubline?: string;
+  destinyTierProse?: string;
   talents?: {
     keyPicks?: Array<{ tier?: string; name?: string; rationale?: string }>;
     summary?: string;
@@ -91,12 +94,29 @@ function detectBranchFromText(text: string, branches: string[]): string | null {
 }
 
 /**
+ * If AI prose names a spec tree (e.g. "Protection") that does not match the player-facing
+ * primary tree (e.g. Arms from the headline), treat it as a contradiction and drop it so we
+ * can fall back to summary or a template (fixes Arms headline + Protection in whyDistinct).
+ */
+function proseMatchesPrimaryTree(prose: string, primary: string, branches: readonly string[]): boolean {
+  const t = prose.toLowerCase();
+  const mentioned = branches.filter((b) => t.includes(b.toLowerCase()));
+  if (mentioned.length === 0) return true;
+  return mentioned.every((b) => b === primary);
+}
+
+/**
  * Derive a spec summary preferring AI-provided `signature` values, then
  * falling back to heuristic detection from talent rows and a curated class
  * baseline. Always returns sensible defaults so the UI is never empty.
  */
 export function buildSpecSummary(input: SpecSummaryInput): SpecSummary {
   const branches = CLASS_BRANCHES[input.classId];
+  const fromDestinyText = [input.destinyHeadline, input.destinySubline, input.destinyTierProse]
+    .filter((s) => (s ?? "").trim().length > 0)
+    .join(" ");
+  /** Headline/subline beat a mismatched `signature.tree` (common AI drift). */
+  const headlineBranch = detectBranchFromText(fromDestinyText, branches);
   const counts = new Map<string, number>(branches.map((b) => [b, 0]));
 
   // Prefer explicit AI tree allocations when present.
@@ -123,7 +143,7 @@ export function buildSpecSummary(input: SpecSummaryInput): SpecSummary {
   }
 
   const aiBranch = input.signature?.tree?.branch?.trim();
-  const treeBranch = aiBranch || detected || CLASS_DEFAULT_BRANCH[input.classId];
+  const treeBranch = headlineBranch || aiBranch || detected || CLASS_DEFAULT_BRANCH[input.classId];
 
   let totalCount = Array.from(counts.values()).reduce((a, b) => a + b, 0);
   const aiWeight = typeof input.signature?.tree?.weight === "number" ? input.signature.tree.weight : null;
@@ -141,10 +161,17 @@ export function buildSpecSummary(input: SpecSummaryInput): SpecSummary {
   const strengths = (input.signature?.strengths ?? []).filter(Boolean);
   const weaknesses = (input.signature?.weaknesses ?? []).filter(Boolean);
 
-  const whyDistinct =
-    (input.signature?.whyDistinct ?? "").trim() ||
-    (input.talents?.summary ?? "").trim() ||
-    `Leans hard into ${treeBranch} for a ${input.classId} run focused on hardcore survival rather than a generic leveling spec.`;
+  const rawWhy = (input.signature?.whyDistinct ?? "").trim();
+  const summaryLine = (input.talents?.summary ?? "").trim();
+  const useRawWhy = Boolean(rawWhy && proseMatchesPrimaryTree(rawWhy, treeBranch, branches));
+  const useSummary = Boolean(
+    summaryLine && proseMatchesPrimaryTree(summaryLine, treeBranch, branches) && !useRawWhy,
+  );
+  const whyDistinct = useRawWhy
+    ? rawWhy
+    : useSummary
+      ? summaryLine
+      : `This build centers on ${treeBranch} for ${input.destinyHeadline?.trim() || "this run"}: control pulls, use your toolkit deliberately, and avoid the path that only looks safe on paper.`;
 
   return {
     treeBranch,
