@@ -1,0 +1,254 @@
+/* Single-row (horizontal scroll) Classic HC talent path — tree color via CSS vars on summary */
+
+.talent-path {
+  margin-top: 4px;
+}
+
+.talent-path__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 10px;
+}
+
+.talent-path__sub {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  color: var(--ts);
+  letter-spacing: 0.04em;
+}
+
+.talent-path__status {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+}
+
+.talent-path__count {
+  font-size: 0.8rem;
+  color: var(--gold-bright);
+}
+
+.talent-path__muted {
+  font-size: 0.8rem;
+  color: var(--ts);
+}
+
+.talent-path__intent {
+  margin: 0 0 12px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--tp);
+}
+
+.talent-path__intent--muted {
+  color: var(--ts);
+}
+
+.talent-path__pulse-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.talent-path__pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gold-bright);
+  opacity: 0.35;
+  animation: talent-path-dot 0.9s ease-in-out infinite;
+}
+
+.talent-path__pulse-dot--delay {
+  animation-delay: 0.15s;
+}
+
+.talent-path__pulse-dot--delay2 {
+  animation-delay: 0.3s;
+}
+
+@keyframes talent-path-dot {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+.talent-path__pulse-label {
+  margin-left: 4px;
+  font-size: 0.8rem;
+  color: var(--tp);
+}
+
+.talent-path__skeleton {
+  margin-bottom: 12px;
+}
+
+.talent-path__skeleton-track {
+  position: relative;
+  height: 10px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid color-mix(in srgb, var(--gold), transparent 75%);
+}
+
+.talent-path__skeleton-shimmer {
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    color-mix(in srgb, var(--gold-bright), transparent 55%) 45%,
+    transparent 90%
+  );
+  animation: talent-path-shimmer 1.35s ease-in-out infinite;
+}
+
+@keyframes talent-path-shimmer {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+.talent-path--loading .talent-path__scroller {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.talent-path__scroller {
+  overflow-x: auto;
+  overflow-y: visible;
+  padding-bottom: 8px;
+  scrollbar-color: color-mix(in srgb, var(--gold), transparent 40%) transparent;
+}
+
+.talent-path__rail {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 8px;
+  width: max-content;
+  padding: 2px 2px 6px;
+}
+
+.talent-path__step {
+  min-width: 0;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--gold), transparent 65%);
+  background: rgba(12, 10, 8, 0.55);
+}
+
+.talent-path__summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--tp-accent-border, var(--gold));
+  border-radius: 9px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--tp-accent-bg, transparent), transparent 20%) 0%,
+    rgba(0, 0, 0, 0.15) 100%
+  );
+}
+
+.talent-path__summary-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.talent-path__summary::-webkit-details-marker {
+  display: none;
+}
+
+.talent-path__lvl {
+  flex-shrink: 0;
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--gold-bright);
+  letter-spacing: 0.06em;
+}
+
+.talent-path__branch {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--tp-accent-fg, var(--tp));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.talent-path__talent {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--tp-accent-fg, var(--text));
+  max-width: 168px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.talent-path__rank {
+  font-weight: 500;
+  font-size: 0.72rem;
+  color: var(--ts);
+}
+
+.talent-path__body {
+  padding: 0 10px 10px;
+  border-top: 1px dashed color-mix(in srgb, var(--gold), transparent 80%);
+}
+
+.talent-path__why {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--ts);
+}
+
+.talent-path__alts {
+  margin-top: 8px;
+}
+
+.talent-path__alts-label {
+  margin: 0 0 4px;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ts);
+}
+
+.talent-path__alts ul {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--ts);
+}
+
+.talent-path__empty {
+  margin: 8px 0 0;
+  font-size: 0.8rem;
+  color: var(--ts);
+  max-width: 52ch;
+}
