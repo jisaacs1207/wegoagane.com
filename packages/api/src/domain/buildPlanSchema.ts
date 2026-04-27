@@ -84,7 +84,7 @@ export const buildPlanPayloadSchema = z.object({
     treeAllocations: z.array(talentTreeAllocationSchema).max(3).optional(),
     /** Full leveling path (or near-full) so UI can show complete talent journey. */
     path: z.array(talentPathStepSchema).max(60).optional(),
-    /** Level 10..60 in order — one row per talent point (51 rows when complete). Filled by a dedicated second AI pass. */
+    /** Level 10..60 in order — one row per talent point (51 rows when complete). Emitted in the same primary generator response as the rest of the plan. */
     levelByLevel: z.array(talentLevelByLevelStepSchema).max(51).optional(),
   }),
   professions: z.object({

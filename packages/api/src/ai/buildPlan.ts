@@ -44,10 +44,9 @@ const PROMPT_JSON_BUDGET = 12_000;
 const REVIEWER_DRAFT_BUDGET = 120_000;
 // Build generation is launched from request `waitUntil`; keep total AI time bounded so jobs can
 // actually settle instead of sitting in `generating` after runtime interruption.
-const BUILD_PLAN_TOTAL_AI_BUDGET_MS = 24_000;
-const BUILD_PLAN_GEN_TIMEOUT_MS = 12_000;
+const BUILD_PLAN_TOTAL_AI_BUDGET_MS = 28_000;
+const BUILD_PLAN_GEN_TIMEOUT_MS = 16_000;
 const BUILD_PLAN_REVIEW_TIMEOUT_MS = 8_000;
-const BUILD_PLAN_SECOND_PASS_TIMEOUT_MS = 6_000;
 
 function jsonForPrompt(label: string, value: unknown): string {
   try {
@@ -125,21 +124,176 @@ function stubPayload(input: {
   };
 }
 
+type TalentPathStep = NonNullable<BuildPlanPayload["talents"]["path"]>[number];
+type TalentLevelRailStep = NonNullable<BuildPlanPayload["talents"]["levelByLevel"]>[number];
+
+/** One row per level 10..60 from sparse path checkpoints (forward-fill between nodes). */
+function expandSparsePathTo51(path: TalentPathStep[] | undefined | null): TalentLevelRailStep[] | null {
+  if (!path?.length) return null;
+  const sorted = [...path]
+    .filter((p) => p.level >= 10 && p.level <= 60 && p.branch && p.talent)
+    .sort((a, b) => a.level - b.level);
+  if (!sorted.length) return null;
+  const first = sorted[0];
+  if (!first) return null;
+  const out: TalentLevelRailStep[] = [];
+  for (let L = 10; L <= 60; L++) {
+    let pick: TalentPathStep = first;
+    for (const p of sorted) {
+      if (p.level <= L) pick = p;
+      else break;
+    }
+    const atTier = pick.level === L;
+    out.push({
+      level: L,
+      branch: pick.branch,
+      talent: pick.talent,
+      rankAfter: atTier && pick.rank != null ? pick.rank : undefined,
+      rationale: atTier ? pick.rationale : undefined,
+    });
+  }
+  return out;
+}
+
+/** Exactly one row per level 10..60, sorted. */
+function orderFullLevelByLevel(rows: TalentLevelRailStep[] | undefined | null): TalentLevelRailStep[] | null {
+  if (!rows?.length) return null;
+  const byL = new Map<number, TalentLevelRailStep>();
+  for (const r of rows) {
+    if (r.level >= 10 && r.level <= 60 && r.branch && r.talent) byL.set(r.level, r);
+  }
+  if (byL.size !== 51) return null;
+  for (let L = 10; L <= 60; L++) {
+    if (!byL.has(L)) return null;
+  }
+  return Array.from({ length: 51 }, (_, i) => byL.get(10 + i)!);
+}
+
+/** Fill missing levels by carrying forward the last known spend (model returned a partial rail). */
+function padPartialLevelByLevel(rows: TalentLevelRailStep[] | undefined | null): TalentLevelRailStep[] | null {
+  if (!rows?.length) return null;
+  const sorted = [...rows]
+    .filter((r) => r.level >= 10 && r.level <= 60 && r.branch && r.talent)
+    .sort((a, b) => a.level - b.level);
+  if (!sorted.length) return null;
+  const byL = new Map<number, TalentLevelRailStep>();
+  for (const r of sorted) byL.set(r.level, r);
+  const out: TalentLevelRailStep[] = [];
+  let last: TalentLevelRailStep | null = null;
+  for (let L = 10; L <= 60; L++) {
+    const hit = byL.get(L);
+    if (hit) {
+      last = hit;
+      out.push({ ...hit, level: L });
+    } else if (last) {
+      out.push({
+        level: L,
+        branch: last.branch,
+        talent: last.talent,
+        rationale: "Filled to complete the 10-60 rail (model omitted this level).",
+      });
+    } else {
+      return null;
+    }
+  }
+  return out;
+}
+
+/**
+ * After the monolithic generator (+ optional reviewer), guarantee a usable 51-step rail for the UI
+ * without a second AI call: prefer valid model levelByLevel, else derive from path, else pad partials.
+ */
+function ensureMonolithicTalentLevelRail(payload: BuildPlanPayload): BuildPlanPayload {
+  const talents = payload.talents;
+  const summaryFallback =
+    talents.buildIntentSummary?.trim() ||
+    (typeof talents.summary === "string" ? talents.summary.slice(0, 900) : "Classic Era Hardcore leveling path.");
+
+  const extraWarnings: string[] = [];
+
+  const strict = orderFullLevelByLevel(talents.levelByLevel);
+  if (strict) {
+    return {
+      ...payload,
+      talents: {
+        ...talents,
+        levelByLevel: strict,
+        buildIntentSummary: summaryFallback,
+      },
+    };
+  }
+
+  const fromPath = expandSparsePathTo51(talents.path ?? undefined);
+  if (fromPath) {
+    extraWarnings.push("Talent rail derived from talents.path (levelByLevel was incomplete or invalid).");
+    return {
+      ...payload,
+      talents: {
+        ...talents,
+        levelByLevel: fromPath,
+        buildIntentSummary: summaryFallback,
+      },
+      warnings: [...(payload.warnings ?? []), ...extraWarnings].slice(0, 24),
+    };
+  }
+
+  const padded = padPartialLevelByLevel(talents.levelByLevel);
+  if (padded) {
+    extraWarnings.push("Talent rail padded to 51 steps from partial levelByLevel output.");
+    return {
+      ...payload,
+      talents: {
+        ...talents,
+        levelByLevel: padded,
+        buildIntentSummary: summaryFallback,
+      },
+      warnings: [...(payload.warnings ?? []), ...extraWarnings].slice(0, 24),
+    };
+  }
+
+  return {
+    ...payload,
+    talents: {
+      ...talents,
+      buildIntentSummary: summaryFallback,
+    },
+    warnings: [
+      ...(payload.warnings ?? []),
+      "Could not derive a full 51-step talent rail (no valid path or levelByLevel).",
+    ].slice(0, 24),
+  };
+}
+
+function talentTreeGuiderailLine(classId: ClassId): string {
+  const treeNames = CLASS_TALENT_TREE_NAMES[classId];
+  if (!treeNames) return "Use exactly three branch strings that match the three Classic Era talent trees for this class (real in-game tree names).";
+  return `For this class (${classId}), talents.branch on EVERY path and levelByLevel row MUST be exactly one of: ${JSON.stringify([...treeNames])}; spell them exactly as in the Classic Era client.`;
+}
+
 function buildGeneratorPrompt(
   input: RecommendInput,
-  destiny: { headline: string; subline: string; classId: string; bullets: string[]; tierProse: string; rationale: string },
+  destiny: { headline: string; subline: string; classId: ClassId; bullets: string[]; tierProse: string; rationale: string },
   archetypeKey: string,
   viabilityNotes: string[],
   rulesetPin: string,
 ): string {
+  const rail = talentTreeGuiderailLine(destiny.classId);
   return [
     ...WOW_HC_JSON_GUARDS,
-    "You are an expert on World of Warcraft Classic ERA HARDCORE (permanent death).",
+    "You are an expert on World of Warcraft Classic ERA HARDCORE (permanent death; one life; no retail or Dragonflight+ rules).",
     `Ruleset pin: ${rulesetPin}. Prefer accurate Classic Era talent NAMES and real profession pairings. If unsure, say so in warnings[].`,
     "Do not emit keys outside the schema. Keep arrays within stated limits so the reply stays one valid JSON object.",
-    "Return ONE JSON object only matching this shape:",
-    '{"v":1,"meta":{"publishTier":"draft","rulesetPin":"...","classId":"...","archetypeKey":"..."},"viabilityNotes":[],"warnings":[],"talents":{"summary":"...","keyPicks":[{"tier":"...","name":"talent name","rationale":"...","alternatives":[]}],"treeAllocations":[{"branch":"Feral","points":31},{"branch":"Restoration","points":20}],"path":[{"level":10,"branch":"Feral","talent":"Ferocity","rank":1,"rationale":"..."}]},"professions":{"primary":"...","secondary":"...","rationale":"...","secondarySkills":{"firstAid":"...","cooking":"...","fishing":"..."}},"stats":{"priority":["stamina","..."],"rationale":"..."},"race":{"suggestion":"...","rationale":"...","alternatives":[]},"identity":{"raceSuggestion":"...","factionSuggestion":"horde|alliance|neutral","genderLean":"masculine|feminine|neutral","buildFantasy":"...","archetypeSummary":"..."},"signature":{"tree":{"branch":"Holy|Protection|Retribution|Arms|Fury|...","weight":0.0},"strengths":["..."],"weaknesses":["..."],"whyDistinct":"...","keyItems":[{"name":"...","slot":"weapon|chest|trinket|...","rationale":"..."}]},"namesByLane":{"lore_world":["NameOne"],"hc_practical":[],"light_humor":[],"grimdark":[],"neutral":[],"pop_culture":[]},"forks":[{"title":"...","optionA":"...","optionB":"...","why":"..."}]}',
-    "talents.treeAllocations + talents.path are REQUIRED when possible. Provide full or near-full leveling path (level 10 to 60 checkpoints) and realistic point allocations that sum to 51 by level 60.",
+    "Return ONE JSON object only matching this shape (same top-level keys as before; talents MUST include buildIntentSummary + levelByLevel + path + treeAllocations):",
+    '{"v":1,"meta":{"publishTier":"draft","rulesetPin":"...","classId":"...","archetypeKey":"..."},"viabilityNotes":[],"warnings":[],"talents":{"summary":"...","buildIntentSummary":"2-5 sentences: HC survival posture, leveling fantasy, pull discipline, how this differs from a generic path","keyPicks":[{"tier":"...","name":"talent name","rationale":"...","alternatives":[]}],"treeAllocations":[{"branch":"...","points":31}],"path":[{"level":10,"branch":"...","talent":"...","rank":1,"rationale":"..."}],"levelByLevel":[{"level":10,"branch":"...","talent":"...","rankAfter":1,"rationale":"...","alternatives":[{"talent":"...","branch":"...","tradeoff":"..."}]}]},"professions":{...},"stats":{...},"race":{...},"identity":{...},"signature":{...},"namesByLane":{...},"forks":[...]}',
+    "### BUILD PATH GUIDERAILS (mandatory: same response as everything else)",
+    rail,
+    "Classic talent rule: first point at character level 10, then exactly one additional point each level through 60 (51 total points).",
+    "talents.levelByLevel: REQUIRED. Output EXACTLY 51 objects, sorted ascending by level, one object per character level 10 through 60 inclusive (level field 10,11,12,...,60; no gaps, no duplicates).",
+    'Each levelByLevel object MUST include: "level" (int), "branch" (see tree list above), "talent" (exact Classic Era name in that tree), optional "rankAfter" (1-5), optional short "rationale", optional "alternatives" (0-2 entries with talent + tradeoff).',
+    "Respect prerequisite order for Classic Era; every spend must be legal in-game. Do not skip levels or merge two points into one row.",
+    "talents.path: REQUIRED: checkpoints that align with levelByLevel (same branches/talents; path can be sparser but must not contradict levelByLevel).",
+    "talents.treeAllocations: REQUIRED: three rows max, point totals that sum to 51 at level 60 and match levelByLevel branch tallies.",
+    "talents.buildIntentSummary: REQUIRED: 2-5 sentences, non-empty.",
     "signature: REQUIRED for hardcore differentiation. tree.branch is the dominant talent tree by point spend; tree.weight is 0..1 share of points in that branch. strengths/weaknesses 3-5 short HC-specific bullets each (e.g. 'low downtime between pulls', 'weak vs casters'). whyDistinct: 1-2 sentences on what separates this build from a generic same-class run. keyItems 4-6 leveling-tier upgrades with slot.",
     "Use widely accepted WoW Classic Era HC community guidance (e.g. Wowhead/classic forums/reddit consensus) for talent progression realism; never invent fake citations or URLs.",
     "namesByLane: each array 4-8 names; WoW rules: ASCII letters only, length 2-12 each, no spaces or punctuation. Include pop_culture lane with clever original blends (no trademark strings).",
@@ -162,6 +316,7 @@ function buildReviewerPrompt(draft: string, input: RecommendInput, rulesetPin: s
     `Ruleset pin: ${rulesetPin}.`,
     "Given the JSON draft below, find contradictions with the player signals, factual impossibilities, or non-viable HC choices.",
     "Also argue viability: pull risk, downtime, gear dependence, melee tax, first-HC suitability.",
+    "Preserve talents.levelByLevel as EXACTLY 51 rows (levels 10..60, one per level) when present; fix ordering, duplicates, or illegal spends instead of deleting the rail.",
     "Return ONE revised JSON object of the SAME schema. If you cannot fix, keep issues in warnings[] array strings.",
     `Player signals: ${jsonForPrompt("signals", input.signals)}`,
     "DRAFT JSON:",
@@ -384,96 +539,6 @@ function normalizeBuildPlanCandidate(input: unknown): unknown {
   return out;
 }
 
-function buildLevelByLevelTalentPrompt(
-  rulesetPin: string,
-  classId: ClassId,
-  destiny: { headline: string; subline: string; bullets: string[]; tierProse: string; rationale: string },
-  input: RecommendInput,
-  planSummary: Record<string, unknown>,
-): string {
-  const treeNames = CLASS_TALENT_TREE_NAMES[classId] ?? (["Tree A", "Tree B", "Tree C"] as const);
-  return [
-    ...WOW_HC_JSON_GUARDS,
-    "You are an expert on World of Warcraft Classic ERA HARDCORE (permanent death; one life; no retail talent trees or Dragonflight+ rules).",
-    `Ruleset pin: ${rulesetPin}. Every talent name must be plausible for the Classic Era 1.12 client for this class.`,
-    "SECOND AI PASS - respond with ONE JSON object containing EXACTLY two top-level keys: \"buildIntentSummary\" (string) and \"levelByLevel\" (array). No markdown fences, no commentary outside JSON.",
-    "buildIntentSummary: 2-5 sentences stating clearly what this build is going for in Hardcore: survival posture, leveling fantasy, pull discipline, and how it differs from a reckless or generic same-class leveling path.",
-    "levelByLevel: the full ordered list of talent point spends. WoW Classic rule: the first talent point unlocks at character level 10; the player then earns one additional point every level through level 60. That is 51 total points.",
-    "You MUST output 51 objects in ascending level order: first object level 10, last object level 60. Each object fields:",
-    '  - "level": integer 10-60',
-    '  - "branch": MUST be exactly one of these tree names for this class: ' + JSON.stringify([...treeNames]),
-    '  - "talent": exact Classic Era talent name as shown in that tree in the game client',
-    '  - "rankAfter": optional integer 1-5 = rank of that talent AFTER this spend',
-    '  - "rationale": one short line grounded in Hardcore risk (pulls, downtime, death spikes)',
-    '  - "alternatives": optional 0-2 entries shaped {"talent","branch" optional,"tradeoff"} describing other reasonable picks at that level and why you did NOT take them',
-    "Respect prerequisite order for Classic Era; do not spend impossible rows.",
-    "Stay aligned with the primary plan JSON below; if you adjust, say so in that row's rationale.",
-    `Player signals JSON: ${jsonForPrompt("signals", input.signals)}`,
-    "Primary plan JSON (honor this build's intent):",
-    jsonForPrompt("planSummary", planSummary),
-    "Destiny card JSON:",
-    jsonForPrompt("destiny", destiny),
-  ].join("\n");
-}
-
-async function mergeLevelByLevelTalentPass(
-  env: ApiEnv["Bindings"],
-  model: string,
-  parsed: BuildPlanPayload,
-  destiny: { headline: string; subline: string; classId: ClassId; bullets: string[]; tierProse: string; rationale: string },
-  input: RecommendInput,
-  rulesetPin: string,
-): Promise<BuildPlanPayload> {
-  const planSummary: Record<string, unknown> = {
-    meta: parsed.meta,
-    talents: {
-      summary: parsed.talents.summary,
-      treeAllocations: parsed.talents.treeAllocations,
-      path: parsed.talents.path,
-      keyPicks: parsed.talents.keyPicks?.slice(0, 8),
-    },
-    signature: parsed.signature,
-    identity: parsed.identity,
-    professions: { primary: parsed.professions.primary, secondary: parsed.professions.secondary },
-    warnings: parsed.warnings?.slice(0, 8),
-  };
-  const prompt = buildLevelByLevelTalentPrompt(rulesetPin, destiny.classId, destiny, input, planSummary);
-  const res = await callAiGateway(env, model, prompt, 75_000, 12_288);
-  if (!res.ok) return parsed;
-  let raw: string;
-  try {
-    raw = extractJsonPayload(res.content);
-  } catch {
-    return parsed;
-  }
-  let obj: unknown;
-  try {
-    obj = JSON.parse(raw);
-  } catch {
-    return parsed;
-  }
-  if (!obj || typeof obj !== "object") return parsed;
-  const rec = obj as Record<string, unknown>;
-  const mergedCandidate = normalizeBuildPlanCandidate({
-    ...parsed,
-    talents: {
-      ...parsed.talents,
-      ...(typeof rec.buildIntentSummary === "string" ? { buildIntentSummary: rec.buildIntentSummary } : {}),
-      ...(Array.isArray(rec.levelByLevel) ? { levelByLevel: rec.levelByLevel } : {}),
-    },
-  });
-  const safe = buildPlanPayloadSchema.safeParse(mergedCandidate);
-  if (!safe.success) return parsed;
-  const rows = safe.data.talents.levelByLevel;
-  if (!rows || rows.length < 8) return parsed;
-  return deepStripFancyPunctuation(
-    sanitizeBuildPlanNames({
-      ...safe.data,
-      aiRaw: parsed.aiRaw,
-    }),
-  );
-}
-
 export async function runBuildPlanGeneration(
   env: ApiEnv["Bindings"],
   params: {
@@ -548,11 +613,12 @@ export async function runBuildPlanGeneration(
       signalsHash,
     });
     if (cached) {
+      const cacheReady = ensureMonolithicTalentLevelRail(deepStripFancyPunctuation(sanitizeBuildPlanNames({ ...cached })));
       await db
         .update(buildPlans)
         .set({
           status: "ready",
-          payloadJson: JSON.stringify(cached),
+          payloadJson: JSON.stringify(cacheReady),
           error: null,
           updatedAt: new Date(),
         })
@@ -622,28 +688,7 @@ export async function runBuildPlanGeneration(
         },
       });
       parsed = deepStripFancyPunctuation(parsed);
-      const secondPassTimeout = Math.max(0, Math.min(BUILD_PLAN_SECOND_PASS_TIMEOUT_MS, remainingAiBudgetMs()));
-      if (secondPassTimeout >= 2_500) {
-        try {
-          parsed = await mergeLevelByLevelTalentPass(
-            env,
-            model,
-            parsed,
-            {
-              headline: destiny.headline,
-              subline: destiny.subline,
-              classId: destiny.classId,
-              bullets: destiny.bullets,
-              tierProse: destiny.tierProse ?? "",
-              rationale: destiny.rationale ?? "",
-            },
-            params.input,
-            rulesetPin,
-          );
-        } catch {
-          /* Second pass is best-effort; primary plan still ships. */
-        }
-      }
+      parsed = ensureMonolithicTalentLevelRail(parsed);
     } catch (e) {
       throw new Error(e instanceof Error ? e.message : "parse_failed");
     }
