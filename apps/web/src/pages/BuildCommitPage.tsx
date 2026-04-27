@@ -144,6 +144,7 @@ export function BuildCommitPage() {
   const [livePlan, setLivePlan] = useState<unknown | null>(null);
   const [buildPlanStatus, setBuildPlanStatus] = useState<string | null>(null);
   const [planPollError, setPlanPollError] = useState<string | null>(null);
+  const [planGenerationSource, setPlanGenerationSource] = useState<"ai" | "stub" | "emergency_fallback" | "unknown" | null>(null);
   const [copyState, setCopyState] = useState<"" | "url">("");
   const [shareBusy, setShareBusy] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
@@ -193,6 +194,7 @@ export function BuildCommitPage() {
     setLivePlan(null);
     setBuildPlanStatus(null);
     setPlanPollError(null);
+    setPlanGenerationSource(null);
     buildCreateAttempted.current = false;
   }, [slug]);
 
@@ -245,6 +247,7 @@ export function BuildCommitPage() {
         if (cancelled) return;
         setPlanPollError(null);
         setBuildPlanStatus(res.status);
+        setPlanGenerationSource(res.generationSource ?? null);
         if (res.plan) setLivePlan(res.plan);
         if (res.status === "ready") {
           void fetchBuildCommit(slug)
@@ -282,6 +285,7 @@ export function BuildCommitPage() {
             });
             if (cancelled) return;
             setBuildPlanStatus(created.status);
+            setPlanGenerationSource(created.generationSource ?? null);
             if (created.plan) setLivePlan(created.plan);
             schedule(1200, run);
             return;
@@ -567,6 +571,16 @@ export function BuildCommitPage() {
             {buildPlanStatus === "failed" && planPollError ? (
               <p className="ui-caption" role="alert" style={{ color: "var(--gold-bright)", margin: "0 0 8px" }}>
                 Build plan: {planPollError}
+              </p>
+            ) : null}
+            {buildPlanStatus === "ready" && planGenerationSource === "emergency_fallback" ? (
+              <p className="ui-caption" role="status" style={{ color: "var(--ts)", margin: "0 0 8px" }}>
+                AI build generation timed out repeatedly; showing deterministic fallback plan so this page still loads.
+              </p>
+            ) : null}
+            {buildPlanStatus === "ready" && planGenerationSource === "stub" ? (
+              <p className="ui-caption" role="status" style={{ color: "var(--ts)", margin: "0 0 8px" }}>
+                AI build generation is disabled on this environment; showing stub build plan.
               </p>
             ) : null}
             {buildPlanStatus !== "failed" && !buildPlanSettled && planPollError ? (

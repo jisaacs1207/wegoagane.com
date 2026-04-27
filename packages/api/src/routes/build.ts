@@ -55,6 +55,17 @@ function asBuildResponse(row: BuildPlanRow) {
       plan = null;
     }
   }
+  let generationSource: "ai" | "stub" | "emergency_fallback" | "unknown" = "unknown";
+  if (row.error === "emergency_ready_fallback") {
+    generationSource = "emergency_fallback";
+  } else if (plan && typeof plan === "object") {
+    const p = plan as { aiRaw?: { generatorJson?: string }; warnings?: string[] };
+    if (typeof p.aiRaw?.generatorJson === "string" && p.aiRaw.generatorJson.trim().length > 0) {
+      generationSource = "ai";
+    } else if (Array.isArray(p.warnings) && p.warnings.some((w) => /ai disabled: stub build plan only\./i.test(String(w)))) {
+      generationSource = "stub";
+    }
+  }
   return {
     buildPlanId: row.id,
     destinyId: row.destinyId,
@@ -63,6 +74,7 @@ function asBuildResponse(row: BuildPlanRow) {
     publishTier: row.publishTier,
     plan,
     error: row.error,
+    generationSource,
   };
 }
 
