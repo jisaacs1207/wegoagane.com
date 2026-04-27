@@ -7,6 +7,8 @@ Backend for **`wegoagane.com/api/*`** (and same routes without `/api` prefix on 
 - Optional **OpenRouter** enrichment (env-gated, validator-first fallback)
 - Persistence for sessions, destinies, memorials, build plans, commits, recommendation logs, growth tables (see schema)
 
+`GET /api/v1/build/:destinyId` includes stale-job recovery: if a plan row is stuck in `queued`/`generating` beyond the in-progress timeout, the route requeues generation and returns `202` so commit-page polling can recover instead of waiting forever.
+
 Live route index (also returned by **`GET /`** on the Worker): see [`src/index.ts`](src/index.ts) `endpoints` array. Web session keys and error copy: [`docs/route-qa-matrix.md`](../../docs/route-qa-matrix.md).
 
 ## Local setup
