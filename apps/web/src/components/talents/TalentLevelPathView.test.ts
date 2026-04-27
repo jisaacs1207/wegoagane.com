@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deriveLevelTalentSteps } from "./TalentLevelPathView";
+import { deriveLevelTalentSteps } from "../../lib/deriveLevelTalentSteps";
 
 describe("deriveLevelTalentSteps", () => {
   it("prefers levelByLevel over path", () => {

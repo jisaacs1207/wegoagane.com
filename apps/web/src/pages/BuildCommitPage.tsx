@@ -2,7 +2,8 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DestinyCard } from "../components/cards/DestinyCard";
 import { IdentityPortrait } from "../components/IdentityPortrait";
-import { deriveLevelTalentSteps, TalentLevelPathView } from "../components/talents/TalentLevelPathView";
+import { TalentLevelPathView } from "../components/talents/TalentLevelPathView";
+import { deriveLevelTalentSteps } from "../lib/deriveLevelTalentSteps";
 import { RatingBar } from "../components/builds/RatingBar";
 import {
   CLASS_ASSET_URLS,
@@ -207,6 +208,10 @@ export function BuildCommitPage() {
   const buildPlanSettled =
     persistedPlanReady || buildPlanStatus === "ready" || buildPlanStatus === "failed";
   const talentViewLoading = !persistedPlanReady && !buildPlanSettled;
+  const levelSteps = useMemo(
+    () => deriveLevelTalentSteps(effectivePlan?.talents?.levelByLevel, effectivePlan?.talents?.path),
+    [effectivePlan?.talents?.levelByLevel, effectivePlan?.talents?.path],
+  );
   const raceFromPlan = effectivePlan?.identity?.raceSuggestion ?? effectivePlan?.race?.suggestion;
   const raceId = useMemo(() => {
     if (raceFromPlan) return inferRaceFromHeadline(raceFromPlan);
@@ -452,11 +457,6 @@ export function BuildCommitPage() {
 
   const keyItems = effectivePlan?.signature?.keyItems ?? [];
   const statPriority = effectivePlan?.stats?.priority ?? [];
-
-  const levelSteps = useMemo(
-    () => deriveLevelTalentSteps(effectivePlan?.talents?.levelByLevel, effectivePlan?.talents?.path),
-    [effectivePlan?.talents?.levelByLevel, effectivePlan?.talents?.path],
-  );
 
   return (
     <div className="commit-page-shell">
